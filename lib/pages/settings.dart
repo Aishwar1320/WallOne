@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:wallone/state/investment_provider.dart';
 import 'package:wallone/state/theme_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/utils/constants.dart';
@@ -12,6 +13,7 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
       backgroundColor: mainColor(context),
       appBar: AppBar(
@@ -111,7 +113,7 @@ class SettingsPage extends StatelessWidget {
                         underline: const SizedBox(),
                         icon: Icon(Icons.keyboard_arrow_down,
                             color: primaryColor(context)),
-                        items: BalanceProvider.supportedCurrencies.map((code) {
+                        items: balanceProvider.supportedCurrencies.map((code) {
                           return DropdownMenuItem(
                             value: code,
                             child: Text(
@@ -216,6 +218,7 @@ class SettingsPage extends StatelessWidget {
 
                   if (confirmReset == true) {
                     // Call resetApp from BalanceProvider
+                    Provider.of<InvestmentProvider>(context, listen: false);
                     await Provider.of<BalanceProvider>(context, listen: false)
                         .resetApp();
                     ScaffoldMessenger.of(context).showSnackBar(

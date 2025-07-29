@@ -267,3 +267,29 @@ class _BounceSlideTransitionState extends State<BounceSlideTransition>
     );
   }
 }
+
+class DialogBoxFadeTransition extends StatefulWidget {
+  final Widget child;
+  const DialogBoxFadeTransition({
+    super.key,
+    required this.child,
+  });
+
+  @override
+  State<DialogBoxFadeTransition> createState() =>
+      _DialogBoxFadeTransitionState();
+}
+
+class _DialogBoxFadeTransitionState extends State<DialogBoxFadeTransition> {
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 100),
+      transitionBuilder: (child, animation) => ScaleTransition(
+        scale: animation,
+        child: FadeTransition(opacity: animation, child: child),
+      ),
+      child: widget.child,
+    );
+  }
+}

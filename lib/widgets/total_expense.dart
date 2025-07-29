@@ -51,9 +51,9 @@ class TotalExpenseBoxWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            blurRadius: 5,
-            offset: const Offset(1, 1),
-            color: shadowColor(context),
+            color: shadowColor(context).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),

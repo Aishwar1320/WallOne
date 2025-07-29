@@ -1,7 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wallone/models/investment_model.dart';
 import 'dart:convert';
-
-import 'package:wallone/state/balance_provider.dart';
 
 class BalanceStorage {
   static const _balanceKeys = {
@@ -63,7 +62,7 @@ class BalanceStorage {
   }
 
   // ✅ Investment Methods
-  Future<List<Investment>> loadInvestments() async {
+  Future<List<InvestmentModel>> loadInvestments() async {
     try {
       final investmentData = _prefs.getStringList('investments');
 
@@ -78,7 +77,7 @@ class BalanceStorage {
           .map((data) {
             try {
               final jsonData = jsonDecode(data);
-              return Investment(
+              return InvestmentModel(
                 name: jsonData['name'],
                 amount: jsonData['amount'],
                 isActive: jsonData['isActive'],
@@ -96,7 +95,7 @@ class BalanceStorage {
               return null;
             }
           })
-          .whereType<Investment>()
+          .whereType<InvestmentModel>()
           .toList();
     } catch (e) {
       print("Failed to load investments: $e");
@@ -157,7 +156,7 @@ class BalanceStorage {
     }
   }
 
-  Future<void> saveInvestments(List<Investment> investments) async {
+  Future<void> saveInvestments(List<InvestmentModel> investments) async {
     try {
       final investmentData = investments
           .map((inv) => jsonEncode({
@@ -191,6 +190,18 @@ class BalanceStorage {
     final formattedDate = date.toIso8601String();
     print("Saving last investment check date: $formattedDate");
     await _prefs.setString('lastInvestmentCheckDate', formattedDate);
+  }
+
+  DateTime? getLastResetDate() {
+    final dateStr = _prefs.getString('lastResetDate');
+    if (dateStr == null) return null;
+
+    try {
+      return DateTime.parse(dateStr);
+    } catch (e) {
+      print("Invalid lastResetDate format: $dateStr");
+      return null;
+    }
   }
 
   // ✅ Clear all data (for debugging/reset)
