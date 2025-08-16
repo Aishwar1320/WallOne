@@ -16,18 +16,19 @@ class _DynamicButtonsWidgetState extends State<DynamicButtonsWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Container(
-      height: 55,
+      height: screenWidth / 7,
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: boxColor(context),
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(27),
         boxShadow: [
           BoxShadow(
-            blurRadius: 5,
-            offset: const Offset(1, 1),
-            color: shadowColor(context),
-          )
+            color: shadowColor(context).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Row(
@@ -45,7 +46,7 @@ class _DynamicButtonsWidgetState extends State<DynamicButtonsWidget> {
                 duration:
                     const Duration(milliseconds: 300), // Animation duration
                 curve: Curves.easeInOut, // Animation curve
-                height: 50,
+                height: screenWidth / 7,
                 decoration: BoxDecoration(
                   color: isExpensesSelected
                       ? purpleColors(context)
@@ -86,7 +87,7 @@ class _DynamicButtonsWidgetState extends State<DynamicButtonsWidget> {
                 duration:
                     const Duration(milliseconds: 300), // Animation duration
                 curve: Curves.easeInOut, // Animation curve
-                height: 50,
+                height: screenWidth / 7,
                 decoration: BoxDecoration(
                   color: isExpensesSelected
                       ? Colors.transparent

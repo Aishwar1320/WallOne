@@ -6,9 +6,9 @@ import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'package:provider/provider.dart';
 import 'package:wallone/state/budget_provider.dart';
-import 'package:wallone/widgets/dropdown_menu.dart';
+import 'package:wallone/common_widgets/dropdown_menu.dart';
 import 'package:wallone/state/category_provider.dart';
-import 'package:wallone/widgets/custom_text_field.dart';
+import 'package:wallone/common_widgets/custom_text_field.dart';
 
 // Main widget class
 class BudgetOverviewCard extends StatefulWidget {

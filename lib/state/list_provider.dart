@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import 'package:wallone/state/balance_provider.dart';
+import 'package:wallone/state/investment_provider.dart';
 
 class AllListProvider {
   final int id;
@@ -61,6 +62,7 @@ class AllListProvider {
 class ListProvider with ChangeNotifier {
   final List<AllListProvider> _transactions = [];
   final BalanceProvider _balanceProvider;
+  final InvestmentProvider _investmentProvider;
   int _nextId = 0;
 
   // Add new properties to track current filter settings
@@ -68,7 +70,7 @@ class ListProvider with ChangeNotifier {
   bool _isExpensesSelected = true;
   String _currentPeriod = 'All Dates'; // Changed default to 'All Dates'
 
-  ListProvider(this._balanceProvider);
+  ListProvider(this._balanceProvider, this._investmentProvider);
 
   // Getter for all transactions
   List<AllListProvider> get transactions => _transactions;
@@ -395,7 +397,7 @@ class ListProvider with ChangeNotifier {
 
       // If the old transaction is an investment, remove its historical record.
       if (oldTransaction.title.contains("Investment")) {
-        _balanceProvider.removeHistoricalInvestmentTransaction(
+        _investmentProvider.removeHistoricalInvestmentTransaction(
             oldTransaction.amount, oldTransaction.date);
       }
 
@@ -419,7 +421,8 @@ class ListProvider with ChangeNotifier {
 
       // If the updated transaction is an investment, record it in history.
       if (updatedTransaction.title.contains("Investment")) {
-        _balanceProvider.recordInvestmentTransaction(updatedTransaction.amount,
+        _investmentProvider.recordInvestmentTransaction(
+            updatedTransaction.amount,
             date: DateTime.parse(updatedTransaction.date));
       }
 
@@ -445,7 +448,7 @@ class ListProvider with ChangeNotifier {
 
       // If the removed transaction is investment-related, update historical transactions.
       if (removedTransaction.title.contains("Investment")) {
-        _balanceProvider.removeHistoricalInvestmentTransaction(
+        _investmentProvider.removeHistoricalInvestmentTransaction(
             removedTransaction.amount, removedTransaction.date);
       }
 
@@ -454,5 +457,13 @@ class ListProvider with ChangeNotifier {
     } else {
       print('Transaction with id $id not found.');
     }
+  }
+
+  Future<void> clearTransactions() async {
+    _transactions.clear();
+    _nextId = 0;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('transactions', jsonEncode([])); // Save empty list
+    notifyListeners();
   }
 }

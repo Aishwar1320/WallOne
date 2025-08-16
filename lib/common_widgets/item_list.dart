@@ -3,9 +3,9 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:wallone/pages/edit_transactions.dart';
+import 'package:wallone/models/icon_map_model.dart';
+import 'package:wallone/pages/Transaction%20Management/edit_transactions.dart';
 import 'package:wallone/state/balance_provider.dart';
-import 'package:wallone/state/budget_provider.dart';
 import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/state/category_provider.dart';
 import 'package:wallone/utils/constants.dart';
@@ -158,9 +158,9 @@ class _ItemListWidgetState extends State<ItemListWidget> {
                 borderRadius: BorderRadius.circular(15),
                 boxShadow: [
                   BoxShadow(
-                    blurRadius: 5,
-                    offset: const Offset(1, 1),
-                    color: shadowColor(context),
+                    color: shadowColor(context).withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
@@ -245,11 +245,10 @@ class _ItemListWidgetState extends State<ItemListWidget> {
           borderRadius: BorderRadius.circular(25),
           boxShadow: [
             BoxShadow(
-              blurRadius: 5,
-              offset: const Offset(1, 1),
-              blurStyle: BlurStyle.solid,
-              color: shadowColor(context),
-            )
+              color: shadowColor(context).withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Column(

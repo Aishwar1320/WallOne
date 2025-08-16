@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:wallone/utils/constants.dart';
-import 'package:wallone/widgets/dropdown_menu.dart';
+import 'package:wallone/common_widgets/dropdown_menu.dart';
 
 class TransactionFilterControls extends StatelessWidget {
   final bool isExpensesSelected;

@@ -1,22 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wallone/models/icon_map_model.dart';
 import 'dart:convert';
-
-import 'package:wallone/state/budget_provider.dart';
-
-/// Mapping of icon names to constant IconData
-// const Map<String, IconData> _iconMap = {
-//   'fastfood': Icons.fastfood,
-//   'shopping_bag': Icons.shopping_bag,
-//   'receipt': Icons.receipt,
-//   'local_grocery_store': Icons.local_grocery_store,
-//   'sports_esports': Icons.sports_esports,
-//   'people': Icons.people,
-//   'home': Icons.home,
-//   'school': Icons.school,
-//   'attach_money': Icons.attach_money,
-//   'category': Icons.category, // fallback
-// };
 
 /// Category model using icon name instead of IconData
 class Category {

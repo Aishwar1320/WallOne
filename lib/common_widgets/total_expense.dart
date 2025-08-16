@@ -20,6 +20,7 @@ class TotalExpenseBoxWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final balanceProvider = Provider.of<BalanceProvider>(context);
     String formattedBalance;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     // Instead of using the raw double value, we now use formatted getters.
     switch (balanceType) {
@@ -45,15 +46,15 @@ class TotalExpenseBoxWidget extends StatelessWidget {
     }
 
     return Container(
-      height: 80,
+      height: screenWidth / 5,
       decoration: BoxDecoration(
         color: boxColor(context),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            blurRadius: 5,
-            offset: const Offset(1, 1),
-            color: shadowColor(context),
+            color: shadowColor(context).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),

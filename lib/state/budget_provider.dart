@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wallone/models/investment_model.dart';
 import 'package:wallone/state/balance_provider.dart';
+import 'package:wallone/state/investment_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'dart:convert';
 
@@ -73,17 +75,24 @@ class Budget {
 
 class BudgetProvider with ChangeNotifier {
   final BalanceProvider _balanceProvider;
+  final InvestmentProvider _investmentProvider;
   List<Budget> _budgets = [];
   final SharedPreferences _prefs;
   static const String _budgetsKey = 'budgets';
+
+  Map<String, dynamic> toJson() {
+    return {
+      'budget': _budgets,
+    };
+  }
 
   bool _showAllBudgets = false;
   int _currentBudgetIndex = 0;
   bool _showDateTimePicker = false;
 
-  BudgetProvider(this._balanceProvider, this._prefs) {
+  BudgetProvider(this._balanceProvider, this._investmentProvider, this._prefs) {
     _loadBudgets();
-    _balanceProvider.addListener(() {
+    _investmentProvider.addListener(() {
       _syncWithBalanceProvider();
     });
   }
@@ -120,9 +129,9 @@ class BudgetProvider with ChangeNotifier {
   }
 
   void _syncWithBalanceProvider() {
-    if (_balanceProvider.listProvider == null) return;
+    if (_investmentProvider.listProvider == null) return;
 
-    final transactions = _balanceProvider.listProvider!.transactions;
+    final transactions = _investmentProvider.listProvider!.transactions;
     final today = DateTime.now();
     final firstDayOfMonth = DateTime(today.year, today.month, 1);
 
@@ -198,10 +207,12 @@ class BudgetProvider with ChangeNotifier {
     return remainingBalance / daysInMonth;
   }
 
-  double get totalInvestments => _balanceProvider.totalInvestments;
+  double get totalInvestments => _investmentProvider.totalInvestments;
 
   Map<String, double> get investments {
-    return {for (var inv in _balanceProvider.investments) inv.name: inv.amount};
+    return {
+      for (var inv in _investmentProvider.investments) inv.name: inv.amount
+    };
   }
 
   double get monthlyExpensesProgress {
@@ -215,20 +226,20 @@ class BudgetProvider with ChangeNotifier {
 
   void addInvestment(String label, double amount,
       {String category = 'Stocks', DateTime? startDate}) {
-    _balanceProvider.addInvestment(label, amount,
+    _investmentProvider.addInvestment(label, amount,
         category: category, startDate: startDate);
   }
 
   void removeInvestment(int index) {
-    _balanceProvider.removeInvestment(index);
+    _investmentProvider.removeInvestment(index);
   }
 
   void toggleInvestment(int index) {
-    _balanceProvider.toggleInvestment(index);
+    _investmentProvider.toggleInvestmentActive(index);
   }
 
   void updateInvestmentAmount(int index, double amount) {
-    _balanceProvider.updateInvestmentAmount(index, amount);
+    _investmentProvider.updateInvestmentAmount(index, amount);
   }
 
   DateTime selectedInvestmentDate = DateTime.now();
@@ -240,5 +251,70 @@ class BudgetProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  List<Investment> get allInvestments => _balanceProvider.investments;
+  List<InvestmentModel> get allInvestments => _investmentProvider.investments;
+
+  // Create or update a budget (keeps existing spent if present)
+  Future<void> createOrUpdateBudget(String category, double amount,
+      {String iconKey = 'others'}) async {
+    final existing = getBudgetByCategory(category);
+    if (existing != null) {
+      // preserve spent
+      final spent = existing.spent;
+      // replace item while keeping id
+      final newBudget = Budget(
+          category: category,
+          amount: amount,
+          spent: spent,
+          iconKey: iconKey,
+          id: existing.id);
+      final idx = _budgets.indexWhere((b) => b.id == existing.id);
+      if (idx >= 0) _budgets[idx] = newBudget;
+    } else {
+      // create new
+      final budget = Budget(
+          category: category, amount: amount, spent: 0, iconKey: iconKey);
+      _budgets.add(budget);
+    }
+    await _saveBudgets();
+    notifyListeners();
+  }
+
+// Simple setter for budget amount (keeps spent, similar to createOrUpdate)
+  Future<void> setBudgetAmount(String category, double amount,
+      {String iconKey = 'others'}) async {
+    await createOrUpdateBudget(category, amount, iconKey: iconKey);
+  }
+
+// Add alias used by advisor for setting a 'limit' (same as createOrUpdate)
+  Future<void> setCategoryLimit(String category, double limit,
+      {String iconKey = 'others'}) async {
+    await createOrUpdateBudget(category, limit, iconKey: iconKey);
+  }
+
+  /// Example: interpret insight metadata and execute a sensible action.
+  /// This is app-specific; adapt rules as needed.
+  Future<void> applyInsightAction(
+      String insightId, Map<String, dynamic> metadata) async {
+    final amount = (metadata['recommended'] ?? metadata['amount'] ?? 0);
+    final category =
+        (metadata['category'] ?? metadata['targetCategory'] ?? 'Misc')
+            .toString();
+
+    if ((amount is num) && amount > 0) {
+      // Create or update budget to suggested amount
+      await createOrUpdateBudget(category, (amount).toDouble());
+      return;
+    }
+
+    // If metadata indicates a "savings" action delegate to investment provider if available
+    if (metadata['action'] == 'savings' && _investmentProvider != null) {
+      await _investmentProvider.addInvestment(metadata['name'] ?? 'AutoSave',
+          (amount is num) ? (amount).toDouble() : 0.0,
+          category: 'Savings', startDate: DateTime.now());
+      return;
+    }
+
+    // fallback: no-op
+    debugPrint('applyInsightAction: no rule matched for insight $insightId');
+  }
 }

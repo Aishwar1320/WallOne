@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:wallone/state/budget_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/utils/constants.dart';
-import 'package:wallone/widgets/budget_card.dart';
-import 'package:wallone/widgets/investment_card.dart';
+import 'package:wallone/common_widgets/budget_card.dart';
+import 'package:wallone/common_widgets/investment_card.dart';
 
 class BudgetPage extends StatefulWidget {
   const BudgetPage({super.key});
@@ -89,7 +89,7 @@ class _BudgetPageState extends State<BudgetPage>
                 ),
                 const SizedBox(height: 16),
                 const FixedInvestmentsCard(),
-                const SizedBox(height: 50),
+                const SizedBox(height: 110),
               ],
             ),
           ),
@@ -100,6 +100,7 @@ class _BudgetPageState extends State<BudgetPage>
 
   Widget _buildSectionWithBadge(
       String title, String badgeText, BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -117,7 +118,7 @@ class _BudgetPageState extends State<BudgetPage>
             Text(
               title,
               style: GoogleFonts.outfit(
-                fontSize: 24,
+                fontSize: screenWidth / 20,
                 fontWeight: FontWeight.bold,
                 color: primaryColor(context),
                 letterSpacing: 0.5,
@@ -144,7 +145,7 @@ class _BudgetPageState extends State<BudgetPage>
           child: Text(
             badgeText,
             style: GoogleFonts.outfit(
-              fontSize: 16,
+              fontSize: screenWidth / 25,
               fontWeight: FontWeight.w600,
               color: primaryColor(context),
             ),
@@ -156,6 +157,7 @@ class _BudgetPageState extends State<BudgetPage>
 
   Widget _buildSectionWithInfoButton(String title, BuildContext context,
       {required VoidCallback onInfoPressed}) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -173,7 +175,7 @@ class _BudgetPageState extends State<BudgetPage>
             Text(
               title,
               style: GoogleFonts.outfit(
-                fontSize: 24,
+                fontSize: screenWidth / 20,
                 fontWeight: FontWeight.bold,
                 color: primaryColor(context),
                 letterSpacing: 0.5,
@@ -199,7 +201,7 @@ class _BudgetPageState extends State<BudgetPage>
             child: Icon(
               Icons.info_outline,
               color: primaryColor(context),
-              size: 20,
+              size: screenWidth / 25,
             ),
           ),
         ),
@@ -216,6 +218,7 @@ class _BudgetPageState extends State<BudgetPage>
     final monthlyExpenses = balanceProvider.monthlyExpenses;
     final code = context.read<BalanceProvider>().currencyCode;
     final symbol = NumberFormat.simpleCurrency(name: code).currencySymbol;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     // Determine progress color based on percentage
     Color progressColor = Colors.green;
@@ -308,14 +311,14 @@ class _BudgetPageState extends State<BudgetPage>
                                 child: Icon(
                                   Icons.account_balance_wallet,
                                   color: Colors.white.withOpacity(0.9),
-                                  size: 18,
+                                  size: screenWidth / 25,
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 'Total Savings',
                                 style: GoogleFonts.outfit(
-                                  fontSize: 16,
+                                  fontSize: screenWidth / 25,
                                   color: Colors.white.withOpacity(0.9),
                                   fontWeight: FontWeight.w500,
                                   letterSpacing: 0.5,
@@ -327,7 +330,7 @@ class _BudgetPageState extends State<BudgetPage>
                           Text(
                             "$symbol${budgetProvider.monthlySavings.toStringAsFixed(2)}",
                             style: GoogleFonts.outfit(
-                              fontSize: 32,
+                              fontSize: screenWidth / 13,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                               letterSpacing: 0.5,
@@ -374,7 +377,7 @@ class _BudgetPageState extends State<BudgetPage>
                               Text(
                                 'Daily Usage',
                                 style: GoogleFonts.outfit(
-                                  fontSize: 14,
+                                  fontSize: screenWidth / 27,
                                   color: Colors.white.withOpacity(0.9),
                                   fontWeight: FontWeight.w500,
                                   letterSpacing: 0.5,
@@ -386,7 +389,7 @@ class _BudgetPageState extends State<BudgetPage>
                           Text(
                             '$symbol${dailyUsage.toStringAsFixed(2)}',
                             style: GoogleFonts.outfit(
-                              fontSize: 24,
+                              fontSize: screenWidth / 20,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                               letterSpacing: 0.5,
@@ -422,7 +425,7 @@ class _BudgetPageState extends State<BudgetPage>
                             Text(
                               'Monthly Expenses',
                               style: GoogleFonts.outfit(
-                                fontSize: 16,
+                                fontSize: screenWidth / 27,
                                 color: Colors.white.withOpacity(0.9),
                                 fontWeight: FontWeight.w500,
                               ),
@@ -501,7 +504,7 @@ class _BudgetPageState extends State<BudgetPage>
                         Text(
                           '${(progress * 100).toStringAsFixed(1)}% of monthly income spent',
                           style: GoogleFonts.outfit(
-                            fontSize: 14,
+                            fontSize: screenWidth / 27,
                             color: progress > 0.8
                                 ? Colors.red.shade300
                                 : Colors.white.withOpacity(0.9),

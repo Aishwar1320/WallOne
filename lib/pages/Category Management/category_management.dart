@@ -4,9 +4,14 @@ import 'package:provider/provider.dart';
 import 'package:wallone/state/category_provider.dart';
 import 'package:wallone/utils/constants.dart';
 
-class CategoryManagementPage extends StatelessWidget {
+class CategoryManagementPage extends StatefulWidget {
   const CategoryManagementPage({super.key});
 
+  @override
+  State<CategoryManagementPage> createState() => _CategoryManagementPageState();
+}
+
+class _CategoryManagementPageState extends State<CategoryManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,8 +108,8 @@ class CategoryManagementPage extends StatelessWidget {
       context: context,
       builder: (context) => _CategoryDialog(
         title: 'Add Category',
-        onSave: (name, icon) {
-          context.read<CategoryProvider>().addCategory(name, icon as String);
+        onSave: (name, iconName) {
+          context.read<CategoryProvider>().addCategory(name, iconName);
           Navigator.pop(context);
         },
       ),
@@ -117,11 +122,11 @@ class CategoryManagementPage extends StatelessWidget {
       builder: (context) => _CategoryDialog(
         title: 'Edit Category',
         initialName: category.name,
-        initialIcon: category.icon,
-        onSave: (name, icon) {
+        initialIcon: category.iconName,
+        onSave: (name, iconName) {
           context
               .read<CategoryProvider>()
-              .updateCategory(category.name, name, icon as String);
+              .updateCategory(category.name, name, iconName);
           Navigator.pop(context);
         },
       ),
@@ -158,8 +163,8 @@ class CategoryManagementPage extends StatelessWidget {
 class _CategoryDialog extends StatefulWidget {
   final String title;
   final String? initialName;
-  final IconData? initialIcon;
-  final Function(String name, IconData icon) onSave;
+  final String? initialIcon;
+  final Function(String name, String iconName) onSave;
 
   const _CategoryDialog({
     required this.title,
@@ -173,38 +178,41 @@ class _CategoryDialog extends StatefulWidget {
 }
 
 class _CategoryDialogState extends State<_CategoryDialog> {
+  static const Map<String, IconData> _iconMap = {
+    'shopping_cart': Icons.shopping_cart,
+    'fastfood': Icons.fastfood,
+    'shopping_bag': Icons.shopping_bag,
+    'receipt': Icons.receipt,
+    'local_grocery_store': Icons.local_grocery_store,
+    'sports_esports': Icons.sports_esports,
+    'people': Icons.people,
+    'home': Icons.home,
+    'school': Icons.school,
+    'attach_money': Icons.attach_money,
+    'movie': Icons.movie,
+    'directions_car': Icons.directions_car,
+    'medical_services': Icons.medical_services,
+    'pets': Icons.pets,
+    'sports_basketball': Icons.sports_basketball,
+    'flight': Icons.flight,
+    'hotel': Icons.hotel,
+    'restaurant': Icons.restaurant,
+    'local_bar': Icons.local_bar,
+    'fitness_center': Icons.fitness_center,
+    'category': Icons.category,
+  };
+
+  String _selectedIconName = 'category';
+
   late TextEditingController _nameController;
-  IconData _selectedIcon = Icons.category;
-  final List<IconData> _availableIcons = [
-    Icons.shopping_cart,
-    Icons.fastfood,
-    Icons.shopping_bag,
-    Icons.receipt,
-    Icons.local_grocery_store,
-    Icons.sports_esports,
-    Icons.people,
-    Icons.home,
-    Icons.school,
-    Icons.attach_money,
-    Icons.movie,
-    Icons.directions_car,
-    Icons.medical_services,
-    Icons.pets,
-    Icons.sports_basketball,
-    Icons.flight,
-    Icons.hotel,
-    Icons.restaurant,
-    Icons.local_bar,
-    Icons.fitness_center,
-  ];
+
+  final List<String> _availableIconNames = _iconMap.keys.toList();
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialName);
-    if (widget.initialIcon != null) {
-      _selectedIcon = widget.initialIcon!;
-    }
+    _selectedIconName = widget.initialIcon ?? 'category';
   }
 
   @override
@@ -261,12 +269,12 @@ class _CategoryDialogState extends State<_CategoryDialog> {
                   mainAxisSpacing: 8,
                   crossAxisSpacing: 8,
                 ),
-                itemCount: _availableIcons.length,
+                itemCount: _availableIconNames.length,
                 itemBuilder: (context, index) {
-                  final icon = _availableIcons[index];
-                  final isSelected = icon.codePoint == _selectedIcon.codePoint;
+                  final iconName = _availableIconNames[index];
+                  final isSelected = iconName == _selectedIconName;
                   return InkWell(
-                    onTap: () => setState(() => _selectedIcon = icon),
+                    onTap: () => setState(() => _selectedIconName = iconName),
                     child: Container(
                       decoration: BoxDecoration(
                         color: isSelected
@@ -280,7 +288,7 @@ class _CategoryDialogState extends State<_CategoryDialog> {
                         ),
                       ),
                       child: Icon(
-                        icon,
+                        _iconMap[iconName],
                         color: isSelected ? Colors.white : Colors.grey.shade600,
                       ),
                     ),
@@ -300,7 +308,7 @@ class _CategoryDialogState extends State<_CategoryDialog> {
                 ElevatedButton(
                   onPressed: () {
                     if (_nameController.text.isNotEmpty) {
-                      widget.onSave(_nameController.text, _selectedIcon);
+                      widget.onSave(_nameController.text, _selectedIconName);
                     }
                   },
                   style: ElevatedButton.styleFrom(
