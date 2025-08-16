@@ -23,23 +23,23 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 110),
       physics: const BouncingScrollPhysics(),
       child: Column(
         spacing: 10,
         children: [
           // Expenses And Income Button With Month Drop Down List
           Container(
+            margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: inversePrimaryColor(context),
               borderRadius: BorderRadius.circular(25),
               boxShadow: [
                 BoxShadow(
-                  blurRadius: 5,
-                  offset: const Offset(1, 1),
-                  blurStyle: BlurStyle.solid,
-                  color: shadowColor(context),
-                )
+                  color: shadowColor(context).withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
               ],
             ),
             child: Padding(
@@ -180,8 +180,11 @@ class _DashboardPageState extends State<DashboardPage> {
                 itemCount: sortedDates.length,
                 itemBuilder: (context, index) {
                   final date = sortedDates[index];
-                  return ItemListWidget(
-                    transactions: groupedTransactions[date]!,
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: ItemListWidget(
+                      transactions: groupedTransactions[date]!,
+                    ),
                   );
                 },
               );

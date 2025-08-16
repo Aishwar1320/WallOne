@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import 'package:wallone/state/balance_provider.dart';
+import 'package:wallone/state/investment_provider.dart';
 
 class AllListProvider {
   final int id;
@@ -61,6 +62,7 @@ class AllListProvider {
 class ListProvider with ChangeNotifier {
   final List<AllListProvider> _transactions = [];
   final BalanceProvider _balanceProvider;
+  final InvestmentProvider investmentProvider;
   int _nextId = 0;
 
   // Add new properties to track current filter settings
@@ -68,7 +70,7 @@ class ListProvider with ChangeNotifier {
   bool _isExpensesSelected = true;
   String _currentPeriod = 'All Dates'; // Changed default to 'All Dates'
 
-  ListProvider(this._balanceProvider);
+  ListProvider(this._balanceProvider, this.investmentProvider);
 
   // Getter for all transactions
   List<AllListProvider> get transactions => _transactions;
@@ -395,8 +397,16 @@ class ListProvider with ChangeNotifier {
 
       // If the old transaction is an investment, remove its historical record.
       if (oldTransaction.title.contains("Investment")) {
-        _balanceProvider.removeHistoricalInvestmentTransaction(
-            oldTransaction.amount, oldTransaction.date);
+        // Find matching transaction in InvestmentProvider
+        final parsedDate = DateTime.parse(oldTransaction.date);
+        final histIndex = investmentProvider.investmentTransactions.indexWhere(
+          (tx) =>
+              tx.amount == oldTransaction.amount &&
+              tx.date.isAtSameMomentAs(parsedDate),
+        );
+        if (histIndex != -1) {
+          investmentProvider.removeTransaction(histIndex);
+        }
       }
 
       // Update the transaction - preserve the original createdAt
@@ -419,7 +429,8 @@ class ListProvider with ChangeNotifier {
 
       // If the updated transaction is an investment, record it in history.
       if (updatedTransaction.title.contains("Investment")) {
-        _balanceProvider.recordInvestmentTransaction(updatedTransaction.amount,
+        investmentProvider.recordTransaction(
+            updatedTransaction.title, updatedTransaction.amount,
             date: DateTime.parse(updatedTransaction.date));
       }
 
@@ -445,8 +456,15 @@ class ListProvider with ChangeNotifier {
 
       // If the removed transaction is investment-related, update historical transactions.
       if (removedTransaction.title.contains("Investment")) {
-        _balanceProvider.removeHistoricalInvestmentTransaction(
-            removedTransaction.amount, removedTransaction.date);
+        final parsedDate = DateTime.parse(removedTransaction.date);
+        final histIndex = investmentProvider.investmentTransactions.indexWhere(
+          (tx) =>
+              tx.amount == removedTransaction.amount &&
+              tx.date.isAtSameMomentAs(parsedDate),
+        );
+        if (histIndex != -1) {
+          investmentProvider.removeTransaction(histIndex);
+        }
       }
 
       await saveTransactions();

@@ -106,18 +106,18 @@ class _DesignLayoutState extends State<DesignLayout> {
             ),
             const Spacer(),
             // Logout Button
-            TextButton(
-              onPressed: () {},
-              child: Text(
-                "Logout",
-                style: GoogleFonts.outfit(
-                  fontSize: 30,
-                  color: primaryColor(context),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
+            // TextButton(
+            //   onPressed: () {},
+            //   child: Text(
+            //     "Logout",
+            //     style: GoogleFonts.outfit(
+            //       fontSize: 30,
+            //       color: primaryColor(context),
+            //       fontWeight: FontWeight.bold,
+            //     ),
+            //   ),
+            // ),
+            // const SizedBox(height: 30),
           ],
         ),
       ),
@@ -126,40 +126,43 @@ class _DesignLayoutState extends State<DesignLayout> {
       appBar: AppBar(
         backgroundColor: mainColor(context),
         centerTitle: true,
-        title: Column(
-          children: [
-            RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: symbol,
-                    style: GoogleFonts.russoOne(
-                      fontSize: 20,
-                      color: purpleColors(context),
-                      fontWeight: FontWeight.bold,
+        title: Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: Column(
+            children: [
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: symbol,
+                      style: GoogleFonts.russoOne(
+                        fontSize: 20,
+                        color: purpleColors(context),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const WidgetSpan(
-                    child: SizedBox(width: 1),
-                  ),
-                  TextSpan(
-                    text: balanceProvider.totalBalance.toString(),
-                    style: GoogleFonts.russoOne(
-                      fontSize: 20,
-                      color: primaryColor(context),
+                    const WidgetSpan(
+                      child: SizedBox(width: 1),
                     ),
-                  ),
-                ],
+                    TextSpan(
+                      text: balanceProvider.totalBalance.toString(),
+                      style: GoogleFonts.russoOne(
+                        fontSize: 20,
+                        color: primaryColor(context),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Text(
-              "Total Balance",
-              style: GoogleFonts.outfit(
-                fontSize: 13,
-                color: primaryColor(context),
+              Text(
+                "Total Balance",
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  color: primaryColor(context),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           Padding(
@@ -182,106 +185,110 @@ class _DesignLayoutState extends State<DesignLayout> {
       extendBody: false,
 
       // Body
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: _pages[_selectedIndex],
-      ),
+      body: Stack(
+        children: [
+          _pages[_selectedIndex],
 
-      bottomNavigationBar: SafeArea(
-        top: false,
-        right: false,
-        left: false,
-        child: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: inversePrimaryColor(context),
-              borderRadius: BorderRadius.circular(25),
-              boxShadow: [
-                BoxShadow(
-                  blurRadius: 15,
-                  color: shadowColor(context),
-                )
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(25.0),
-              child: BottomAppBar(
-                color: inversePrimaryColor(context),
-                shadowColor: shadowColor(context),
-                elevation: 10,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      onPressed: () => _onItemTapped(0),
-                      icon: Icon(
-                        Icons.home_outlined,
-                        size: 30,
-                        color:
-                            _selectedIndex == 0 ? primaryColor(context) : null,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => _onItemTapped(1),
-                      icon: Icon(
-                        Icons.account_balance_wallet_outlined,
-                        size: 27,
-                        color:
-                            _selectedIndex == 1 ? primaryColor(context) : null,
-                      ),
-                    ),
-                    SizedBox(
-                      height: double.infinity,
-                      child: FloatingActionButton(
-                        elevation: 10,
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) {
-                                return const AddTransactionsPage();
-                              },
-                            ),
-                          );
-                        },
-                        backgroundColor: primaryColor(context),
-                        child: Text(
-                          symbol,
-                          style: GoogleFonts.outfit(
-                            fontSize: 25,
-                            fontWeight: FontWeight.bold,
-                            color: purpleColors(context),
+          //
+
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: inversePrimaryColor(context),
+                  borderRadius: BorderRadius.circular(25),
+                  boxShadow: [
+                    BoxShadow(
+                      blurRadius: 15,
+                      color: shadowColor(context),
+                    )
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(25.0),
+                  child: BottomAppBar(
+                    color: inversePrimaryColor(context),
+                    shadowColor: shadowColor(context),
+                    elevation: 10,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          onPressed: () => _onItemTapped(0),
+                          icon: Icon(
+                            Icons.home_outlined,
+                            size: 30,
+                            color: _selectedIndex == 0
+                                ? primaryColor(context)
+                                : null,
                           ),
                         ),
-                      ),
+                        IconButton(
+                          onPressed: () => _onItemTapped(1),
+                          icon: Icon(
+                            Icons.account_balance_wallet_outlined,
+                            size: 27,
+                            color: _selectedIndex == 1
+                                ? primaryColor(context)
+                                : null,
+                          ),
+                        ),
+                        SizedBox(
+                          child: FloatingActionButton(
+                            elevation: 10,
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) {
+                                    return const AddTransactionsPage();
+                                  },
+                                ),
+                              );
+                            },
+                            backgroundColor: primaryColor(context),
+                            child: Text(
+                              symbol,
+                              style: GoogleFonts.outfit(
+                                fontSize: 25,
+                                fontWeight: FontWeight.bold,
+                                color: purpleColors(context),
+                              ),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          // onPressed: () => showCustomSnackBar(context),
+                          onPressed: () => _onItemTapped(3),
+                          icon: Icon(
+                            Icons.analytics_outlined,
+                            size: 30,
+                            color: _selectedIndex == 3
+                                ? primaryColor(context)
+                                : null,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => showCustomSnackBar(context),
+                          // onPressed: () => _onItemTapped(4),
+                          icon: Icon(
+                            Icons.person_2_outlined,
+                            size: 30,
+                            color: _selectedIndex == 4
+                                ? primaryColor(context)
+                                : null,
+                          ),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      // onPressed: () => showCustomSnackBar(context),
-                      onPressed: () => _onItemTapped(3),
-                      icon: Icon(
-                        Icons.analytics_outlined,
-                        size: 30,
-                        color:
-                            _selectedIndex == 3 ? primaryColor(context) : null,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => showCustomSnackBar(context),
-                      // onPressed: () => _onItemTapped(4),
-                      icon: Icon(
-                        Icons.person_2_outlined,
-                        size: 30,
-                        color:
-                            _selectedIndex == 4 ? primaryColor(context) : null,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

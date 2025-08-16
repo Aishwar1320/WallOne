@@ -4,15 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:wallone/models/investment_model.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/budget_provider.dart';
+import 'package:wallone/utils/animations.dart';
 import 'package:wallone/utils/constants.dart';
 import 'package:wallone/widgets/dropdown_menu.dart';
 import 'package:wallone/widgets/custom_text_field.dart';
 
-class FixedInvestmentsCard extends StatelessWidget {
+class FixedInvestmentsCard extends StatefulWidget {
   const FixedInvestmentsCard({super.key});
 
+  @override
+  State<FixedInvestmentsCard> createState() => _FixedInvestmentsCardState();
+}
+
+class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
   @override
   Widget build(BuildContext context) {
     final budgetProvider = Provider.of<BudgetProvider>(context);
@@ -547,10 +554,26 @@ class FixedInvestmentsCard extends StatelessWidget {
     final budgetProvider = Provider.of<BudgetProvider>(context, listen: false);
     final totalBalance = budgetProvider.totalBalance;
 
+    bool dateConfirmed = false;
+
     if (totalBalance <= 0) {
-      showDialog(
+      showGeneralDialog(
         context: context,
-        builder: (context) => Dialog(
+        barrierDismissible: true,
+        barrierLabel: "Insufficient Balance",
+        barrierColor: Colors.black54,
+        transitionDuration: const Duration(milliseconds: 300),
+        transitionBuilder: (ctx, anim, secondaryAnim, child) {
+          // Fade + scale:
+          return FadeTransition(
+            opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+            child: ScaleTransition(
+              scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+              child: child,
+            ),
+          );
+        },
+        pageBuilder: (ctx, anim1, anim2) => Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(28),
           ),
@@ -644,9 +667,22 @@ class FixedInvestmentsCard extends StatelessWidget {
     // Create a key to validate the form.
     final _formKey = GlobalKey<FormState>();
 
-    showDialog(
+    showGeneralDialog(
       context: context,
-      builder: (context) => Dialog(
+      barrierDismissible: false,
+      barrierLabel: "Add Investment",
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+          child: ScaleTransition(
+            scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+            child: child,
+          ),
+        );
+      },
+      pageBuilder: (ctx, anim1, anim2) => Dialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(28),
         ),
@@ -666,107 +702,157 @@ class FixedInvestmentsCard extends StatelessWidget {
           child: Consumer<BudgetProvider>(
             builder: (context, provider, _) {
               if (provider.showDateTimePicker) {
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          style: IconButton.styleFrom(
-                            backgroundColor: purpleColors(context),
-                            foregroundColor: Colors.white,
-                          ),
-                          icon: const Icon(Icons.arrow_back),
-                          onPressed: () {
-                            provider.toggleDateTimePicker();
-                          },
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Select Date & Time',
-                          style: GoogleFonts.outfit(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 28),
-                    CupertinoTheme(
-                      data: CupertinoThemeData(
-                        textTheme: CupertinoTextThemeData(
-                          dateTimePickerTextStyle: GoogleFonts.outfit(
-                            fontSize: 18,
-                            color: cardTextColor(context),
-                          ),
-                        ),
-                      ),
-                      child: Column(
+                return ScaleTransition(
+                  scale: CurvedAnimation(
+                    parent: anim1,
+                    curve: Curves.elasticOut,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Container(
-                            height: 200,
-                            decoration: BoxDecoration(
-                              color: boxColor(context),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: shadowColor(context),
-                                  blurRadius: 5,
-                                ),
-                              ],
+                          IconButton(
+                            style: IconButton.styleFrom(
+                              backgroundColor: purpleColors(context),
+                              foregroundColor: Colors.white,
                             ),
-                            child: CupertinoDatePicker(
-                              mode: CupertinoDatePickerMode.dateAndTime,
-                              initialDateTime: provider.selectedInvestmentDate,
-                              onDateTimeChanged: (DateTime newDateTime) {
-                                provider.updateInvestmentDateTime(newDateTime);
-                              },
+                            icon: const Icon(Icons.arrow_back),
+                            onPressed: () {
+                              provider.toggleDateTimePicker();
+                            },
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Select Date & Time',
+                            style: GoogleFonts.outfit(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 16),
-                          if (selectedDate != null && selectedTime != null)
+                        ],
+                      ),
+                      const SizedBox(height: 28),
+                      CupertinoTheme(
+                        data: CupertinoThemeData(
+                          textTheme: CupertinoTextThemeData(
+                            dateTimePickerTextStyle: GoogleFonts.outfit(
+                              fontSize: 18,
+                              color: cardTextColor(context),
+                            ),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
                             Container(
-                              padding: const EdgeInsets.all(12),
+                              height: 200,
                               decoration: BoxDecoration(
-                                color: shadowColor(context),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    '${'${provider.selectedInvestmentDate.toLocal()}'.split(' ')[0].replaceAll('-', '/')}  ${provider.selectedInvestmentTime.format(context)}',
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 16,
-                                      color: cardTextColor(context),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(
-                                      Icons.check_circle,
-                                      color: purpleColors(context),
-                                      size: 20,
-                                    ),
-                                    onPressed: () {
-                                      selectedDate = DateTime(
-                                        provider.selectedInvestmentDate.year,
-                                        provider.selectedInvestmentDate.month,
-                                        provider.selectedInvestmentDate.day,
-                                        provider.selectedInvestmentTime.hour,
-                                        provider.selectedInvestmentTime.minute,
-                                      );
-                                      provider.toggleDateTimePicker();
-                                    },
+                                color: boxColor(context),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color:
+                                        shadowColor(context).withOpacity(0.1),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
                                   ),
                                 ],
                               ),
+                              child: CupertinoDatePicker(
+                                mode: CupertinoDatePickerMode.dateAndTime,
+                                initialDateTime:
+                                    provider.selectedInvestmentDate,
+                                onDateTimeChanged: (DateTime newDateTime) {
+                                  provider
+                                      .updateInvestmentDateTime(newDateTime);
+
+                                  setState(() {
+                                    dateConfirmed = false;
+                                  });
+                                },
+                              ),
                             ),
-                        ],
+                            const SizedBox(height: 16),
+                            DialogBoxFadeTransition(
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: boxColor(context),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color:
+                                          shadowColor(context).withOpacity(0.1),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '${'${provider.selectedInvestmentDate.toLocal()}'.split(' ')[0].replaceAll('-', '/')}  ${provider.selectedInvestmentTime.format(context)}',
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 16,
+                                        color: cardTextColor(context),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    IconButton(
+                                      icon: const Icon(Icons.refresh),
+                                      color: Colors.redAccent,
+                                      tooltip: 'Reset date & time',
+                                      onPressed: () {
+                                        setState(() {
+                                          selectedDate = null;
+                                          selectedTime = null;
+                                          dateConfirmed = false;
+                                        });
+                                        // you may want to also reset the provider back to now:
+                                        provider.updateInvestmentDateTime(
+                                          DateTime.now(),
+                                        );
+                                      },
+                                    ),
+                                    IconButton(
+                                      iconSize: 24,
+                                      key: ValueKey(dateConfirmed),
+                                      icon: Icon(
+                                        dateConfirmed
+                                            ? Icons.check_circle
+                                            : Icons.check_circle_outline,
+                                      ),
+                                      color: purpleColors(context),
+                                      onPressed: () {
+                                        setState(() {
+                                          dateConfirmed = true;
+                                        });
+                                        // set selectedDate/time if it wasn't set before
+                                        selectedDate = DateTime(
+                                          provider.selectedInvestmentDate.year,
+                                          provider.selectedInvestmentDate.month,
+                                          provider.selectedInvestmentDate.day,
+                                          provider.selectedInvestmentTime.hour,
+                                          provider
+                                              .selectedInvestmentTime.minute,
+                                        );
+                                        selectedTime =
+                                            provider.selectedInvestmentTime;
+                                        provider.toggleDateTimePicker();
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 );
               } else {
                 return Form(
@@ -829,8 +915,9 @@ class FixedInvestmentsCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  blurRadius: 5,
-                                  color: shadowColor(context),
+                                  color: shadowColor(context).withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
                                 ),
                               ],
                             ),
@@ -962,7 +1049,7 @@ class FixedInvestmentsCard extends StatelessWidget {
   }
 
   void _showEditInvestmentDialog(
-      BuildContext context, Investment investment, int index) {
+      BuildContext context, InvestmentModel investment, int index) {
     final TextEditingController amountController =
         TextEditingController(text: investment.amount.toString());
     final _formKey = GlobalKey<FormState>();
@@ -1121,7 +1208,7 @@ class FixedInvestmentsCard extends StatelessWidget {
   }
 
   void _showDeleteConfirmation(
-      BuildContext context, Investment investment, int index) {
+      BuildContext context, InvestmentModel investment, int index) {
     showDialog(
       context: context,
       builder: (context) => Dialog(

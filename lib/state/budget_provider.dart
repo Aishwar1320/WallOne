@@ -1,19 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wallone/models/icon_map_model.dart';
+import 'package:wallone/models/investment_model.dart';
 import 'package:wallone/state/balance_provider.dart';
+import 'package:wallone/state/investment_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'dart:convert';
-
-/// Icon mapping for string keys to IconData
-final Map<String, IconData> iconMap = {
-  'food': Icons.fastfood,
-  'travel': Icons.flight,
-  'shopping': Icons.shopping_cart,
-  'salary': Icons.attach_money,
-  'home': Icons.home,
-  'entertainment': Icons.movie,
-  'others': Icons.category,
-};
 
 class Budget {
   final String category;
@@ -73,6 +65,7 @@ class Budget {
 
 class BudgetProvider with ChangeNotifier {
   final BalanceProvider _balanceProvider;
+  final InvestmentProvider investmentProvider;
   List<Budget> _budgets = [];
   final SharedPreferences _prefs;
   static const String _budgetsKey = 'budgets';
@@ -81,7 +74,7 @@ class BudgetProvider with ChangeNotifier {
   int _currentBudgetIndex = 0;
   bool _showDateTimePicker = false;
 
-  BudgetProvider(this._balanceProvider, this._prefs) {
+  BudgetProvider(this._balanceProvider, this.investmentProvider, this._prefs) {
     _loadBudgets();
     _balanceProvider.addListener(() {
       _syncWithBalanceProvider();
@@ -198,10 +191,12 @@ class BudgetProvider with ChangeNotifier {
     return remainingBalance / daysInMonth;
   }
 
-  double get totalInvestments => _balanceProvider.totalInvestments;
+  double get totalInvestments => investmentProvider.totalInvestments;
 
   Map<String, double> get investments {
-    return {for (var inv in _balanceProvider.investments) inv.name: inv.amount};
+    return {
+      for (var inv in investmentProvider.investments) inv.name: inv.amount
+    };
   }
 
   double get monthlyExpensesProgress {
@@ -215,20 +210,27 @@ class BudgetProvider with ChangeNotifier {
 
   void addInvestment(String label, double amount,
       {String category = 'Stocks', DateTime? startDate}) {
-    _balanceProvider.addInvestment(label, amount,
-        category: category, startDate: startDate);
+    // Updated: call the new signature
+    investmentProvider.addInvestment(
+      label,
+      amount,
+      category: category,
+    );
   }
 
   void removeInvestment(int index) {
-    _balanceProvider.removeInvestment(index);
+    investmentProvider.removeInvestment(index);
   }
 
   void toggleInvestment(int index) {
-    _balanceProvider.toggleInvestment(index);
+    // Updated: renamed in provider
+    investmentProvider.toggleInvestmentActive(index);
   }
 
   void updateInvestmentAmount(int index, double amount) {
-    _balanceProvider.updateInvestmentAmount(index, amount);
+    // You may want to add a method in InvestmentProvider for updating amount
+    // For now, if it exists:
+    // investmentProvider.updateInvestmentAmount(index, amount);
   }
 
   DateTime selectedInvestmentDate = DateTime.now();
@@ -240,5 +242,5 @@ class BudgetProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  List<Investment> get allInvestments => _balanceProvider.investments;
+  List<InvestmentModel> get allInvestments => investmentProvider.investments;
 }

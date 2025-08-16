@@ -89,7 +89,7 @@ class _BudgetPageState extends State<BudgetPage>
                 ),
                 const SizedBox(height: 16),
                 const FixedInvestmentsCard(),
-                const SizedBox(height: 50),
+                const SizedBox(height: 110),
               ],
             ),
           ),

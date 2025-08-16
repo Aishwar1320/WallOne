@@ -1,7 +1,7 @@
-// icon_utils.dart
 import 'package:flutter/material.dart';
 
 const Map<String, IconData> iconMap = {
+  'shopping_cart': Icons.shopping_cart,
   'fastfood': Icons.fastfood,
   'shopping_bag': Icons.shopping_bag,
   'receipt': Icons.receipt,
@@ -11,5 +11,15 @@ const Map<String, IconData> iconMap = {
   'home': Icons.home,
   'school': Icons.school,
   'attach_money': Icons.attach_money,
+  'movie': Icons.movie,
+  'directions_car': Icons.directions_car,
+  'medical_services': Icons.medical_services,
+  'pets': Icons.pets,
+  'sports_basketball': Icons.sports_basketball,
+  'flight': Icons.flight,
+  'hotel': Icons.hotel,
+  'restaurant': Icons.restaurant,
+  'local_bar': Icons.local_bar,
+  'fitness_center': Icons.fitness_center,
   'category': Icons.category,
 };

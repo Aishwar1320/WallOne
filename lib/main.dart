@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wallone/state/balance_provider.dart';
+import 'package:wallone/state/investment_provider.dart';
 import 'package:wallone/state/budget_provider.dart';
 import 'package:wallone/state/category_provider.dart';
 import 'package:wallone/state/list_provider.dart';
@@ -21,11 +22,15 @@ Future<void> main() async {
   final storage = await BalanceStorage.create();
   final balanceProvider = BalanceProvider(storage);
 
-  // ListProvider with balanceProvider
-  final listProvider = ListProvider(balanceProvider);
+  // InvestmentProvider
+  final investmentProvider = InvestmentProvider(storage);
 
-  // BudgetProvider with balanceProvider and SharedPreferences
-  final budgetProvider = BudgetProvider(balanceProvider, prefs);
+  // ListProvider with balanceProvider and investmentProvider
+  final listProvider = ListProvider(balanceProvider, investmentProvider);
+
+  // BudgetProvider with balanceProvider, investmentProvider, and SharedPreferences
+  final budgetProvider =
+      BudgetProvider(balanceProvider, investmentProvider, prefs);
 
   // linked together
   balanceProvider.setListProvider(listProvider);
@@ -35,6 +40,8 @@ Future<void> main() async {
       providers: [
         // existing instances using .value
         ChangeNotifierProvider<BalanceProvider>.value(value: balanceProvider),
+        ChangeNotifierProvider<InvestmentProvider>.value(
+            value: investmentProvider),
         ChangeNotifierProvider<ListProvider>.value(value: listProvider),
         ChangeNotifierProvider<BudgetProvider>.value(value: budgetProvider),
         ChangeNotifierProvider(create: (_) => TransactionTypeProvider()),
@@ -56,27 +63,56 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  late ResetBalanceService _resetBalanceService;
+  static ResetBalanceService?
+      _resetBalanceService; // Make it static to prevent multiple instances
+  bool _hasInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _resetBalanceService = ResetBalanceService();
+    WidgetsBinding.instance.addObserver(this);
+
+    // Initialize the service only once
+    if (_resetBalanceService == null) {
+      _resetBalanceService = ResetBalanceService();
+      print('[MyApp] Created new ResetBalanceService instance');
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _resetBalanceService.startResetTimers(context);
+      _initializeResetService();
     });
+  }
+
+  void _initializeResetService() {
+    if (!_hasInitialized && _resetBalanceService != null) {
+      print('[MyApp] Initializing reset service...');
+      _resetBalanceService!.startResetTimers(context);
+      _hasInitialized = true;
+    } else {
+      print('[MyApp] Reset service already initialized or service is null');
+    }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _resetBalanceService.startResetTimers(context);
+    print('[MyApp] App lifecycle state changed to: $state');
+
+    if (state == AppLifecycleState.resumed && _resetBalanceService != null) {
+      // Only reinitialize if we haven't already done so today
+      print(
+          '[MyApp] App resumed - checking if reset service needs reinitialization');
+      _resetBalanceService!.startResetTimers(context);
     }
   }
 
   @override
   void dispose() {
-    _resetBalanceService.stop();
+    print('[MyApp] Disposing MyApp...');
+    WidgetsBinding.instance.removeObserver(this);
+
+    _resetBalanceService?.stop();
+    _resetBalanceService = null;
+
     super.dispose();
   }
 
