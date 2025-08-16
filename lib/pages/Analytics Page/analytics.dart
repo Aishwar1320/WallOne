@@ -3,7 +3,15 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:wallone/features/ai%20feature/ai_feature_section.dart';
+import 'package:wallone/features/ai%20feature/brain/rule_based_model.dart';
+import 'package:wallone/models/ai_adviser_model.dart';
 import 'package:wallone/state/balance_provider.dart';
+import 'package:wallone/state/budget_provider.dart';
+import 'package:wallone/state/category_provider.dart';
+import 'package:wallone/state/investment_provider.dart';
+import 'package:wallone/state/list_provider.dart';
+import 'package:wallone/state/transaction_type_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'dart:math' as math;
 
@@ -53,17 +61,17 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 40),
-                  _buildSectionWithBadge("Monthly Overview"),
+                  _buildSectionWithBadge("Finance Overview"),
                   const SizedBox(height: 16),
                   _buildMonthlyComparisonChart(context, provider),
                   const SizedBox(height: 40),
-                  _buildSectionWithInfoButton(
-                    "WallOne AI",
-                    context,
-                    onInfoPressed: () => _showInvestmentInfo(context),
-                  ),
+                  _buildSectionWithInfoButton("WallOne AI", context,
+                      onInfoPressed: () {}
+                      // => _showInvestmentInfo(context),
+                      ),
                   const SizedBox(height: 16),
-                  const SizedBox(height: 40),
+                  const EnhancedAutomatedAIAdvisor(),
+                  const SizedBox(height: 110),
                 ],
               ),
             ),
@@ -74,6 +82,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   }
 
   Widget _buildSectionWithBadge(String title) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -91,7 +100,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             Text(
               title,
               style: GoogleFonts.outfit(
-                fontSize: 24,
+                fontSize: screenWidth / 20,
                 fontWeight: FontWeight.bold,
                 color: primaryColor(context),
                 letterSpacing: 0.5,
@@ -105,6 +114,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
   Widget _buildSectionWithInfoButton(String title, BuildContext context,
       {required VoidCallback onInfoPressed}) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -122,7 +132,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             Text(
               title,
               style: GoogleFonts.outfit(
-                fontSize: 24,
+                fontSize: screenWidth / 20,
                 fontWeight: FontWeight.bold,
                 color: primaryColor(context),
                 letterSpacing: 0.5,
@@ -148,7 +158,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             child: Icon(
               Icons.info_outline,
               color: primaryColor(context),
-              size: 20,
+              size: screenWidth / 25,
             ),
           ),
         ),
@@ -218,8 +228,8 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Theme.of(context).cardColor,
-            Theme.of(context).cardColor.withOpacity(0.9),
+            boxColor(context),
+            boxColor(context).withOpacity(0.9),
           ],
         ),
         borderRadius: BorderRadius.circular(24),
@@ -249,23 +259,26 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                     child: Icon(
                       Icons.bar_chart,
                       color: primaryColor(context),
-                      size: 20,
+                      size: screenWidth / 25,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Text(
                     'Income vs Expenses',
                     style: GoogleFonts.outfit(
-                      fontSize: 18,
+                      fontSize: screenWidth / 25,
                       fontWeight: FontWeight.bold,
-                      color: textColor,
+                      color: cardTextColor(context),
                     ),
                   ),
                 ],
               ),
+
+              //
+              const SizedBox(width: 5),
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
                   color: primaryColor(context).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -273,7 +286,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 child: Text(
                   '$monthName $year',
                   style: GoogleFonts.outfit(
-                    fontSize: 14,
+                    fontSize: screenWidth / 44,
                     fontWeight: FontWeight.w500,
                     color: primaryColor(context),
                   ),
@@ -304,7 +317,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                         strokeWidth: 1,
                       );
                     }
-                    return FlLine(color: Colors.transparent);
+                    return const FlLine(color: Colors.transparent);
                   },
                 ),
                 titlesData: FlTitlesData(
@@ -545,207 +558,217 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
   // Helper widgets
 
-  void _showInvestmentInfo(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.7,
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(32),
-              topRight: Radius.circular(32),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, -5),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 40,
-                height: 5,
-                margin: const EdgeInsets.only(top: 16, bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: primaryColor(context).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.info_outline,
-                        color: primaryColor(context),
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Text(
-                      'Investment Tips',
-                      style: GoogleFonts.outfit(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: primaryColor(context),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  physics: const BouncingScrollPhysics(),
-                  children: [
-                    _buildTipCard(
-                      context,
-                      icon: Icons.bar_chart,
-                      title: 'Diversify Your Portfolio',
-                      description:
-                          'Spread your investments across different asset classes to reduce risk. A balanced portfolio typically includes stocks, bonds, and other investment vehicles.',
-                    ),
-                    _buildTipCard(
-                      context,
-                      icon: Icons.schedule,
-                      title: 'Invest Regularly',
-                      description:
-                          'Consider setting up automatic investments on a regular schedule. This strategy, known as dollar-cost averaging, can help reduce the impact of market volatility.',
-                    ),
-                    _buildTipCard(
-                      context,
-                      icon: Icons.trending_up,
-                      title: 'Long-term Focus',
-                      description:
-                          'Historically, markets have trended upward over the long term despite short-term fluctuations. Stay focused on your long-term financial goals.',
-                    ),
-                    _buildTipCard(
-                      context,
-                      icon: Icons.account_balance,
-                      title: 'Emergency Fund First',
-                      description:
-                          'Before investing heavily, ensure you have an emergency fund covering 3-6 months of expenses in easily accessible accounts.',
-                    ),
-                    _buildTipCard(
-                      context,
-                      icon: Icons.school,
-                      title: 'Continue Learning',
-                      description:
-                          'Financial markets evolve continuously. Stay informed about investment strategies and economic trends to make better decisions.',
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor(context),
-                          foregroundColor: inversePrimaryColor(context),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Got it',
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  // void _showInvestmentInfo(BuildContext context) {
+  //   final advisor = EnhancedAIAdvisor(
+  //     balance: context.read<BalanceProvider>(),
+  //     budget: context.read<BudgetProvider>(),
+  //     invest: context.read<InvestmentProvider>(),
+  //     list: context.read<ListProvider>(),
+  //     txnType: context.read<TransactionTypeProvider>(),
+  //     categories: context.read<CategoryProvider>(),
+  //   );
 
-  Widget _buildTipCard(BuildContext context,
-      {required IconData icon,
-      required String title,
-      required String description}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor(context).withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: primaryColor(context).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icon,
-              color: primaryColor(context),
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).textTheme.bodyLarge?.color,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  description,
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    color: Theme.of(context)
-                        .textTheme
-                        .bodyLarge
-                        ?.color
-                        ?.withOpacity(0.7),
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  //   final insights = advisor.generateInsights();
+
+  //   showModalBottomSheet(
+  //     context: context,
+  //     isScrollControlled: true,
+  //     backgroundColor: Colors.transparent,
+  //     builder: (context) {
+  //       return Container(
+  //         height: MediaQuery.of(context).size.height * 0.7,
+  //         decoration: BoxDecoration(
+  //           color: Theme.of(context).scaffoldBackgroundColor,
+  //           borderRadius: const BorderRadius.only(
+  //             topLeft: Radius.circular(32),
+  //             topRight: Radius.circular(32),
+  //           ),
+  //           boxShadow: [
+  //             BoxShadow(
+  //               color: Colors.black.withOpacity(0.1),
+  //               blurRadius: 10,
+  //               offset: const Offset(0, -5),
+  //             ),
+  //           ],
+  //         ),
+  //         child: Column(
+  //           children: [
+  //             // drag handle
+  //             Container(
+  //               width: 40,
+  //               height: 5,
+  //               margin: const EdgeInsets.only(top: 16, bottom: 16),
+  //               decoration: BoxDecoration(
+  //                 color: Colors.grey.withOpacity(0.3),
+  //                 borderRadius: BorderRadius.circular(5),
+  //               ),
+  //             ),
+
+  //             // Header
+  //             Padding(
+  //               padding: const EdgeInsets.symmetric(horizontal: 24),
+  //               child: Row(
+  //                 children: [
+  //                   Container(
+  //                     padding: const EdgeInsets.all(10),
+  //                     decoration: BoxDecoration(
+  //                       color: primaryColor(context).withOpacity(0.1),
+  //                       borderRadius: BorderRadius.circular(12),
+  //                     ),
+  //                     child: Icon(
+  //                       Icons.lightbulb_outline,
+  //                       color: primaryColor(context),
+  //                       size: 24,
+  //                     ),
+  //                   ),
+  //                   const SizedBox(width: 16),
+  //                   Text(
+  //                     'AI Insights',
+  //                     style: GoogleFonts.outfit(
+  //                       fontSize: 24,
+  //                       fontWeight: FontWeight.bold,
+  //                       color: primaryColor(context),
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //             const SizedBox(height: 24),
+
+  //             // Insights List
+  //             Expanded(
+  //               child: ListView.builder(
+  //                 padding: const EdgeInsets.symmetric(horizontal: 24),
+  //                 physics: const BouncingScrollPhysics(),
+  //                 itemCount: insights.length,
+  //                 itemBuilder: (ctx, i) {
+  //                   final insight = insights[i];
+  //                   return _buildTipCard(
+  //                     context,
+  //                     icon: _priorityIcon(insight.priority),
+  //                     title: "${insight.icon} ${insight.title}",
+  //                     description: insight.description +
+  //                         (insight.actionHint != null
+  //                             ? "\n💡 ${insight.actionHint}"
+  //                             : ""),
+  //                   );
+  //                 },
+  //               ),
+  //             ),
+
+  //             // Got it button
+  //             Padding(
+  //               padding:
+  //                   const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+  //               child: SizedBox(
+  //                 width: double.infinity,
+  //                 child: ElevatedButton(
+  //                   onPressed: () => Navigator.pop(context),
+  //                   style: ElevatedButton.styleFrom(
+  //                     backgroundColor: primaryColor(context),
+  //                     foregroundColor: inversePrimaryColor(context),
+  //                     padding: const EdgeInsets.symmetric(vertical: 16),
+  //                     shape: RoundedRectangleBorder(
+  //                       borderRadius: BorderRadius.circular(16),
+  //                     ),
+  //                   ),
+  //                   child: Text(
+  //                     'Got it',
+  //                     style: GoogleFonts.outfit(
+  //                       fontSize: 16,
+  //                       fontWeight: FontWeight.bold,
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
+
+  // Widget _buildTipCard(BuildContext context,
+  //     {required IconData icon,
+  //     required String title,
+  //     required String description}) {
+  //   return Container(
+  //     margin: const EdgeInsets.only(bottom: 16),
+  //     padding: const EdgeInsets.all(16),
+  //     decoration: BoxDecoration(
+  //       color: Theme.of(context).cardColor,
+  //       borderRadius: BorderRadius.circular(16),
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: shadowColor(context).withOpacity(0.05),
+  //           blurRadius: 10,
+  //           offset: const Offset(0, 5),
+  //         ),
+  //       ],
+  //     ),
+  //     child: Row(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         Container(
+  //           padding: const EdgeInsets.all(10),
+  //           decoration: BoxDecoration(
+  //             color: primaryColor(context).withOpacity(0.1),
+  //             borderRadius: BorderRadius.circular(12),
+  //           ),
+  //           child: Icon(
+  //             icon,
+  //             color: primaryColor(context),
+  //             size: 24,
+  //           ),
+  //         ),
+  //         const SizedBox(width: 16),
+  //         Expanded(
+  //           child: Column(
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               Text(
+  //                 title,
+  //                 style: GoogleFonts.outfit(
+  //                   fontSize: 18,
+  //                   fontWeight: FontWeight.bold,
+  //                   color: Theme.of(context).textTheme.bodyLarge?.color,
+  //                 ),
+  //               ),
+  //               const SizedBox(height: 8),
+  //               Text(
+  //                 description,
+  //                 style: GoogleFonts.outfit(
+  //                   fontSize: 14,
+  //                   color: Theme.of(context)
+  //                       .textTheme
+  //                       .bodyLarge
+  //                       ?.color
+  //                       ?.withOpacity(0.7),
+  //                   height: 1.5,
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+//   //   );
+//   // }
+
+// // Helper to map priority → icon
+//   IconData _priorityIcon(AdvicePriority priority) {
+//     switch (priority) {
+//       case AdvicePriority.critical:
+//         return Icons.error;
+//       case AdvicePriority.high:
+//         return Icons.warning_amber_rounded;
+//       case AdvicePriority.medium:
+//         return Icons.info_outline;
+//       case AdvicePriority.low:
+//         return Icons.check_circle_outline;
+//     }
+//   }
 }
 
 // Custom painter for dot pattern

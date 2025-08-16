@@ -7,10 +7,10 @@ import 'package:provider/provider.dart';
 import 'package:wallone/models/investment_model.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/budget_provider.dart';
+import 'package:wallone/state/investment_provider.dart';
 import 'package:wallone/utils/animations.dart';
 import 'package:wallone/utils/constants.dart';
-import 'package:wallone/widgets/dropdown_menu.dart';
-import 'package:wallone/widgets/custom_text_field.dart';
+import 'package:wallone/common_widgets/custom_text_field.dart';
 
 class FixedInvestmentsCard extends StatefulWidget {
   const FixedInvestmentsCard({super.key});
@@ -24,6 +24,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
   Widget build(BuildContext context) {
     final budgetProvider = Provider.of<BudgetProvider>(context);
     final investments = budgetProvider.allInvestments;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     if (investments.isEmpty) {
       return Card(
@@ -236,6 +237,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                   child: investments.isEmpty
                       ? _buildEmptyInvestmentsMessage(context)
                       : ListView.separated(
+                          padding: EdgeInsets.zero,
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: investments.length,
@@ -277,7 +279,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                                         categoryIcons['default']!['icon']
                                             as IconData,
                                     color: Colors.white,
-                                    size: 20,
+                                    size: screenWidth / 25,
                                   ),
                                 ),
                                 const SizedBox(width: 16),
@@ -289,7 +291,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                                       Text(
                                         investment.name,
                                         style: GoogleFonts.outfit(
-                                          fontSize: 16,
+                                          fontSize: screenWidth / 28,
                                           fontWeight: FontWeight.w600,
                                           color: cardTextColor(context),
                                         ),
@@ -298,7 +300,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                                       Text(
                                         '$symbol${investment.amount.toStringAsFixed(2)}',
                                         style: GoogleFonts.outfit(
-                                          fontSize: 14,
+                                          fontSize: screenWidth / 28,
                                           color: primaryColor(context),
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -307,7 +309,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                                   ),
                                 ),
                                 Transform.scale(
-                                  scale: 0.8,
+                                  scale: screenWidth / 500,
                                   child: Switch.adaptive(
                                     value: investment.isActive,
                                     onChanged: (value) {
@@ -339,6 +341,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                                   icon: Icon(
                                     Icons.more_vert,
                                     color: cardTextColor(context),
+                                    size: screenWidth / 22,
                                   ),
                                 ),
                               ],
@@ -373,7 +376,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                           Text(
                             'Total Investments',
                             style: GoogleFonts.outfit(
-                              fontSize: 16,
+                              fontSize: screenWidth / 22,
                               color: cardTextColor(context),
                               fontWeight: FontWeight.w500,
                             ),
@@ -382,7 +385,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                           Text(
                             '$symbol${totalInvestments.toStringAsFixed(2)}',
                             style: GoogleFonts.outfit(
-                              fontSize: 26,
+                              fontSize: screenWidth / 18,
                               fontWeight: FontWeight.bold,
                               color: primaryColor(context),
                               letterSpacing: 0.5,
@@ -419,13 +422,13 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                               color: percentageChangeValue >= 0
                                   ? Colors.green.shade600
                                   : Colors.red.shade600,
-                              size: 16,
+                              size: screenWidth / 28,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               '${percentageChangeValue.toStringAsFixed(1)}%',
                               style: GoogleFonts.outfit(
-                                fontSize: 14,
+                                fontSize: screenWidth / 28,
                                 fontWeight: FontWeight.w600,
                                 color: percentageChangeValue >= 0
                                     ? Colors.green.shade600
@@ -440,13 +443,13 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                 ),
 
                 // Demo Button
-                // ElevatedButton(
-                //   onPressed: () {
-                //     Provider.of<BalanceProvider>(context, listen: false)
-                //         .simulateInvestmentDeduction();
-                //   },
-                //   child: const Text("Simulate Investment Deduction"),
-                // ),
+                ElevatedButton(
+                  onPressed: () {
+                    Provider.of<InvestmentProvider>(context, listen: false)
+                        .simulateInvestmentDeduction();
+                  },
+                  child: const Text("Simulate Investment Deduction"),
+                ),
               ],
             ),
           ),
@@ -952,24 +955,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 20),
-                      DropdownMenuDynamicWidget(
-                        boxColor: boxColor(context),
-                        hintText: 'Select Category',
-                        items: const [
-                          'Stocks',
-                          'Mutual Funds',
-                          'Gold',
-                          'Other'
-                        ],
-                        onItemSelected: (String? newValue) {
-                          if (newValue != null) {
-                            selectedCategory = newValue;
-                          }
-                        },
-                        value: selectedCategory,
-                      ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 48),
                       Row(
                         children: [
                           Expanded(
@@ -1112,23 +1098,14 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                 ),
                 const SizedBox(height: 28),
                 Text(
-                  'Investment Name: ${investment.name}',
+                  'Name: ${investment.name}',
                   style: GoogleFonts.outfit(
                     fontSize: 16,
                     color: primaryColor(context).withOpacity(0.7),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'Category: ${investment.category}',
-                  style: GoogleFonts.outfit(
-                    fontSize: 16,
-                    color: primaryColor(context).withOpacity(0.7),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 32),
                 CustomTextField(
                   controller: amountController,
                   labelText: 'Investment Amount',

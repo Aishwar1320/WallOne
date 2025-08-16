@@ -5,7 +5,7 @@ import 'package:wallone/state/investment_provider.dart';
 import 'package:wallone/state/theme_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/utils/constants.dart';
-import 'package:wallone/pages/category_management.dart';
+import 'package:wallone/pages/Category%20Management/category_management.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -13,6 +13,7 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: mainColor(context),
@@ -44,13 +45,13 @@ class SettingsPage extends StatelessWidget {
                 'Appearance',
                 style: GoogleFonts.outfit(
                   color: primaryColor(context),
-                  fontSize: 20,
+                  fontSize: screenWidth / 25,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
             Container(
-              height: 50,
+              height: screenWidth / 8,
               decoration: BoxDecoration(
                 color: purpleColors(context),
                 borderRadius: BorderRadius.circular(10),
@@ -64,7 +65,7 @@ class SettingsPage extends StatelessWidget {
                       'Dark Mode',
                       style: GoogleFonts.outfit(
                         color: primaryColor(context),
-                        fontSize: 20,
+                        fontSize: screenWidth / 25,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -82,7 +83,7 @@ class SettingsPage extends StatelessWidget {
                 'Currency',
                 style: GoogleFonts.outfit(
                   color: primaryColor(context),
-                  fontSize: 20,
+                  fontSize: screenWidth / 25,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -90,7 +91,7 @@ class SettingsPage extends StatelessWidget {
             Consumer<BalanceProvider>(
               builder: (ctx, balanceProvider, _) {
                 return Container(
-                  height: 50,
+                  height: screenWidth / 8,
                   decoration: BoxDecoration(
                     color: purpleColors(context),
                     borderRadius: BorderRadius.circular(10),
@@ -103,7 +104,7 @@ class SettingsPage extends StatelessWidget {
                         'Select Currency',
                         style: GoogleFonts.outfit(
                           color: primaryColor(context),
-                          fontSize: 18,
+                          fontSize: screenWidth / 25,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -146,7 +147,7 @@ class SettingsPage extends StatelessWidget {
                 'Categories',
                 style: GoogleFonts.outfit(
                   color: primaryColor(context),
-                  fontSize: 20,
+                  fontSize: screenWidth / 25,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -161,7 +162,7 @@ class SettingsPage extends StatelessWidget {
                 );
               },
               child: Container(
-                height: 50,
+                height: screenWidth / 8,
                 decoration: BoxDecoration(
                   color: purpleColors(context),
                   borderRadius: BorderRadius.circular(10),
@@ -175,7 +176,7 @@ class SettingsPage extends StatelessWidget {
                         'Manage Categories',
                         style: GoogleFonts.outfit(
                           color: primaryColor(context),
-                          fontSize: 20,
+                          fontSize: screenWidth / 25,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -191,7 +192,9 @@ class SettingsPage extends StatelessWidget {
             const SizedBox(height: 20),
             // Reset App Button
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10.0),
+              padding: EdgeInsets.symmetric(
+                vertical: screenWidth / 25,
+              ),
               child: InkWell(
                 onTap: () async {
                   // Show a confirmation dialog

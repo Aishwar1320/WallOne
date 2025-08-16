@@ -1,4 +1,7 @@
+import 'package:device_preview/device_preview.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wallone/state/balance_provider.dart';
@@ -15,42 +18,59 @@ import 'package:wallone/utils/services/shared_pref.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await dotenv.load(fileName: "lib/.env");
+
   // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
 
-  // BalanceProvider
+  // Initialize BalanceStorage
   final storage = await BalanceStorage.create();
+
+  // Create providers in the correct order
   final balanceProvider = BalanceProvider(storage);
-
-  // InvestmentProvider
   final investmentProvider = InvestmentProvider(storage);
-
-  // ListProvider with balanceProvider and investmentProvider
   final listProvider = ListProvider(balanceProvider, investmentProvider);
 
-  // BudgetProvider with balanceProvider, investmentProvider, and SharedPreferences
+  // Set up provider relationships BEFORE creating BudgetProvider
+  print('[Main] Setting up provider relationships...');
+
+  // Set balance provider reference in investment provider
+  investmentProvider.setBalanceProvider(balanceProvider);
+
+  // Set list provider reference in balance provider
+  balanceProvider.setListProvider(listProvider);
+
+  // Set list provider reference in investment provider
+  investmentProvider.setListProvider(listProvider);
+
+  // Wait a bit to ensure all async initialization is complete
+  await Future.delayed(const Duration(milliseconds: 100));
+
+  // Create BudgetProvider after all relationships are established
   final budgetProvider =
       BudgetProvider(balanceProvider, investmentProvider, prefs);
 
-  // linked together
-  balanceProvider.setListProvider(listProvider);
+  print('[Main] All providers initialized and linked');
 
   runApp(
-    MultiProvider(
-      providers: [
-        // existing instances using .value
-        ChangeNotifierProvider<BalanceProvider>.value(value: balanceProvider),
-        ChangeNotifierProvider<InvestmentProvider>.value(
-            value: investmentProvider),
-        ChangeNotifierProvider<ListProvider>.value(value: listProvider),
-        ChangeNotifierProvider<BudgetProvider>.value(value: budgetProvider),
-        ChangeNotifierProvider(create: (_) => TransactionTypeProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(
-          create: (context) => CategoryProvider(prefs),
-        ),
-      ],
-      child: const MyApp(),
+    DevicePreview(
+      enabled: !kReleaseMode,
+      builder: (context) => MultiProvider(
+        providers: [
+          // Use .value for pre-created instances
+          ChangeNotifierProvider<BalanceProvider>.value(value: balanceProvider),
+          ChangeNotifierProvider<InvestmentProvider>.value(
+              value: investmentProvider),
+          ChangeNotifierProvider<ListProvider>.value(value: listProvider),
+          ChangeNotifierProvider<BudgetProvider>.value(value: budgetProvider),
+
+          // Create new instances for these
+          ChangeNotifierProvider(create: (_) => TransactionTypeProvider()),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+          ChangeNotifierProvider(create: (context) => CategoryProvider(prefs)),
+        ],
+        child: const MyApp(),
+      ),
     ),
   );
 }
@@ -63,8 +83,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  static ResetBalanceService?
-      _resetBalanceService; // Make it static to prevent multiple instances
+  static ResetBalanceService? _resetBalanceService;
   bool _hasInitialized = false;
 
   @override

@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:wallone/models/icon_map_model.dart';
-import 'package:wallone/pages/edit_transactions.dart';
+import 'package:wallone/pages/Transaction%20Management/edit_transactions.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/state/category_provider.dart';
