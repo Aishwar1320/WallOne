@@ -3,11 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:wallone/pages/About%20Us/about_us.dart';
+import 'package:wallone/pages/Ai%20Control%20Panel/ai_ml_dashboard.dart';
 import 'package:wallone/pages/Analytics%20Page/analytics.dart';
 import 'package:wallone/pages/Budget%20Page/budget_page.dart';
 import 'package:wallone/pages/Dashboard%20Page/dashboard.dart';
 import 'package:wallone/pages/Settings/settings.dart';
 import 'package:wallone/pages/Transaction%20Management/add_transactions.dart';
+import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/utils/constants.dart';
 
@@ -27,7 +29,7 @@ class _DesignLayoutState extends State<DesignLayout> {
     const BudgetPage(),
     const AddTransactionsPage(),
     const AnalyticsPage(),
-    const Placeholder(),
+    const AIAdvisorDashboard(),
   ];
 
   void _onItemTapped(int index) {
@@ -167,6 +169,23 @@ class _DesignLayoutState extends State<DesignLayout> {
           ),
         ),
         actions: [
+          if (_selectedIndex == 4)
+            Consumer<AIAdvisorProvider>(
+              builder: (context, provider, child) {
+                return IconButton(
+                  icon: provider.isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh),
+                  onPressed: provider.isLoading
+                      ? null
+                      : () => provider.refreshInsights(forceRefresh: true),
+                );
+              },
+            ),
           Padding(
             padding: const EdgeInsets.only(right: 5.0),
             child: IconButton(
@@ -270,7 +289,7 @@ class _DesignLayoutState extends State<DesignLayout> {
                       // onPressed: () => showCustomSnackBar(context),
                       onPressed: () => _onItemTapped(4),
                       icon: Icon(
-                        Icons.person_2_outlined,
+                        Icons.bolt,
                         size: 30,
                         color:
                             _selectedIndex == 4 ? primaryColor(context) : null,

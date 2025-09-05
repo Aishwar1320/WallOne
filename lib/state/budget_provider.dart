@@ -34,7 +34,14 @@ class Budget {
 
   IconData get icon => iconMap[iconKey] ?? Icons.help_outline;
 
-  double get progress => spent / amount;
+  double get progress {
+    if (amount <= 0) return 0.0;
+    final p = spent / amount;
+    if (!p.isFinite) return 0.0;
+    return p < 0 ? 0.0 : p;
+    // optionally cap to 1.0:
+    // return math.min(1.0, math.max(0.0, p));
+  }
 
   Color color(BuildContext context) {
     final percentage = progress * 100;

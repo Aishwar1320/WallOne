@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:provider/provider.dart';
 import 'package:wallone/common_widgets/dropdown_menu.dart';
+import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/transaction_type_provider.dart';
 import 'package:wallone/utils/constants.dart';
@@ -51,6 +52,16 @@ class _AddTransactionsPageState extends State<AddTransactionsPage> {
     setState(() {
       _fieldWidth = textSize.width + 5;
     });
+  }
+
+  Future<void> _suggestCategory(String description, double amount) async {
+    final aiProvider = context.read<AIAdvisorProvider>();
+    if (aiProvider.autoExpenseCategorization) {
+      final suggestion = await aiProvider.suggestCategory(description, amount);
+      setState(() {
+        selectedCategory = suggestion;
+      });
+    }
   }
 
   @override

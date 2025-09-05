@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
@@ -346,7 +348,6 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
           const SizedBox(height: 10),
           Stack(
             children: [
-              // Background progress bar
               Container(
                 height: 10,
                 decoration: BoxDecoration(
@@ -354,54 +355,77 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              // Foreground progress bar
-              FractionallySizedBox(
-                widthFactor: budget.progress,
-                child: Container(
-                  height: 10,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        budget.color(context).withValues(alpha: 0.7),
-                        budget.color(context),
-                      ],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: budget.color(context).withValues(alpha: 0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (budget.progress >= 1.0)
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: LinearGradient(
-                        colors: [
-                          budget.color(context).withValues(alpha: 0.7),
-                          budget.color(context),
+              Builder(
+                builder: (context) {
+                  final rawProgress = budget.progress;
+
+                  final safeProgressOfRaw =
+                      (rawProgress.isFinite) ? rawProgress : 0.0;
+                  final safeProgress = math.max(0.0, safeProgressOfRaw);
+
+                  debugPrint(
+                      '[BudgetOverviewCard] budget=${budget.id} progress: raw=$rawProgress safe=$safeProgress');
+
+                  return FractionallySizedBox(
+                    widthFactor: budget.progress,
+                    child: Container(
+                      height: 10,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            budget.color(context).withValues(alpha: 0.7),
+                            budget.color(context),
+                          ],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: budget.color(context).withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
                         ],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
                       ),
                     ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.warning_rounded,
-                        color: Colors.white,
-                        size: 16,
+                  );
+                },
+              ),
+              Builder(
+                builder: (context) {
+                  final rawProgress = budget.progress;
+                  final safeProgressOfRaw =
+                      (rawProgress.isFinite) ? rawProgress : 0.0;
+                  final safeProgress = math.max(0.0, safeProgressOfRaw);
+                  if (safeProgress >= 1.0) {
+                    return Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: LinearGradient(
+                            colors: [
+                              budget.color(context).withValues(alpha: 0.7),
+                              budget.color(context),
+                            ],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.warning_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ),
+                    );
+                  } else {
+                    return const SizedBox.shrink();
+                  }
+                },
+              )
             ],
           ),
         ],
@@ -703,37 +727,62 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                               budgets, budgetProvider.currentBudgetIndex),
                         ],
                       ),
-                      secondChild: ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: budgets.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 16),
-                        itemBuilder: (context, index) {
-                          return Dismissible(
-                            key: Key(budgets[index].id),
-                            direction: DismissDirection.endToStart,
-                            background: Container(
-                              padding: const EdgeInsets.only(right: 20),
-                              decoration: BoxDecoration(
-                                color: purpleColors(context),
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: const Align(
-                                alignment: Alignment.centerRight,
-                                child: Icon(
-                                  Icons.delete_outline,
-                                  color: Colors.white,
-                                  size: 28,
+                      secondChild:
+                          LayoutBuilder(builder: (context, constraints) {
+                        // Choose itemHeight based on your item layout; 120 is just an example.
+                        final estimatedItemHeight = 120.0;
+                        // Use available constraints.maxHeight if finite, else use a fraction of screen
+                        final maxAvailableHeight =
+                            constraints.maxHeight.isFinite
+                                ? constraints.maxHeight
+                                : MediaQuery.of(context).size.height * 0.6;
+
+                        // Cap the list height to either all items height or a sensible fraction of screen
+                        final computedHeight = math.min(
+                          budgets.length * estimatedItemHeight,
+                          maxAvailableHeight,
+                        );
+
+                        return ConstrainedBox(
+                          constraints: BoxConstraints(
+                            // Prevent the ListView from growing beyond computedHeight
+                            maxHeight: computedHeight,
+                          ),
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: budgets.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 16),
+                            itemBuilder: (context, index) {
+                              return Dismissible(
+                                key: Key(budgets[index].id),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  padding: const EdgeInsets.only(right: 20),
+                                  decoration: BoxDecoration(
+                                    color: purpleColors(context),
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
+                                  child: const Align(
+                                    alignment: Alignment.centerRight,
+                                    child: Icon(
+                                      Icons.delete_outline,
+                                      color: Colors.white,
+                                      size: 28,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            onDismissed: (direction) {
-                              budgetProvider.removeBudget(budgets[index].id);
+                                onDismissed: (direction) {
+                                  budgetProvider
+                                      .removeBudget(budgets[index].id);
+                                },
+                                child: _buildBudgetProgress(budgets[index]),
+                              );
                             },
-                            child: _buildBudgetProgress(budgets[index]),
-                          );
-                        },
-                      ),
+                          ),
+                        );
+                      }),
                     ),
                     if (!budgetProvider.showAllBudgets) ...[
                       const SizedBox(height: 20),

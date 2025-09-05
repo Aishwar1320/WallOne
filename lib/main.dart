@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/investment_provider.dart';
 import 'package:wallone/state/budget_provider.dart';
@@ -18,10 +19,25 @@ import 'package:wallone/utils/services/shared_pref.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: "lib/.env");
+  await dotenv.load(fileName: ".env");
 
   // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
+
+  // Retrieve the API key from the .env file
+  final apiKeyFromEnv = dotenv.env['GEMINI_API_KEY']?.trim();
+
+  // Check if a key is present in the .env file
+  if (apiKeyFromEnv != null && apiKeyFromEnv.isNotEmpty) {
+    // Save the API key to SharedPreferences for later use
+    // You might want to do this only once or on app start.
+    await prefs.setString('GEMINI_API_KEY', apiKeyFromEnv);
+    print(
+        '[Main] API Key successfully loaded from .env and saved to SharedPreferences.');
+  } else {
+    print(
+        '[Main] WARNING: GEMINI_API_KEY is missing or empty in the .env file.');
+  }
 
   // Initialize BalanceStorage
   final storage = await BalanceStorage.create();
@@ -50,6 +66,8 @@ Future<void> main() async {
   final budgetProvider =
       BudgetProvider(balanceProvider, investmentProvider, prefs);
 
+  final aiAdvisorProvider = AIAdvisorProvider(prefs);
+
   print('[Main] All providers initialized and linked');
 
   runApp(
@@ -68,6 +86,8 @@ Future<void> main() async {
           ChangeNotifierProvider(create: (_) => TransactionTypeProvider()),
           ChangeNotifierProvider(create: (_) => ThemeProvider()),
           ChangeNotifierProvider(create: (context) => CategoryProvider(prefs)),
+          ChangeNotifierProvider<AIAdvisorProvider>.value(
+              value: aiAdvisorProvider),
         ],
         child: const MyApp(),
       ),
@@ -89,6 +109,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    _initializeAI();
     WidgetsBinding.instance.addObserver(this);
 
     // Initialize the service only once
@@ -100,6 +121,29 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeResetService();
     });
+  }
+
+  Future<void> _initializeAI() async {
+    final prefs = await SharedPreferences.getInstance();
+    final apiKey = prefs.getString('GEMINI_API_KEY');
+
+    if (apiKey != null && mounted) {
+      final aiProvider = context.read<AIAdvisorProvider>();
+      final balanceProvider = context.read<BalanceProvider>();
+      final investmentProvider = context.read<InvestmentProvider>();
+      final budgetProvider = context.read<BudgetProvider>();
+      final listProvider = context.read<ListProvider>();
+      final categoryProvider = context.read<CategoryProvider>();
+
+      await aiProvider.initializeAdvisor(
+        apiKey: apiKey,
+        balanceProvider: balanceProvider,
+        investmentProvider: investmentProvider,
+        budgetProvider: budgetProvider,
+        listProvider: listProvider,
+        categoryProvider: categoryProvider,
+      );
+    }
   }
 
   void _initializeResetService() {

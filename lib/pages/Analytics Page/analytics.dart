@@ -3,15 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:wallone/features/ai%20feature/ai_feature_section.dart';
-import 'package:wallone/features/ai%20feature/brain/rule_based_model.dart';
-import 'package:wallone/models/ai_adviser_model.dart';
 import 'package:wallone/state/balance_provider.dart';
-import 'package:wallone/state/budget_provider.dart';
-import 'package:wallone/state/category_provider.dart';
-import 'package:wallone/state/investment_provider.dart';
-import 'package:wallone/state/list_provider.dart';
-import 'package:wallone/state/transaction_type_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'dart:math' as math;
 
@@ -65,12 +57,15 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                   const SizedBox(height: 16),
                   _buildMonthlyComparisonChart(context, provider),
                   const SizedBox(height: 40),
-                  _buildSectionWithInfoButton("WallOne AI", context,
-                      onInfoPressed: () {}
-                      // => _showInvestmentInfo(context),
-                      ),
+                  _buildSectionWithInfoButton(
+                    "WallOne AI",
+                    context,
+                    onInfoPressed: () => _showInvestmentInfo(context),
+                  ),
                   const SizedBox(height: 16),
-                  const EnhancedAutomatedAIAdvisor(),
+                  const SizedBox(
+                    height: 100,
+                  ),
                   const SizedBox(height: 110),
                 ],
               ),
@@ -558,217 +553,216 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
   // Helper widgets
 
-  // void _showInvestmentInfo(BuildContext context) {
-  //   final advisor = EnhancedAIAdvisor(
-  //     balance: context.read<BalanceProvider>(),
-  //     budget: context.read<BudgetProvider>(),
-  //     invest: context.read<InvestmentProvider>(),
-  //     list: context.read<ListProvider>(),
-  //     txnType: context.read<TransactionTypeProvider>(),
-  //     categories: context.read<CategoryProvider>(),
-  //   );
+  void _showInvestmentInfo(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(32),
+              topRight: Radius.circular(32),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // drag handle
+              Container(
+                width: 40,
+                height: 5,
+                margin: const EdgeInsets.only(top: 16, bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
 
-  //   final insights = advisor.generateInsights();
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: primaryColor(context).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.lightbulb_outline,
+                        color: primaryColor(context),
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      'AI Adviser',
+                      style: GoogleFonts.outfit(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
 
-  //   showModalBottomSheet(
-  //     context: context,
-  //     isScrollControlled: true,
-  //     backgroundColor: Colors.transparent,
-  //     builder: (context) {
-  //       return Container(
-  //         height: MediaQuery.of(context).size.height * 0.7,
-  //         decoration: BoxDecoration(
-  //           color: Theme.of(context).scaffoldBackgroundColor,
-  //           borderRadius: const BorderRadius.only(
-  //             topLeft: Radius.circular(32),
-  //             topRight: Radius.circular(32),
-  //           ),
-  //           boxShadow: [
-  //             BoxShadow(
-  //               color: Colors.black.withOpacity(0.1),
-  //               blurRadius: 10,
-  //               offset: const Offset(0, -5),
-  //             ),
-  //           ],
-  //         ),
-  //         child: Column(
-  //           children: [
-  //             // drag handle
-  //             Container(
-  //               width: 40,
-  //               height: 5,
-  //               margin: const EdgeInsets.only(top: 16, bottom: 16),
-  //               decoration: BoxDecoration(
-  //                 color: Colors.grey.withOpacity(0.3),
-  //                 borderRadius: BorderRadius.circular(5),
-  //               ),
-  //             ),
+              // Static info list
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  physics: const BouncingScrollPhysics(),
+                  children: [
+                    _buildTipCard(
+                      context,
+                      icon: Icons.savings_outlined,
+                      title: "💰 Investment Advice",
+                      description:
+                          "Consider investing 10% of your income into a diversified portfolio for long-term growth.",
+                    ),
+                    _buildTipCard(
+                      context,
+                      icon: Icons.warning_amber_rounded,
+                      title: "⚠️ Budget Alert",
+                      description:
+                          "Your food expenses are 20% higher than last month. Try cutting back on eating out.",
+                    ),
+                    _buildTipCard(
+                      context,
+                      icon: Icons.check_circle_outline,
+                      title: "✅ Good Progress",
+                      description:
+                          "You’ve successfully stayed within your entertainment budget this month!",
+                    ),
+                  ],
+                ),
+              ),
 
-  //             // Header
-  //             Padding(
-  //               padding: const EdgeInsets.symmetric(horizontal: 24),
-  //               child: Row(
-  //                 children: [
-  //                   Container(
-  //                     padding: const EdgeInsets.all(10),
-  //                     decoration: BoxDecoration(
-  //                       color: primaryColor(context).withOpacity(0.1),
-  //                       borderRadius: BorderRadius.circular(12),
-  //                     ),
-  //                     child: Icon(
-  //                       Icons.lightbulb_outline,
-  //                       color: primaryColor(context),
-  //                       size: 24,
-  //                     ),
-  //                   ),
-  //                   const SizedBox(width: 16),
-  //                   Text(
-  //                     'AI Insights',
-  //                     style: GoogleFonts.outfit(
-  //                       fontSize: 24,
-  //                       fontWeight: FontWeight.bold,
-  //                       color: primaryColor(context),
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //             const SizedBox(height: 24),
+              // Got it button
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor(context),
+                      foregroundColor: inversePrimaryColor(context),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(
+                      'Got it',
+                      style: GoogleFonts.outfit(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-  //             // Insights List
-  //             Expanded(
-  //               child: ListView.builder(
-  //                 padding: const EdgeInsets.symmetric(horizontal: 24),
-  //                 physics: const BouncingScrollPhysics(),
-  //                 itemCount: insights.length,
-  //                 itemBuilder: (ctx, i) {
-  //                   final insight = insights[i];
-  //                   return _buildTipCard(
-  //                     context,
-  //                     icon: _priorityIcon(insight.priority),
-  //                     title: "${insight.icon} ${insight.title}",
-  //                     description: insight.description +
-  //                         (insight.actionHint != null
-  //                             ? "\n💡 ${insight.actionHint}"
-  //                             : ""),
-  //                   );
-  //                 },
-  //               ),
-  //             ),
+  Widget _buildTipCard(BuildContext context,
+      {required IconData icon,
+      required String title,
+      required String description}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: shadowColor(context).withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: primaryColor(context).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: primaryColor(context),
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.outfit(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  description,
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.color
+                        ?.withOpacity(0.7),
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  //             // Got it button
-  //             Padding(
-  //               padding:
-  //                   const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-  //               child: SizedBox(
-  //                 width: double.infinity,
-  //                 child: ElevatedButton(
-  //                   onPressed: () => Navigator.pop(context),
-  //                   style: ElevatedButton.styleFrom(
-  //                     backgroundColor: primaryColor(context),
-  //                     foregroundColor: inversePrimaryColor(context),
-  //                     padding: const EdgeInsets.symmetric(vertical: 16),
-  //                     shape: RoundedRectangleBorder(
-  //                       borderRadius: BorderRadius.circular(16),
-  //                     ),
-  //                   ),
-  //                   child: Text(
-  //                     'Got it',
-  //                     style: GoogleFonts.outfit(
-  //                       fontSize: 16,
-  //                       fontWeight: FontWeight.bold,
-  //                     ),
-  //                   ),
-  //                 ),
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //       );
-  //     },
-  //   );
+// Helper to map priority → icon
+  // IconData _priorityIcon(AdvicePriority priority) {
+  //   switch (priority) {
+  //     case AdvicePriority.critical:
+  //       return Icons.error;
+  //     case AdvicePriority.high:
+  //       return Icons.warning_amber_rounded;
+  //     case AdvicePriority.medium:
+  //       return Icons.info_outline;
+  //     case AdvicePriority.low:
+  //       return Icons.check_circle_outline;
+  //   }
   // }
-
-  // Widget _buildTipCard(BuildContext context,
-  //     {required IconData icon,
-  //     required String title,
-  //     required String description}) {
-  //   return Container(
-  //     margin: const EdgeInsets.only(bottom: 16),
-  //     padding: const EdgeInsets.all(16),
-  //     decoration: BoxDecoration(
-  //       color: Theme.of(context).cardColor,
-  //       borderRadius: BorderRadius.circular(16),
-  //       boxShadow: [
-  //         BoxShadow(
-  //           color: shadowColor(context).withOpacity(0.05),
-  //           blurRadius: 10,
-  //           offset: const Offset(0, 5),
-  //         ),
-  //       ],
-  //     ),
-  //     child: Row(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         Container(
-  //           padding: const EdgeInsets.all(10),
-  //           decoration: BoxDecoration(
-  //             color: primaryColor(context).withOpacity(0.1),
-  //             borderRadius: BorderRadius.circular(12),
-  //           ),
-  //           child: Icon(
-  //             icon,
-  //             color: primaryColor(context),
-  //             size: 24,
-  //           ),
-  //         ),
-  //         const SizedBox(width: 16),
-  //         Expanded(
-  //           child: Column(
-  //             crossAxisAlignment: CrossAxisAlignment.start,
-  //             children: [
-  //               Text(
-  //                 title,
-  //                 style: GoogleFonts.outfit(
-  //                   fontSize: 18,
-  //                   fontWeight: FontWeight.bold,
-  //                   color: Theme.of(context).textTheme.bodyLarge?.color,
-  //                 ),
-  //               ),
-  //               const SizedBox(height: 8),
-  //               Text(
-  //                 description,
-  //                 style: GoogleFonts.outfit(
-  //                   fontSize: 14,
-  //                   color: Theme.of(context)
-  //                       .textTheme
-  //                       .bodyLarge
-  //                       ?.color
-  //                       ?.withOpacity(0.7),
-  //                   height: 1.5,
-  //                 ),
-  //               ),
-  //             ],
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-//   //   );
-//   // }
-
-// // Helper to map priority → icon
-//   IconData _priorityIcon(AdvicePriority priority) {
-//     switch (priority) {
-//       case AdvicePriority.critical:
-//         return Icons.error;
-//       case AdvicePriority.high:
-//         return Icons.warning_amber_rounded;
-//       case AdvicePriority.medium:
-//         return Icons.info_outline;
-//       case AdvicePriority.low:
-//         return Icons.check_circle_outline;
-//     }
-//   }
 }
 
 // Custom painter for dot pattern

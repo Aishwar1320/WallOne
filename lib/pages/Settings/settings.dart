@@ -1,14 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wallone/pages/Ai%20Control%20Panel/api_setup_screen.dart';
+import 'package:wallone/state/adviser_provider.dart';
+import 'package:wallone/state/budget_provider.dart';
+import 'package:wallone/state/category_provider.dart';
 import 'package:wallone/state/investment_provider.dart';
+import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/state/theme_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'package:wallone/pages/Category%20Management/category_management.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  @override
+  void initState() {
+    super.initState();
+    _initializeAI();
+  }
+
+  Future<void> _initializeAI() async {
+    final prefs = await SharedPreferences.getInstance();
+    final apiKey = prefs.getString('GEMINI_API_KEY');
+
+    if (apiKey != null && mounted) {
+      final aiProvider = context.read<AIAdvisorProvider>();
+      final balanceProvider = context.read<BalanceProvider>();
+      final investmentProvider = context.read<InvestmentProvider>();
+      final budgetProvider = context.read<BudgetProvider>();
+      final listProvider = context.read<ListProvider>();
+      final categoryProvider = context.read<CategoryProvider>();
+
+      await aiProvider.initializeAdvisor(
+        apiKey: apiKey,
+        balanceProvider: balanceProvider,
+        investmentProvider: investmentProvider,
+        budgetProvider: budgetProvider,
+        listProvider: listProvider,
+        categoryProvider: categoryProvider,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -190,6 +230,63 @@ class SettingsPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+
+            // Categories Section
+            Padding(
+              padding: const EdgeInsets.all(5),
+              child: Text(
+                'AI Setup',
+                style: GoogleFonts.outfit(
+                  color: primaryColor(context),
+                  fontSize: screenWidth / 25,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            InkWell(
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AISetupScreen(),
+                  ),
+                );
+
+                if (result == true) {
+                  // Reinitialize AI advisor
+                  _initializeAI();
+                }
+              },
+              child: Container(
+                height: screenWidth / 8,
+                decoration: BoxDecoration(
+                  color: purpleColors(context),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'AI Adviser Setup',
+                        style: GoogleFonts.outfit(
+                          color: primaryColor(context),
+                          fontSize: screenWidth / 25,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: primaryColor(context),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
             // Reset App Button
             Padding(
               padding: EdgeInsets.symmetric(
