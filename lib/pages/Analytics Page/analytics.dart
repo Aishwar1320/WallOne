@@ -3,12 +3,17 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:wallone/common_widgets/insights_quickaccess.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'dart:math' as math;
 
 class AnalyticsPage extends StatefulWidget {
-  const AnalyticsPage({super.key});
+  final VoidCallback onSeeAllAIAdvisor;
+  const AnalyticsPage({
+    super.key,
+    required this.onSeeAllAIAdvisor,
+  });
 
   @override
   State<AnalyticsPage> createState() => _AnalyticsPageState();
@@ -60,11 +65,11 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                   _buildSectionWithInfoButton(
                     "WallOne AI",
                     context,
-                    onInfoPressed: () => _showInvestmentInfo(context),
+                    onInfoPressed: () => _showAdviserInfo(context),
                   ),
                   const SizedBox(height: 16),
-                  const SizedBox(
-                    height: 100,
+                  MinimalInsightDisplay(
+                    onTap: widget.onSeeAllAIAdvisor,
                   ),
                   const SizedBox(height: 110),
                 ],
@@ -227,7 +232,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             boxColor(context).withOpacity(0.9),
           ],
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: shadowColor(context).withOpacity(0.1),
@@ -553,7 +558,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
   // Helper widgets
 
-  void _showInvestmentInfo(BuildContext context) {
+  void _showAdviserInfo(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -577,7 +582,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           ),
           child: Column(
             children: [
-              // drag handle
+              // Drag handle
               Container(
                 width: 40,
                 height: 5,
@@ -600,14 +605,14 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
-                        Icons.lightbulb_outline,
+                        Icons.smart_toy_outlined,
                         color: primaryColor(context),
                         size: 24,
                       ),
                     ),
                     const SizedBox(width: 16),
                     Text(
-                      'AI Adviser',
+                      'WallOne AI Advisor',
                       style: GoogleFonts.outfit(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -627,24 +632,31 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                   children: [
                     _buildTipCard(
                       context,
-                      icon: Icons.savings_outlined,
-                      title: "💰 Investment Advice",
+                      icon: Icons.trending_up,
+                      title: "📈 Smart Investments",
                       description:
-                          "Consider investing 10% of your income into a diversified portfolio for long-term growth.",
+                          "WallOne analyzes your spending patterns and suggests optimal investment opportunities tailored to your risk level.",
                     ),
                     _buildTipCard(
                       context,
-                      icon: Icons.warning_amber_rounded,
-                      title: "⚠️ Budget Alert",
+                      icon: Icons.account_balance_wallet_outlined,
+                      title: "💡 Savings Optimization",
                       description:
-                          "Your food expenses are 20% higher than last month. Try cutting back on eating out.",
+                          "Our AI automatically identifies areas where you can save more — without impacting your lifestyle.",
                     ),
                     _buildTipCard(
                       context,
-                      icon: Icons.check_circle_outline,
-                      title: "✅ Good Progress",
+                      icon: Icons.pie_chart_outline,
+                      title: "📊 Budget Insights",
                       description:
-                          "You’ve successfully stayed within your entertainment budget this month!",
+                          "Get monthly reports showing where your money goes, with actionable advice to improve your budgeting habits.",
+                    ),
+                    _buildTipCard(
+                      context,
+                      icon: Icons.security_outlined,
+                      title: "🔒 Portable",
+                      description:
+                          "You can even use your own key to get more premium features",
                     ),
                   ],
                 ),

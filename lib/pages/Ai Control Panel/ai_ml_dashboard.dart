@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:wallone/pages/Ai%20Control%20Panel/tabs/ai_settings_tab.dart';
-import 'package:wallone/pages/Ai%20Control%20Panel/tabs/insights_tabs.dart';
-import 'package:wallone/pages/Ai%20Control%20Panel/tabs/quick_action_tab.dart';
+import 'package:wallone/pages/Ai%20Control%20Panel/tabs/Insights%20Tab/insights_tabs.dart';
 import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/utils/constants.dart';
 
@@ -22,7 +21,7 @@ class _AIAdvisorDashboardState extends State<AIAdvisorDashboard>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
 
     // Listen for tab changes
     _tabController.addListener(() {
@@ -47,9 +46,10 @@ class _AIAdvisorDashboardState extends State<AIAdvisorDashboard>
     return Column(
       children: [
         Container(
-          height: 90,
-          margin: const EdgeInsets.symmetric(horizontal: 15),
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          height: 70,
+          width: 300,
+          margin: const EdgeInsets.only(top: 16, right: 16, left: 16),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
             color: boxColor(context),
@@ -61,46 +61,43 @@ class _AIAdvisorDashboardState extends State<AIAdvisorDashboard>
               ),
             ],
           ),
-          child: TabBar(
-            indicatorColor: boxColor(context),
-            dividerColor: boxColor(context),
-            unselectedLabelColor: primaryColor(context),
-            labelStyle: GoogleFonts.outfit(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: cardTextColor(context),
+          child: Material(
+            color: Colors.transparent,
+            child: TabBar(
+              overlayColor: WidgetStatePropertyAll(boxColor(context)),
+              indicatorColor: boxColor(context),
+              dividerColor: boxColor(context),
+              unselectedLabelColor: primaryColor(context),
+              labelStyle: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: cardTextColor(context),
+              ),
+              controller: _tabController,
+              tabs: [
+                _buildTab(
+                  context,
+                  label: "Insights",
+                  icon: Icons.insights,
+                  isSelected: _tabController.index == 0,
+                ),
+                _buildTab(
+                  context,
+                  label: "Settings",
+                  icon: Icons.settings_outlined,
+                  isSelected: _tabController.index == 1,
+                ),
+              ],
             ),
-            controller: _tabController,
-            tabs: [
-              _buildTab(
-                context,
-                label: "Insights",
-                icon: Icons.insights,
-                isSelected: _tabController.index == 0,
-              ),
-              _buildTab(
-                context,
-                label: "Actions",
-                icon: Icons.takeout_dining_sharp,
-                isSelected: _tabController.index == 1,
-              ),
-              _buildTab(
-                context,
-                label: "Settings",
-                icon: Icons.settings_outlined,
-                isSelected: _tabController.index == 2,
-              ),
-            ],
           ),
         ),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10.0),
+            padding: const EdgeInsets.symmetric(vertical: 15.0),
             child: TabBarView(
               controller: _tabController,
               children: const [
                 InsightsTab(),
-                QuickActionsTab(),
                 AISettingsTab(),
               ],
             ),
@@ -130,20 +127,6 @@ class _AIAdvisorDashboardState extends State<AIAdvisorDashboard>
       child: Tab(
         text: label,
         icon: Icon(icon),
-      ),
-    );
-  }
-}
-
-Future<void> _runFullAnalysis(BuildContext context) async {
-  final provider = context.read<AIAdvisorProvider>();
-  await provider.runFullAnalysis();
-
-  if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('AI analysis completed! Check your insights.'),
-        duration: Duration(seconds: 3),
       ),
     );
   }

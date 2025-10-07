@@ -13,7 +13,7 @@ class AISettingsTab extends StatelessWidget {
     return Consumer<AIAdvisorProvider>(
       builder: (context, provider, child) {
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           children: [
             _buildSettingsSection(
               'AI Features',
@@ -35,23 +35,23 @@ class AISettingsTab extends StatelessWidget {
                   value: provider.isAIEnabled,
                   onChanged: provider.setAIEnabled,
                 ),
-                SwitchListTile(
-                  title: Text(
-                    'Smart Notifications',
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
-                      color: primaryColor(context),
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Get notified about important insights',
-                    style: GoogleFonts.outfit(
-                      color: budgetTextLight(context),
-                    ),
-                  ),
-                  value: provider.smartNotifications,
-                  onChanged: provider.setSmartNotifications,
-                ),
+                // SwitchListTile(
+                //   title: Text(
+                //     'Smart Notifications',
+                //     style: GoogleFonts.outfit(
+                //       fontWeight: FontWeight.bold,
+                //       color: primaryColor(context),
+                //     ),
+                //   ),
+                //   subtitle: Text(
+                //     'Get notified about important insights',
+                //     style: GoogleFonts.outfit(
+                //       color: budgetTextLight(context),
+                //     ),
+                //   ),
+                //   value: provider.smartNotifications,
+                //   onChanged: provider.setSmartNotifications,
+                // ),
               ],
               context,
             ),
@@ -92,23 +92,23 @@ class AISettingsTab extends StatelessWidget {
                   value: provider.autoInvestmentSuggestions,
                   onChanged: provider.setAutoInvestmentSuggestions,
                 ),
-                SwitchListTile(
-                  title: Text(
-                    'Auto Expense Categorization',
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
-                      color: primaryColor(context),
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Suggest categories for new expenses',
-                    style: GoogleFonts.outfit(
-                      color: budgetTextLight(context),
-                    ),
-                  ),
-                  value: provider.autoExpenseCategorization,
-                  onChanged: provider.setAutoExpenseCategorization,
-                ),
+                // SwitchListTile(
+                //   title: Text(
+                //     'Auto Expense Categorization',
+                //     style: GoogleFonts.outfit(
+                //       fontWeight: FontWeight.bold,
+                //       color: primaryColor(context),
+                //     ),
+                //   ),
+                //   subtitle: Text(
+                //     'Suggest categories for new expenses',
+                //     style: GoogleFonts.outfit(
+                //       color: budgetTextLight(context),
+                //     ),
+                //   ),
+                //   value: provider.autoExpenseCategorization,
+                //   onChanged: provider.setAutoExpenseCategorization,
+                // ),
               ],
               context,
             ),
@@ -293,15 +293,7 @@ class AISettingsTab extends StatelessWidget {
     if (confirmed == true) {
       await provider.clearCache();
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-            'AI cache cleared successfully',
-            style: GoogleFonts.outfit(
-              color: primaryColor(context),
-            ),
-          )),
-        );
+        showCustomSnackBar(context, 'AI cache cleared successfully');
       }
     }
   }

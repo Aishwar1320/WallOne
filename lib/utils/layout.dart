@@ -24,13 +24,19 @@ class _DesignLayoutState extends State<DesignLayout> {
   int _selectedIndex = 0;
 
   // List of pages to display based on the selected index
-  final List<Widget> _pages = [
-    const DashboardPage(),
-    const BudgetPage(),
-    const AddTransactionsPage(),
-    const AnalyticsPage(),
-    const AIAdvisorDashboard(),
-  ];
+  List<Widget> get _pages => [
+        const DashboardPage(),
+        const BudgetPage(),
+        const AddTransactionsPage(),
+        AnalyticsPage(
+          onSeeAllAIAdvisor: () {
+            setState(() {
+              _selectedIndex = 4;
+            });
+          },
+        ),
+        const AIAdvisorDashboard(),
+      ];
 
   void _onItemTapped(int index) {
     setState(() {

@@ -209,9 +209,25 @@ class BudgetProvider with ChangeNotifier {
 
   double get dailyUsage {
     final now = DateTime.now();
+
+    // Total days in the current month
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-    final remainingBalance = monthlyIncome - monthlyExpenses;
-    return remainingBalance / daysInMonth;
+
+    // Calculate remaining days
+    final remainingDays = daysInMonth - now.day + 1;
+
+    final remainingBalance = totalBalance;
+
+    // Avoid division by zero in case it's the last day of the month
+    return remainingDays > 0
+        ? remainingBalance / remainingDays
+        : remainingBalance;
+  }
+
+  double get weeklyUsage {
+    final remainingBalance = totalBalance;
+    if (remainingBalance <= 0) return 0.0;
+    return remainingBalance / 7.0;
   }
 
   double get totalInvestments => _investmentProvider.totalInvestments;

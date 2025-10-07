@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wallone/models/balance_model.dart';
+import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/utils/services/shared_pref.dart';
 import 'package:wallone/state/list_provider.dart';
 
@@ -28,6 +29,7 @@ class BalanceProvider extends ChangeNotifier {
 
   ListProvider? _listProvider;
   late final BalanceStorage _storage;
+
   BalanceModel _balance = const BalanceModel();
   bool _showDateTimePicker = false;
   String? _lastResetDateString;
@@ -404,7 +406,7 @@ class BalanceProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> resetApp() async {
+  Future<void> resetApp(AIAdvisorProvider aiAdvisorProvider) async {
     // 1️⃣ Reset in-memory balance
     _balance = const BalanceModel();
 
@@ -425,12 +427,17 @@ class BalanceProvider extends ChangeNotifier {
     await _storage.saveInvestments([]); // Clear investments
     await _storage.saveLastInvestmentCheckDate(today);
 
-    // 5️⃣ Clear any extra preferences outside BalanceStorage if needed
+    // 5️⃣ Clear AI insights and related data
+    await aiAdvisorProvider.clearCache();
+    _log('AI insights and cache cleared.');
+
+    // 6️⃣ Clear any extra preferences outside BalanceStorage if needed
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear(); // ⚠️ Clears ALL keys in SharedPreferences
 
-    // 6️⃣ Notify UI
+    // 7️⃣ Notify UI
     notifyListeners();
-    _log('App reset: all balances, investments, and reset dates cleared.');
+    _log(
+        'App reset: all balances, investments, AI insights, and reset dates cleared.');
   }
 }

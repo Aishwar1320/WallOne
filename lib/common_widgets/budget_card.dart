@@ -515,7 +515,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                     boxColor(context).withOpacity(0.95),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

@@ -27,6 +27,7 @@ class InvestmentProvider with ChangeNotifier {
   DateTime _lastInvestmentCheckDate = DateTime.now();
   bool _processingInvestments = false;
   Timer? _monthlyDeductionTimer;
+  double lastMonthTotal = 0.0;
 
   static const String _tag = 'InvestmentProvider';
 
@@ -252,6 +253,20 @@ class InvestmentProvider with ChangeNotifier {
       balanceProvider!.saveBalances();
     }
 
+    notifyListeners();
+  }
+
+  double get percentageChange {
+    if (lastMonthTotal == 0) return 0.0;
+    return ((totalInvestments - lastMonthTotal) / lastMonthTotal) * 100;
+  }
+
+  void updateLastMonthTotal() {
+    lastMonthTotal = investments.fold(0.0, (sum, inv) {
+      final monthsSinceStart =
+          DateTime.now().difference(inv.startDate).inDays / 30;
+      return monthsSinceStart >= 1 ? sum + inv.amount : sum;
+    });
     notifyListeners();
   }
 
@@ -567,7 +582,13 @@ class InvestmentProvider with ChangeNotifier {
   Future<void> simulateInvestmentDeduction() async {
     try {
       _log('Simulating full investment deduction (forced)');
+
+      // 1️⃣ Store current total as "last month" before deduction
+      lastMonthTotal = investments.fold(0.0, (sum, inv) => sum + inv.amount);
+
       await _processInvestmentDeductions(force: true);
+
+      notifyListeners();
     } catch (e, stackTrace) {
       _logError('Failed to simulate investment deduction', e, stackTrace);
     }
