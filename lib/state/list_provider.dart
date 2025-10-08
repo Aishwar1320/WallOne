@@ -62,7 +62,7 @@ class AllListProvider {
 class ListProvider with ChangeNotifier {
   final List<AllListProvider> _transactions = [];
   final BalanceProvider _balanceProvider;
-  final InvestmentProvider investmentProvider;
+  final InvestmentProvider _investmentProvider;
   int _nextId = 0;
 
   // Add new properties to track current filter settings
@@ -70,7 +70,7 @@ class ListProvider with ChangeNotifier {
   bool _isExpensesSelected = true;
   String _currentPeriod = 'All Dates'; // Changed default to 'All Dates'
 
-  ListProvider(this._balanceProvider, this.investmentProvider);
+  ListProvider(this._balanceProvider, this._investmentProvider);
 
   // Getter for all transactions
   List<AllListProvider> get transactions => _transactions;
@@ -397,16 +397,8 @@ class ListProvider with ChangeNotifier {
 
       // If the old transaction is an investment, remove its historical record.
       if (oldTransaction.title.contains("Investment")) {
-        // Find matching transaction in InvestmentProvider
-        final parsedDate = DateTime.parse(oldTransaction.date);
-        final histIndex = investmentProvider.investmentTransactions.indexWhere(
-          (tx) =>
-              tx.amount == oldTransaction.amount &&
-              tx.date.isAtSameMomentAs(parsedDate),
-        );
-        if (histIndex != -1) {
-          investmentProvider.removeTransaction(histIndex);
-        }
+        _investmentProvider.removeHistoricalInvestmentTransaction(
+            oldTransaction.amount, oldTransaction.date);
       }
 
       // Update the transaction - preserve the original createdAt
@@ -429,8 +421,8 @@ class ListProvider with ChangeNotifier {
 
       // If the updated transaction is an investment, record it in history.
       if (updatedTransaction.title.contains("Investment")) {
-        investmentProvider.recordTransaction(
-            updatedTransaction.title, updatedTransaction.amount,
+        _investmentProvider.recordInvestmentTransaction(
+            updatedTransaction.amount,
             date: DateTime.parse(updatedTransaction.date));
       }
 
@@ -456,15 +448,8 @@ class ListProvider with ChangeNotifier {
 
       // If the removed transaction is investment-related, update historical transactions.
       if (removedTransaction.title.contains("Investment")) {
-        final parsedDate = DateTime.parse(removedTransaction.date);
-        final histIndex = investmentProvider.investmentTransactions.indexWhere(
-          (tx) =>
-              tx.amount == removedTransaction.amount &&
-              tx.date.isAtSameMomentAs(parsedDate),
-        );
-        if (histIndex != -1) {
-          investmentProvider.removeTransaction(histIndex);
-        }
+        _investmentProvider.removeHistoricalInvestmentTransaction(
+            removedTransaction.amount, removedTransaction.date);
       }
 
       await saveTransactions();
@@ -472,5 +457,13 @@ class ListProvider with ChangeNotifier {
     } else {
       print('Transaction with id $id not found.');
     }
+  }
+
+  Future<void> clearTransactions() async {
+    _transactions.clear();
+    _nextId = 0;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('transactions', jsonEncode([])); // Save empty list
+    notifyListeners();
   }
 }

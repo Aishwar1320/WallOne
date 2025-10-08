@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:wallone/utils/constants.dart';
 
 class DynamicButtonsWidget extends StatefulWidget {
-  final Function(bool) onSelectionChanged; // Callback for selection change
+  final Function(bool) onSelectionChanged;
 
   const DynamicButtonsWidget({super.key, required this.onSelectionChanged});
 
@@ -12,16 +12,17 @@ class DynamicButtonsWidget extends StatefulWidget {
 }
 
 class _DynamicButtonsWidgetState extends State<DynamicButtonsWidget> {
-  bool isExpensesSelected = true; // Tracks which button is selected
+  bool isExpensesSelected = true;
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Container(
-      height: 55,
+      height: screenWidth / 7,
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: boxColor(context),
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(27),
         boxShadow: [
           BoxShadow(
             color: shadowColor(context).withOpacity(0.1),
@@ -36,16 +37,13 @@ class _DynamicButtonsWidgetState extends State<DynamicButtonsWidget> {
           Expanded(
             child: GestureDetector(
               onTap: () {
-                setState(() {
-                  isExpensesSelected = true; // Select Expenses
-                });
-                widget.onSelectionChanged(true); // Notify parent widget
+                setState(() => isExpensesSelected = true);
+                widget.onSelectionChanged(true);
               },
               child: AnimatedContainer(
-                duration:
-                    const Duration(milliseconds: 300), // Animation duration
-                curve: Curves.easeInOut, // Animation curve
-                height: 50,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                height: screenWidth / 7,
                 decoration: BoxDecoration(
                   color: isExpensesSelected
                       ? purpleColors(context)
@@ -56,17 +54,20 @@ class _DynamicButtonsWidgetState extends State<DynamicButtonsWidget> {
                   ),
                 ),
                 child: Center(
-                  child: AnimatedDefaultTextStyle(
-                    duration:
-                        const Duration(milliseconds: 300), // Animation duration
-                    style: GoogleFonts.outfit(
-                      color: isExpensesSelected
-                          ? primaryColor(context)
-                          : switchColor(context),
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      style: GoogleFonts.outfit(
+                        color: isExpensesSelected
+                            ? primaryColor(context)
+                            : switchColor(context),
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      child: const Text("Expenses"),
                     ),
-                    child: const Text("Expenses"),
                   ),
                 ),
               ),
@@ -77,16 +78,13 @@ class _DynamicButtonsWidgetState extends State<DynamicButtonsWidget> {
           Expanded(
             child: GestureDetector(
               onTap: () {
-                setState(() {
-                  isExpensesSelected = false; // Select Income
-                });
-                widget.onSelectionChanged(false); // Notify parent widget
+                setState(() => isExpensesSelected = false);
+                widget.onSelectionChanged(false);
               },
               child: AnimatedContainer(
-                duration:
-                    const Duration(milliseconds: 300), // Animation duration
-                curve: Curves.easeInOut, // Animation curve
-                height: 50,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                height: screenWidth / 7,
                 decoration: BoxDecoration(
                   color: isExpensesSelected
                       ? Colors.transparent
@@ -97,17 +95,20 @@ class _DynamicButtonsWidgetState extends State<DynamicButtonsWidget> {
                   ),
                 ),
                 child: Center(
-                  child: AnimatedDefaultTextStyle(
-                    duration:
-                        const Duration(milliseconds: 300), // Animation duration
-                    style: GoogleFonts.outfit(
-                      color: isExpensesSelected
-                          ? switchColor(context)
-                          : primaryColor(context),
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      style: GoogleFonts.outfit(
+                        color: isExpensesSelected
+                            ? switchColor(context)
+                            : primaryColor(context),
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      child: const Text("Income"),
                     ),
-                    child: const Text("Income"),
                   ),
                 ),
               ),
