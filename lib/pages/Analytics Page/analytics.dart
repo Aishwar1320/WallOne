@@ -3,12 +3,17 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:wallone/common_widgets/insights_quickaccess.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'dart:math' as math;
 
 class AnalyticsPage extends StatefulWidget {
-  const AnalyticsPage({super.key});
+  final VoidCallback onSeeAllAIAdvisor;
+  const AnalyticsPage({
+    super.key,
+    required this.onSeeAllAIAdvisor,
+  });
 
   @override
   State<AnalyticsPage> createState() => _AnalyticsPageState();
@@ -53,17 +58,20 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 40),
-                  _buildSectionWithBadge("Monthly Overview"),
+                  _buildSectionWithBadge("Finance Overview"),
                   const SizedBox(height: 16),
                   _buildMonthlyComparisonChart(context, provider),
                   const SizedBox(height: 40),
                   _buildSectionWithInfoButton(
                     "WallOne AI",
                     context,
-                    onInfoPressed: () => _showInvestmentInfo(context),
+                    onInfoPressed: () => _showAdviserInfo(context),
                   ),
                   const SizedBox(height: 16),
-                  const SizedBox(height: 40),
+                  MinimalInsightDisplay(
+                    onTap: widget.onSeeAllAIAdvisor,
+                  ),
+                  const SizedBox(height: 110),
                 ],
               ),
             ),
@@ -74,6 +82,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   }
 
   Widget _buildSectionWithBadge(String title) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -91,7 +100,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             Text(
               title,
               style: GoogleFonts.outfit(
-                fontSize: 24,
+                fontSize: screenWidth / 20,
                 fontWeight: FontWeight.bold,
                 color: primaryColor(context),
                 letterSpacing: 0.5,
@@ -105,6 +114,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
   Widget _buildSectionWithInfoButton(String title, BuildContext context,
       {required VoidCallback onInfoPressed}) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -122,7 +132,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             Text(
               title,
               style: GoogleFonts.outfit(
-                fontSize: 24,
+                fontSize: screenWidth / 20,
                 fontWeight: FontWeight.bold,
                 color: primaryColor(context),
                 letterSpacing: 0.5,
@@ -148,7 +158,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             child: Icon(
               Icons.info_outline,
               color: primaryColor(context),
-              size: 20,
+              size: screenWidth / 25,
             ),
           ),
         ),
@@ -218,11 +228,11 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Theme.of(context).cardColor,
-            Theme.of(context).cardColor.withOpacity(0.9),
+            boxColor(context),
+            boxColor(context).withOpacity(0.9),
           ],
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: shadowColor(context).withOpacity(0.1),
@@ -249,23 +259,26 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                     child: Icon(
                       Icons.bar_chart,
                       color: primaryColor(context),
-                      size: 20,
+                      size: screenWidth / 25,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Text(
                     'Income vs Expenses',
                     style: GoogleFonts.outfit(
-                      fontSize: 18,
+                      fontSize: screenWidth / 25,
                       fontWeight: FontWeight.bold,
-                      color: textColor,
+                      color: cardTextColor(context),
                     ),
                   ),
                 ],
               ),
+
+              //
+              const SizedBox(width: 5),
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
                   color: primaryColor(context).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -273,7 +286,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 child: Text(
                   '$monthName $year',
                   style: GoogleFonts.outfit(
-                    fontSize: 14,
+                    fontSize: screenWidth / 44,
                     fontWeight: FontWeight.w500,
                     color: primaryColor(context),
                   ),
@@ -304,7 +317,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                         strokeWidth: 1,
                       );
                     }
-                    return FlLine(color: Colors.transparent);
+                    return const FlLine(color: Colors.transparent);
                   },
                 ),
                 titlesData: FlTitlesData(
@@ -545,7 +558,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
   // Helper widgets
 
-  void _showInvestmentInfo(BuildContext context) {
+  void _showAdviserInfo(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -569,6 +582,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           ),
           child: Column(
             children: [
+              // Drag handle
               Container(
                 width: 40,
                 height: 5,
@@ -578,6 +592,8 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                   borderRadius: BorderRadius.circular(5),
                 ),
               ),
+
+              // Header
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Row(
@@ -589,14 +605,14 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
-                        Icons.info_outline,
+                        Icons.smart_toy_outlined,
                         color: primaryColor(context),
                         size: 24,
                       ),
                     ),
                     const SizedBox(width: 16),
                     Text(
-                      'Investment Tips',
+                      'WallOne AI Advisor',
                       style: GoogleFonts.outfit(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -607,6 +623,8 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 ),
               ),
               const SizedBox(height: 24),
+
+              // Static info list
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -614,63 +632,60 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                   children: [
                     _buildTipCard(
                       context,
-                      icon: Icons.bar_chart,
-                      title: 'Diversify Your Portfolio',
-                      description:
-                          'Spread your investments across different asset classes to reduce risk. A balanced portfolio typically includes stocks, bonds, and other investment vehicles.',
-                    ),
-                    _buildTipCard(
-                      context,
-                      icon: Icons.schedule,
-                      title: 'Invest Regularly',
-                      description:
-                          'Consider setting up automatic investments on a regular schedule. This strategy, known as dollar-cost averaging, can help reduce the impact of market volatility.',
-                    ),
-                    _buildTipCard(
-                      context,
                       icon: Icons.trending_up,
-                      title: 'Long-term Focus',
+                      title: "📈 Smart Investments",
                       description:
-                          'Historically, markets have trended upward over the long term despite short-term fluctuations. Stay focused on your long-term financial goals.',
+                          "WallOne analyzes your spending patterns and suggests optimal investment opportunities tailored to your risk level.",
                     ),
                     _buildTipCard(
                       context,
-                      icon: Icons.account_balance,
-                      title: 'Emergency Fund First',
+                      icon: Icons.account_balance_wallet_outlined,
+                      title: "💡 Savings Optimization",
                       description:
-                          'Before investing heavily, ensure you have an emergency fund covering 3-6 months of expenses in easily accessible accounts.',
+                          "Our AI automatically identifies areas where you can save more — without impacting your lifestyle.",
                     ),
                     _buildTipCard(
                       context,
-                      icon: Icons.school,
-                      title: 'Continue Learning',
+                      icon: Icons.pie_chart_outline,
+                      title: "📊 Budget Insights",
                       description:
-                          'Financial markets evolve continuously. Stay informed about investment strategies and economic trends to make better decisions.',
+                          "Get monthly reports showing where your money goes, with actionable advice to improve your budgeting habits.",
                     ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor(context),
-                          foregroundColor: inversePrimaryColor(context),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Got it',
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                    _buildTipCard(
+                      context,
+                      icon: Icons.security_outlined,
+                      title: "🔒 Portable",
+                      description:
+                          "You can even use your own key to get more premium features",
+                    ),
+                  ],
+                ),
+              ),
+
+              // Got it button
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor(context),
+                      foregroundColor: inversePrimaryColor(context),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    const SizedBox(height: 40),
-                  ],
+                    child: Text(
+                      'Got it',
+                      style: GoogleFonts.outfit(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -746,6 +761,20 @@ class _AnalyticsPageState extends State<AnalyticsPage>
       ),
     );
   }
+
+// Helper to map priority → icon
+  // IconData _priorityIcon(AdvicePriority priority) {
+  //   switch (priority) {
+  //     case AdvicePriority.critical:
+  //       return Icons.error;
+  //     case AdvicePriority.high:
+  //       return Icons.warning_amber_rounded;
+  //     case AdvicePriority.medium:
+  //       return Icons.info_outline;
+  //     case AdvicePriority.low:
+  //       return Icons.check_circle_outline;
+  //   }
+  // }
 }
 
 // Custom painter for dot pattern

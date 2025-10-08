@@ -57,6 +57,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
         ],
       ),
       child: TextFormField(
+        style: GoogleFonts.outfit(
+          fontSize: 15,
+          color: primaryColor(context),
+        ),
         controller: widget.controller,
         focusNode: _focusNode,
         keyboardType: widget.keyboardType,

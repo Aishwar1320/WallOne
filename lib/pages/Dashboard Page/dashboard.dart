@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:wallone/common_widgets/dynamic_buttons.dart';
+import 'package:wallone/common_widgets/filter_control.dart';
+import 'package:wallone/common_widgets/item_list.dart';
+import 'package:wallone/common_widgets/total_expense.dart';
 import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/utils/constants.dart';
-import 'package:wallone/widgets/dynamic_buttons.dart';
-import 'package:wallone/widgets/filter_control.dart';
-import 'package:wallone/widgets/item_list.dart';
-import 'package:wallone/widgets/total_expense.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
