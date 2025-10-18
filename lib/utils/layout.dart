@@ -128,41 +128,43 @@ class _DesignLayoutState extends State<DesignLayout> {
         centerTitle: true,
         title: Padding(
           padding: const EdgeInsets.only(right: 8.0),
-          child: Column(
-            children: [
-              RichText(
-                text: TextSpan(
+          child: _selectedIndex != 0
+              ? Column(
                   children: [
-                    TextSpan(
-                      text: symbol,
-                      style: GoogleFonts.russoOne(
-                        fontSize: 20,
-                        color: purpleColors(context),
-                        fontWeight: FontWeight.bold,
+                    RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: symbol,
+                            style: GoogleFonts.russoOne(
+                              fontSize: 20,
+                              color: purpleColors(context),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const WidgetSpan(
+                            child: SizedBox(width: 1),
+                          ),
+                          TextSpan(
+                            text: balanceProvider.totalBalance.toString(),
+                            style: GoogleFonts.russoOne(
+                              fontSize: 20,
+                              color: primaryColor(context),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const WidgetSpan(
-                      child: SizedBox(width: 1),
-                    ),
-                    TextSpan(
-                      text: balanceProvider.totalBalance.toString(),
-                      style: GoogleFonts.russoOne(
-                        fontSize: 20,
+                    Text(
+                      "Total Balance",
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
                         color: primaryColor(context),
                       ),
                     ),
                   ],
-                ),
-              ),
-              Text(
-                "Total Balance",
-                style: GoogleFonts.outfit(
-                  fontSize: 13,
-                  color: primaryColor(context),
-                ),
-              ),
-            ],
-          ),
+                )
+              : const SizedBox.shrink(),
         ),
         actions: [
           Padding(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'package:wallone/widgets/dynamic_buttons.dart';
@@ -22,175 +23,207 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final code = context.read<BalanceProvider>().currencyCode;
+    final symbol = NumberFormat.simpleCurrency(name: code).currencySymbol;
+    final balanceProvider = Provider.of<BalanceProvider>(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 110),
       physics: const BouncingScrollPhysics(),
-      child: Column(
-        spacing: 10,
-        children: [
-          // Expenses And Income Button With Month Drop Down List
-          Container(
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: inversePrimaryColor(context),
-              borderRadius: BorderRadius.circular(25),
-              boxShadow: [
-                BoxShadow(
-                  color: shadowColor(context).withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10.0,
-                vertical: 10,
-              ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Column(
+          spacing: 10,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
               child: Column(
-                spacing: 20,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      //
-
-                      // Dynamic Switch Buttons
-                      Expanded(
-                        flex: 3,
-                        child: DynamicButtonsWidget(
-                          onSelectionChanged: (isExpensesSelected) {
-                            setState(() {
-                              this.isExpensesSelected = isExpensesSelected;
-                            });
-
-                            Provider.of<ListProvider>(context, listen: false)
-                                .setFilter(
-                              isExpensesSelected: isExpensesSelected,
-                              period: selectedPeriod,
-                              isActive: selectedPeriod != 'All Dates',
-                            );
-                          },
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      // Drop Down Menu
-                      Expanded(
-                        flex: 2,
-                        child: TransactionFilterControls(
-                          isExpensesSelected: isExpensesSelected,
-                          selectedPeriod: selectedPeriod,
-                          onTypeChanged: (value) =>
-                              setState(() => isExpensesSelected = value),
-                          onPeriodChanged: (period) {
-                            final newPeriod = period ?? 'All Dates';
-                            setState(() {
-                              selectedPeriod = newPeriod;
-                            });
-
-                            Provider.of<ListProvider>(context, listen: false)
-                                .setFilter(
-                              isExpensesSelected: isExpensesSelected,
-                              period: newPeriod,
-                              isActive: newPeriod != 'All Dates',
-                            );
-                          },
-                        ),
-                      )
-                    ],
+                  Text(
+                    'Balance',
+                    style: GoogleFonts.outfit(
+                      fontSize: 30,
+                      color: purpleColors(context),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-
-                  // Day - Week - Month Total
-                  Row(
-                    spacing: 10,
-                    children: [
-                      Expanded(
-                        child: TotalExpenseBoxWidget(
-                          label: "D A Y",
-                          balanceType: 'daily',
-                          isExpensesSelected: isExpensesSelected,
-                        ),
-                      ),
-                      Expanded(
-                        child: TotalExpenseBoxWidget(
-                          label: "W E E K",
-                          balanceType: 'weekly',
-                          isExpensesSelected: isExpensesSelected,
-                        ),
-                      ),
-                      Expanded(
-                        child: TotalExpenseBoxWidget(
-                          label: "M O N T H",
-                          balanceType: 'monthly',
-                          isExpensesSelected: isExpensesSelected,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    symbol + balanceProvider.totalBalance.toString(),
+                    style: GoogleFonts.outfit(
+                      fontSize: 35,
+                      color: primaryColor(context),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
 
-          // Header
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10.0),
-            child: Text(
-              "T R A N S A C T I O N S",
-              style: GoogleFonts.outfit(
-                fontSize: 20,
-                color: primaryColor(context),
-                fontWeight: FontWeight.bold,
+            // Expenses And Income Button With Month Drop Down List
+            Container(
+              decoration: BoxDecoration(
+                color: inversePrimaryColor(context),
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [
+                  BoxShadow(
+                    color: shadowColor(context).withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10.0,
+                  vertical: 10,
+                ),
+                child: Column(
+                  spacing: 20,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        //
+
+                        // Dynamic Switch Buttons
+                        Expanded(
+                          flex: 3,
+                          child: DynamicButtonsWidget(
+                            onSelectionChanged: (isExpensesSelected) {
+                              setState(() {
+                                this.isExpensesSelected = isExpensesSelected;
+                              });
+
+                              Provider.of<ListProvider>(context, listen: false)
+                                  .setFilter(
+                                isExpensesSelected: isExpensesSelected,
+                                period: selectedPeriod,
+                                isActive: selectedPeriod != 'All Dates',
+                              );
+                            },
+                          ),
+                        ),
+
+                        const SizedBox(width: 10),
+
+                        // Drop Down Menu
+                        Expanded(
+                          flex: 2,
+                          child: TransactionFilterControls(
+                            isExpensesSelected: isExpensesSelected,
+                            selectedPeriod: selectedPeriod,
+                            onTypeChanged: (value) =>
+                                setState(() => isExpensesSelected = value),
+                            onPeriodChanged: (period) {
+                              final newPeriod = period ?? 'All Dates';
+                              setState(() {
+                                selectedPeriod = newPeriod;
+                              });
+
+                              Provider.of<ListProvider>(context, listen: false)
+                                  .setFilter(
+                                isExpensesSelected: isExpensesSelected,
+                                period: newPeriod,
+                                isActive: newPeriod != 'All Dates',
+                              );
+                            },
+                          ),
+                        )
+                      ],
+                    ),
+
+                    // Day - Week - Month Total
+                    Row(
+                      spacing: 10,
+                      children: [
+                        Expanded(
+                          child: TotalExpenseBoxWidget(
+                            label: "D A Y",
+                            balanceType: 'daily',
+                            isExpensesSelected: isExpensesSelected,
+                          ),
+                        ),
+                        Expanded(
+                          child: TotalExpenseBoxWidget(
+                            label: "W E E K",
+                            balanceType: 'weekly',
+                            isExpensesSelected: isExpensesSelected,
+                          ),
+                        ),
+                        Expanded(
+                          child: TotalExpenseBoxWidget(
+                            label: "M O N T H",
+                            balanceType: 'monthly',
+                            isExpensesSelected: isExpensesSelected,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
 
-          // Transaction List
-          Consumer<ListProvider>(
-            key: ValueKey('${isExpensesSelected}_$selectedPeriod'),
-            builder: (context, listProvider, child) {
-              final transactions = listProvider.getFilteredTransactions(
-                isExpensesSelected,
-                selectedPeriod,
-              );
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10.0),
+              child: Text(
+                "T R A N S A C T I O N S",
+                style: GoogleFonts.outfit(
+                  fontSize: 20,
+                  color: primaryColor(context),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
 
-              // Group transactions by date
-              final Map<String, List<AllListProvider>> groupedTransactions = {};
-              for (final transaction in transactions) {
-                DateTime parsedDate;
-                try {
-                  parsedDate = DateTime.parse(transaction.date);
-                } catch (e) {
-                  parsedDate = DateFormat('dd-MM-yyyy').parse(transaction.date);
+            // Transaction List
+            Consumer<ListProvider>(
+              key: ValueKey('${isExpensesSelected}_$selectedPeriod'),
+              builder: (context, listProvider, child) {
+                final transactions = listProvider.getFilteredTransactions(
+                  isExpensesSelected,
+                  selectedPeriod,
+                );
+
+                // Group transactions by date
+                final Map<String, List<AllListProvider>> groupedTransactions =
+                    {};
+                for (final transaction in transactions) {
+                  DateTime parsedDate;
+                  try {
+                    parsedDate = DateTime.parse(transaction.date);
+                  } catch (e) {
+                    parsedDate =
+                        DateFormat('dd-MM-yyyy').parse(transaction.date);
+                  }
+                  final dateKey = DateFormat('yyyy-MM-dd').format(parsedDate);
+
+                  (groupedTransactions[dateKey] ??= []).add(transaction);
                 }
-                final dateKey = DateFormat('yyyy-MM-dd').format(parsedDate);
 
-                (groupedTransactions[dateKey] ??= []).add(transaction);
-              }
+                // Sort dates descending
+                final sortedDates = groupedTransactions.keys.toList()
+                  ..sort((a, b) => b.compareTo(a));
 
-              // Sort dates descending
-              final sortedDates = groupedTransactions.keys.toList()
-                ..sort((a, b) => b.compareTo(a));
-
-              return ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: sortedDates.length,
-                itemBuilder: (context, index) {
-                  final date = sortedDates[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: ItemListWidget(
-                      transactions: groupedTransactions[date]!,
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ],
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: sortedDates.length,
+                  itemBuilder: (context, index) {
+                    final date = sortedDates[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: ItemListWidget(
+                        transactions: groupedTransactions[date]!,
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
