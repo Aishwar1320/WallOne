@@ -90,15 +90,24 @@ Color budgetDeleteBackground(BuildContext context) =>
 
 // Snackbar
 
-void showCustomSnackBar(BuildContext context) {
+void showCustomSnackBar(
+  BuildContext context,
+  String message, {
+  String? actionLabel,
+  VoidCallback? onAction,
+}) {
   final overlay = Overlay.of(context);
   final overlayEntry = OverlayEntry(
     builder: (context) {
-      return const Positioned(
+      return Positioned(
         bottom: 100, // Position from the bottom
         left: 50,
         right: 40,
-        child: _CustomSnackBar(message: 'Coming Soon!'),
+        child: _CustomSnackBar(
+          message: message,
+          actionLabel: actionLabel,
+          onAction: onAction,
+        ),
       );
     },
   );
@@ -114,8 +123,14 @@ void showCustomSnackBar(BuildContext context) {
 
 class _CustomSnackBar extends StatefulWidget {
   final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
-  const _CustomSnackBar({required this.message});
+  const _CustomSnackBar({
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+  });
 
   @override
   State<_CustomSnackBar> createState() => _CustomSnackBarState();
@@ -178,10 +193,25 @@ class _CustomSnackBarState extends State<_CustomSnackBar>
             children: [
               const Icon(Icons.info, color: Colors.white),
               const SizedBox(width: 8),
-              Text(
-                widget.message,
-                style: const TextStyle(color: Colors.white),
+              Expanded(
+                child: Text(
+                  widget.message,
+                  style: const TextStyle(color: Colors.white),
+                ),
               ),
+              if (widget.actionLabel != null && widget.onAction != null) ...[
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: widget.onAction,
+                  child: Text(
+                    widget.actionLabel!,
+                    style: const TextStyle(
+                      color: Colors.yellow,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

@@ -1,7 +1,11 @@
+import 'package:device_preview/device_preview.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wallone/pages/onboarding_page.dart';
+import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/investment_provider.dart';
 import 'package:wallone/state/budget_provider.dart';
@@ -16,42 +20,78 @@ import 'package:wallone/utils/services/shared_pref.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await dotenv.load(fileName: ".env");
+
   // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
 
-  // BalanceProvider
+  // Retrieve the API key from the .env file
+  final apiKeyFromEnv = dotenv.env['GEMINI_API_KEY']?.trim();
+
+  // Check if a key is present in the .env file
+  if (apiKeyFromEnv != null && apiKeyFromEnv.isNotEmpty) {
+    // Save the API key to SharedPreferences for later use
+    // You might want to do this only once or on app start.
+    await prefs.setString('GEMINI_API_KEY', apiKeyFromEnv);
+    print(
+        '[Main] API Key successfully loaded from .env and saved to SharedPreferences.');
+  } else {
+    print(
+        '[Main] WARNING: GEMINI_API_KEY is missing or empty in the .env file.');
+  }
+
+  // Initialize BalanceStorage
   final storage = await BalanceStorage.create();
+
+  // Create providers in the correct order
   final balanceProvider = BalanceProvider(storage);
-
-  // InvestmentProvider
   final investmentProvider = InvestmentProvider(storage);
-
-  // ListProvider with balanceProvider and investmentProvider
   final listProvider = ListProvider(balanceProvider, investmentProvider);
 
-  // BudgetProvider with balanceProvider, investmentProvider, and SharedPreferences
+  // Set up provider relationships BEFORE creating BudgetProvider
+  print('[Main] Setting up provider relationships...');
+
+  // Set balance provider reference in investment provider
+  investmentProvider.setBalanceProvider(balanceProvider);
+
+  // Set list provider reference in balance provider
+  balanceProvider.setListProvider(listProvider);
+
+  // Set list provider reference in investment provider
+  investmentProvider.setListProvider(listProvider);
+
+  // Wait a bit to ensure all async initialization is complete
+  await Future.delayed(const Duration(milliseconds: 100));
+
+  // Create BudgetProvider after all relationships are established
   final budgetProvider =
       BudgetProvider(balanceProvider, investmentProvider, prefs);
 
-  // linked together
-  balanceProvider.setListProvider(listProvider);
+  final aiAdvisorProvider = AIAdvisorProvider(prefs);
+
+  print('[Main] All providers initialized and linked');
 
   runApp(
-    MultiProvider(
-      providers: [
-        // existing instances using .value
-        ChangeNotifierProvider<BalanceProvider>.value(value: balanceProvider),
-        ChangeNotifierProvider<InvestmentProvider>.value(
-            value: investmentProvider),
-        ChangeNotifierProvider<ListProvider>.value(value: listProvider),
-        ChangeNotifierProvider<BudgetProvider>.value(value: budgetProvider),
-        ChangeNotifierProvider(create: (_) => TransactionTypeProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(
-          create: (context) => CategoryProvider(prefs),
-        ),
-      ],
-      child: const MyApp(),
+    DevicePreview(
+      enabled: !kReleaseMode,
+      builder: (context) => MultiProvider(
+        providers: [
+          // Use .value for pre-created instances
+          ChangeNotifierProvider<BalanceProvider>.value(value: balanceProvider),
+          ChangeNotifierProvider<InvestmentProvider>.value(
+              value: investmentProvider),
+          ChangeNotifierProvider<ListProvider>.value(value: listProvider),
+          ChangeNotifierProvider<BudgetProvider>.value(value: budgetProvider),
+
+          // Create new instances for these
+          ChangeNotifierProvider(create: (_) => TransactionTypeProvider()),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+          ChangeNotifierProvider(create: (context) => CategoryProvider(prefs)),
+          ChangeNotifierProvider<AIAdvisorProvider>.value(
+              value: aiAdvisorProvider),
+        ],
+        child: const MyApp(),
+      ),
     ),
   );
 }
@@ -64,13 +104,13 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  static ResetBalanceService?
-      _resetBalanceService; // Make it static to prevent multiple instances
+  static ResetBalanceService? _resetBalanceService;
   bool _hasInitialized = false;
 
   @override
   void initState() {
     super.initState();
+    _initializeAI();
     WidgetsBinding.instance.addObserver(this);
 
     // Initialize the service only once
@@ -82,6 +122,29 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeResetService();
     });
+  }
+
+  Future<void> _initializeAI() async {
+    final prefs = await SharedPreferences.getInstance();
+    final apiKey = prefs.getString('GEMINI_API_KEY');
+
+    if (apiKey != null && mounted) {
+      final aiProvider = context.read<AIAdvisorProvider>();
+      final balanceProvider = context.read<BalanceProvider>();
+      final investmentProvider = context.read<InvestmentProvider>();
+      final budgetProvider = context.read<BudgetProvider>();
+      final listProvider = context.read<ListProvider>();
+      final categoryProvider = context.read<CategoryProvider>();
+
+      await aiProvider.initializeAdvisor(
+        apiKey: apiKey,
+        balanceProvider: balanceProvider,
+        investmentProvider: investmentProvider,
+        budgetProvider: budgetProvider,
+        listProvider: listProvider,
+        categoryProvider: categoryProvider,
+      );
+    }
   }
 
   void _initializeResetService() {

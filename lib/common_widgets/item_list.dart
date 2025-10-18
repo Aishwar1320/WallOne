@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:wallone/models/icon_map_model.dart';
-import 'package:wallone/pages/edit_transactions.dart';
+import 'package:wallone/pages/Transaction%20Management/edit_transactions.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/state/category_provider.dart';
@@ -15,9 +15,9 @@ class ItemListWidget extends StatefulWidget {
   final List<AllListProvider> transactions;
 
   const ItemListWidget({
-    Key? key,
+    super.key,
     required this.transactions,
-  }) : super(key: key);
+  });
 
   @override
   _ItemListWidgetState createState() => _ItemListWidgetState();
@@ -169,47 +169,55 @@ class _ItemListWidgetState extends State<ItemListWidget> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Consumer<CategoryProvider>(
-                          builder: (context, categoryProvider, child) {
-                            final iconKey = categoryProvider
-                                .getIconForCategory(transaction.category);
-                            final iconData = iconMap[iconKey] ??
-                                Icons.category; // map string → IconData
+                    Flexible(
+                      child: Row(
+                        children: [
+                          Consumer<CategoryProvider>(
+                            builder: (context, categoryProvider, child) {
+                              final iconKey = categoryProvider
+                                  .getIconForCategory(transaction.category);
+                              final iconData = iconMap[iconKey] ??
+                                  Icons.category; // map string → IconData
 
-                            return IconButton(
-                              icon: Icon(iconData),
-                              iconSize: 25,
-                              color: primaryColor(context),
-                              onPressed: () {},
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              transaction.category,
-                              style: GoogleFonts.outfit(
-                                fontSize: 17,
+                              return IconButton(
+                                icon: Icon(iconData),
+                                iconSize: 25,
                                 color: primaryColor(context),
-                                fontWeight: FontWeight.bold,
-                              ),
+                                onPressed: () {},
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  transaction.category,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 17,
+                                    color: primaryColor(context),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  transaction.title,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 15,
+                                    color: purpleColors(context),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
-                            Text(
-                              transaction.title,
-                              style: GoogleFonts.outfit(
-                                fontSize: 15,
-                                color: purpleColors(context),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.all(8.0),

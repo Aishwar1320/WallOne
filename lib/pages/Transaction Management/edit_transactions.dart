@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart'; // For input formatters
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:provider/provider.dart';
+import 'package:wallone/common_widgets/dropdown_menu.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/transaction_type_provider.dart';
 import 'package:wallone/utils/constants.dart';
-import 'package:wallone/widgets/dropdown_menu.dart';
 import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/state/category_provider.dart';
 
-class AddTransactionsPage extends StatefulWidget {
-  const AddTransactionsPage({super.key});
+class EditTransactionPage extends StatefulWidget {
+  final AllListProvider transaction;
+
+  const EditTransactionPage({Key? key, required this.transaction})
+      : super(key: key);
 
   @override
-  State<AddTransactionsPage> createState() => _AddTransactionsPageState();
+  State<EditTransactionPage> createState() => _EditTransactionPageState();
 }
 
-class _AddTransactionsPageState extends State<AddTransactionsPage> {
+class _EditTransactionPageState extends State<EditTransactionPage> {
   final TextEditingController _controller = TextEditingController();
   double _fieldWidth = 50;
 
@@ -27,10 +30,19 @@ class _AddTransactionsPageState extends State<AddTransactionsPage> {
   @override
   void initState() {
     super.initState();
+    // Pre-populate dropdowns and text field with the current transaction values.
+    selectedTitle = widget.transaction.title;
+    selectedCategory = widget.transaction.category;
+    _controller.text = widget.transaction.amount.toStringAsFixed(0);
+    _updateFieldWidth();
+
+    // Set the transaction type based on the existing transaction.
+    // If transaction.isIncome is true, then expenses are NOT selected.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<TransactionTypeProvider>(context, listen: false)
-          .resetToExpenses();
+          .setTransactionType(!widget.transaction.isIncome);
     });
+
     _controller.addListener(_updateFieldWidth);
   }
 
@@ -61,18 +73,17 @@ class _AddTransactionsPageState extends State<AddTransactionsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final code = context.read<BalanceProvider>().currencyCode;
-    final symbol = intl.NumberFormat.simpleCurrency(name: code).currencySymbol;
-
     final transactionTypeProvider =
         Provider.of<TransactionTypeProvider>(context);
     final listProvider = Provider.of<ListProvider>(context, listen: false);
+    final code = context.read<BalanceProvider>().currencyCode;
+    final symbol = intl.NumberFormat.simpleCurrency(name: code).currencySymbol;
 
     return Scaffold(
       backgroundColor: mainColor(context),
       appBar: AppBar(
         title: Text(
-          "Add Transactions",
+          "Edit Transaction",
           style: GoogleFonts.outfit(
             color: primaryColor(context),
             fontSize: 20,
@@ -90,6 +101,7 @@ class _AddTransactionsPageState extends State<AddTransactionsPage> {
         padding: const EdgeInsets.all(10.0),
         child: Column(
           children: [
+            // Two dropdown menus for selecting Payment mode and Transaction Type.
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -134,6 +146,7 @@ class _AddTransactionsPageState extends State<AddTransactionsPage> {
               ],
             ),
             const SizedBox(height: 40),
+            // Button to toggle between Expenses and Income.
             TextButton(
               onPressed: () {
                 transactionTypeProvider.toggleTransactionType();
@@ -149,6 +162,7 @@ class _AddTransactionsPageState extends State<AddTransactionsPage> {
                 ),
               ),
             ),
+            // Amount input field.
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -187,6 +201,7 @@ class _AddTransactionsPageState extends State<AddTransactionsPage> {
               ],
             ),
             const Spacer(),
+            // Submit button for saving changes.
             Align(
               alignment: Alignment.bottomRight,
               child: GestureDetector(
@@ -197,22 +212,23 @@ class _AddTransactionsPageState extends State<AddTransactionsPage> {
                   if (submittedAmount > 0 &&
                       selectedTitle != null &&
                       selectedCategory != null) {
-                    Provider.of<BalanceProvider>(context, listen: false);
-                    final isIncome = !transactionTypeProvider
-                        .isExpensesSelected; // Determine if it's income or expense
+                    final isIncome =
+                        !transactionTypeProvider.isExpensesSelected;
 
-                    final newTransaction = AllListProvider(
+                    // Create an updated transaction with the new values.
+                    final updatedTransaction = AllListProvider(
+                      id: widget.transaction.id, // Retain the original ID.
                       title: selectedTitle!,
                       category: selectedCategory!,
                       amount: submittedAmount,
-                      isIncome: isIncome, // Pass the correct value for isIncome
+                      isIncome: isIncome,
+                      date: widget.transaction.date, // Retain original date.
                     );
 
-                    listProvider.addTransaction(newTransaction);
-                    _controller.clear();
+                    listProvider.editTransaction(updatedTransaction);
                     Navigator.pop(context);
                   } else {
-                    // Show an error message
+                    // Show an error message.
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(

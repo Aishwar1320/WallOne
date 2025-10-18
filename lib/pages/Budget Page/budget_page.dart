@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:wallone/common_widgets/usage_card.dart';
 import 'package:wallone/state/budget_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/utils/constants.dart';
-import 'package:wallone/widgets/budget_card.dart';
-import 'package:wallone/widgets/investment_card.dart';
+import 'package:wallone/common_widgets/budget_card.dart';
+import 'package:wallone/common_widgets/investment_card.dart';
 
 class BudgetPage extends StatefulWidget {
   const BudgetPage({super.key});
@@ -85,7 +86,7 @@ class _BudgetPageState extends State<BudgetPage>
                 _buildSectionWithInfoButton(
                   "Fixed Investments",
                   context,
-                  onInfoPressed: () => showCustomSnackBar(context),
+                  onInfoPressed: () => _showInvestmentInfo(context),
                 ),
                 const SizedBox(height: 16),
                 const FixedInvestmentsCard(),
@@ -100,6 +101,7 @@ class _BudgetPageState extends State<BudgetPage>
 
   Widget _buildSectionWithBadge(
       String title, String badgeText, BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -117,7 +119,7 @@ class _BudgetPageState extends State<BudgetPage>
             Text(
               title,
               style: GoogleFonts.outfit(
-                fontSize: 24,
+                fontSize: screenWidth / 20,
                 fontWeight: FontWeight.bold,
                 color: primaryColor(context),
                 letterSpacing: 0.5,
@@ -144,7 +146,7 @@ class _BudgetPageState extends State<BudgetPage>
           child: Text(
             badgeText,
             style: GoogleFonts.outfit(
-              fontSize: 16,
+              fontSize: screenWidth / 25,
               fontWeight: FontWeight.w600,
               color: primaryColor(context),
             ),
@@ -156,6 +158,7 @@ class _BudgetPageState extends State<BudgetPage>
 
   Widget _buildSectionWithInfoButton(String title, BuildContext context,
       {required VoidCallback onInfoPressed}) {
+    final screenWidth = MediaQuery.of(context).size.width;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -173,7 +176,7 @@ class _BudgetPageState extends State<BudgetPage>
             Text(
               title,
               style: GoogleFonts.outfit(
-                fontSize: 24,
+                fontSize: screenWidth / 20,
                 fontWeight: FontWeight.bold,
                 color: primaryColor(context),
                 letterSpacing: 0.5,
@@ -199,7 +202,7 @@ class _BudgetPageState extends State<BudgetPage>
             child: Icon(
               Icons.info_outline,
               color: primaryColor(context),
-              size: 20,
+              size: screenWidth / 25,
             ),
           ),
         ),
@@ -212,10 +215,10 @@ class _BudgetPageState extends State<BudgetPage>
       BudgetProvider budgetProvider,
       double progress,
       BalanceProvider balanceProvider) {
-    final dailyUsage = budgetProvider.dailyUsage;
     final monthlyExpenses = balanceProvider.monthlyExpenses;
     final code = context.read<BalanceProvider>().currencyCode;
     final symbol = NumberFormat.simpleCurrency(name: code).currencySymbol;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     // Determine progress color based on percentage
     Color progressColor = Colors.green;
@@ -308,14 +311,14 @@ class _BudgetPageState extends State<BudgetPage>
                                 child: Icon(
                                   Icons.account_balance_wallet,
                                   color: Colors.white.withOpacity(0.9),
-                                  size: 18,
+                                  size: screenWidth / 25,
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 'Total Savings',
                                 style: GoogleFonts.outfit(
-                                  fontSize: 16,
+                                  fontSize: screenWidth / 25,
                                   color: Colors.white.withOpacity(0.9),
                                   fontWeight: FontWeight.w500,
                                   letterSpacing: 0.5,
@@ -327,7 +330,7 @@ class _BudgetPageState extends State<BudgetPage>
                           Text(
                             "$symbol${budgetProvider.monthlySavings.toStringAsFixed(2)}",
                             style: GoogleFonts.outfit(
-                              fontSize: 32,
+                              fontSize: screenWidth / 14,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                               letterSpacing: 0.5,
@@ -336,64 +339,11 @@ class _BudgetPageState extends State<BudgetPage>
                         ],
                       ),
                     ),
-                    // Daily Usage Column
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Icon(
-                                  Icons.calendar_today,
-                                  color: Colors.white.withOpacity(0.9),
-                                  size: 14,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Daily Usage',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 14,
-                                  color: Colors.white.withOpacity(0.9),
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '$symbol${dailyUsage.toStringAsFixed(2)}',
-                            style: GoogleFonts.outfit(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
+
+                    UsageCard(
+                      budgetProvider: budgetProvider,
+                      balanceProvider: balanceProvider,
+                      progress: progress,
                     ),
                   ],
                 ),
@@ -422,7 +372,7 @@ class _BudgetPageState extends State<BudgetPage>
                             Text(
                               'Monthly Expenses',
                               style: GoogleFonts.outfit(
-                                fontSize: 16,
+                                fontSize: screenWidth / 27,
                                 color: Colors.white.withOpacity(0.9),
                                 fontWeight: FontWeight.w500,
                               ),
@@ -501,7 +451,7 @@ class _BudgetPageState extends State<BudgetPage>
                         Text(
                           '${(progress * 100).toStringAsFixed(1)}% of monthly income spent',
                           style: GoogleFonts.outfit(
-                            fontSize: 14,
+                            fontSize: screenWidth / 27,
                             color: progress > 0.8
                                 ? Colors.red.shade300
                                 : Colors.white.withOpacity(0.9),
@@ -545,4 +495,207 @@ class _BudgetPageState extends State<BudgetPage>
       }),
     );
   }
+}
+
+void _showInvestmentInfo(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      return Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(32),
+            topRight: Radius.circular(32),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Drag handle
+            Container(
+              width: 40,
+              height: 5,
+              margin: const EdgeInsets.only(top: 16, bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(5),
+              ),
+            ),
+
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: primaryColor(context).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.savings,
+                      color: primaryColor(context),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    'Investment Tracker',
+                    style: GoogleFonts.outfit(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: primaryColor(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Static info list
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                physics: const BouncingScrollPhysics(),
+                children: [
+                  _buildTipCard(
+                    context,
+                    icon: Icons.trending_up,
+                    title: "📈 Monthly Growth",
+                    description:
+                        "Your chosen amount (e.g., ₹500) is automatically added every month, helping you grow your investments consistently.",
+                  ),
+                  _buildTipCard(
+                    context,
+                    icon: Icons.pause_circle_outline,
+                    title: "⏸ Pause Anytime",
+                    description:
+                        "You can disable or pause an active investment if you decide to stop it temporarily. No progress is lost.",
+                  ),
+                  _buildTipCard(
+                    context,
+                    icon: Icons.track_changes,
+                    title: "🔍 Progress Tracking",
+                    description:
+                        "WallOne keeps track of how much you’ve invested so far, showing month-over-month growth in one place.",
+                  ),
+                  _buildTipCard(
+                    context,
+                    icon: Icons.check_circle_outline,
+                    title: "✅ Easy Management",
+                    description:
+                        "Start, stop, or adjust your fixed investments anytime with just one tap — no complexity involved.",
+                  ),
+                ],
+              ),
+            ),
+
+            // Got it button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor(context),
+                    foregroundColor: inversePrimaryColor(context),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Text(
+                    'Got it',
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+Widget _buildTipCard(BuildContext context,
+    {required IconData icon,
+    required String title,
+    required String description}) {
+  return Container(
+    margin: const EdgeInsets.only(bottom: 16),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Theme.of(context).cardColor,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+          color: shadowColor(context).withOpacity(0.05),
+          blurRadius: 10,
+          offset: const Offset(0, 5),
+        ),
+      ],
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: primaryColor(context).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            icon,
+            color: primaryColor(context),
+            size: 24,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                description,
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  color: Theme.of(context)
+                      .textTheme
+                      .bodyLarge
+                      ?.color
+                      ?.withOpacity(0.7),
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }

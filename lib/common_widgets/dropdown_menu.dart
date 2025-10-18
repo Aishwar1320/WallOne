@@ -180,7 +180,7 @@ class _DropdownMenuDynamicWidgetState extends State<DropdownMenuDynamicWidget> {
         Container(
           height: 50,
           decoration: BoxDecoration(
-            color: widget.boxColor,
+            color: budgetBackgroundLight(context),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(

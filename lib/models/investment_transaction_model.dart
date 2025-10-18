@@ -54,3 +54,46 @@ class InvestmentTransactionModel {
   @override
   int get hashCode => amount.hashCode ^ date.hashCode ^ id.hashCode;
 }
+
+class Investment {
+  final String name;
+  final double amount;
+  bool isActive;
+  final DateTime startDate;
+  DateTime lastDeductionDate;
+  final String category;
+  final List<double> monthlyDeductions;
+
+  Investment({
+    required this.name,
+    required this.amount,
+    this.isActive = true,
+    DateTime? startDate,
+    DateTime? lastDeductionDate,
+    this.category = 'Other',
+    List<double>? monthlyDeductions,
+  })  : startDate = startDate ?? DateTime.now(),
+        lastDeductionDate = lastDeductionDate ?? DateTime.now(),
+        monthlyDeductions = monthlyDeductions ?? [];
+
+  // Returns the cumulative sum of all deduction transactions.
+  double get totalDeducted =>
+      monthlyDeductions.fold(0.0, (sum, amount) => sum + amount);
+
+  Investment copyWith({
+    double? amount,
+    bool? isActive,
+    DateTime? lastDeductionDate,
+    String? category,
+  }) {
+    return Investment(
+      name: name,
+      amount: amount ?? this.amount,
+      isActive: isActive ?? this.isActive,
+      startDate: startDate,
+      lastDeductionDate: lastDeductionDate ?? this.lastDeductionDate,
+      category: category ?? this.category,
+      monthlyDeductions: monthlyDeductions,
+    );
+  }
+}
