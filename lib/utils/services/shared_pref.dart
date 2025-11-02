@@ -43,6 +43,86 @@ class BalanceStorage {
     };
   }
 
+  /// Balance history: map of date (yyyy-MM-dd) -> totalBalance for that date.
+  /// Stored as JSON string under key 'balanceHistory'.
+  Future<Map<String, double>> loadBalanceHistory() async {
+    try {
+      final raw = _prefs.getString('balanceHistory');
+      if (raw == null || raw.isEmpty) return {};
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      final Map<String, double> out = {};
+      decoded.forEach((k, v) {
+        try {
+          out[k] = (v is num) ? v.toDouble() : double.parse(v.toString());
+        } catch (e) {}
+      });
+      return out;
+    } catch (e) {
+      return {};
+    }
+  }
+
+  Future<void> saveBalanceHistory(Map<String, double> history) async {
+    try {
+      await _prefs.setString('balanceHistory', jsonEncode(history));
+    } catch (e) {}
+  }
+
+  /// Save a snapshot for a specific date (date-only portion will be used).
+  /// This will also prune entries older than [maxDays] (default 30).
+  Future<void> saveBalanceSnapshot(DateTime date, double totalBalance,
+      {int maxDays = 30}) async {
+    try {
+      final key = date.toIso8601String().split('T')[0];
+      final history = await loadBalanceHistory();
+      history[key] = totalBalance;
+
+      // prune older than maxDays
+      final cutoff = DateTime.now().subtract(Duration(days: maxDays));
+      final keysToKeep = history.keys.where((k) {
+        try {
+          final d = DateTime.parse(k);
+          return !d.isBefore(cutoff);
+        } catch (e) {
+          return false;
+        }
+      }).toList();
+
+      final Map<String, double> pruned = {};
+      for (final k in keysToKeep) {
+        pruned[k] = history[k]!;
+      }
+
+      await saveBalanceHistory(pruned);
+    } catch (e) {}
+  }
+
+  /// Return the saved balance for the given date (date-only). Returns null if
+  /// no snapshot exists for that date.
+  Future<double?> getBalanceForDate(DateTime date) async {
+    try {
+      final history = await loadBalanceHistory();
+      final key = date.toIso8601String().split('T')[0];
+      if (history.containsKey(key)) return history[key];
+
+      // If exact date not found, try to find the nearest earlier date in history
+      // (useful when snapshots are sparse). Return null if none found.
+      DateTime? best;
+      for (final k in history.keys) {
+        try {
+          final d = DateTime.parse(k);
+          if (!d.isAfter(date)) {
+            if (best == null || d.isAfter(best)) best = d;
+          }
+        } catch (e) {}
+      }
+      if (best != null) return history[best.toIso8601String().split('T')[0]];
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<void> saveBalances(Map<String, dynamic> balances) async {
     await _prefs.setDouble('totalBalance', balances['totalBalance']);
     await _prefs.setDouble('dailyExpenses', balances['dailyExpenses']);

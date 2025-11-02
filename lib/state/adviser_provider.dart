@@ -40,9 +40,27 @@ class AIAdvisorProvider with ChangeNotifier {
   static const String _dismissedInsightsKey = 'dismissed_insights';
 
   AIAdvisorProvider(this._prefs) {
-    _loadSettings();
-    _loadCachedInsights();
-    _loadExecutionHistory();
+    // Run async initialization without blocking the constructor.
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      await _loadSettings();
+      await _loadCachedInsights();
+      await _loadExecutionHistory();
+    } catch (e, st) {
+      _logError('Initialization failed', e, st);
+    }
+  }
+
+  @override
+  void dispose() {
+    // Stop any background AI scheduler when provider is disposed.
+    try {
+      AIScheduler.stop();
+    } catch (_) {}
+    super.dispose();
   }
 
   // Enhanced getters

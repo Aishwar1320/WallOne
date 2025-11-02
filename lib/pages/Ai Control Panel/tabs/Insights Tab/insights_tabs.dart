@@ -40,9 +40,6 @@ class _InsightsTabState extends State<InsightsTab> {
           onRefresh: () => provider.refreshInsights(forceRefresh: true),
           child: CustomScrollView(
             slivers: [
-              // Health Score Section
-              _buildHealthScoreSection(provider, context),
-
               // Statistics Section
               _buildStatisticsSection(provider, context),
 
@@ -57,7 +54,7 @@ class _InsightsTabState extends State<InsightsTab> {
                 child: SizedBox(
                   height: MediaQuery.of(context).padding.bottom +
                       kBottomNavigationBarHeight +
-                      10.0,
+                      50.0,
                 ),
               ),
             ],
@@ -67,83 +64,13 @@ class _InsightsTabState extends State<InsightsTab> {
     );
   }
 
-  Widget _buildHealthScoreSection(
-      AIAdvisorProvider provider, BuildContext context) {
-    final score = provider.getFinancialHealthScore();
-    final color = _getHealthScoreColor(score);
-
-    return SliverToBoxAdapter(
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16, right: 16, left: 16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: boxColor(context),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: shadowColor(context).withAlpha(20),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Text(
-              'Financial Health Score',
-              style: GoogleFonts.outfit(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: primaryColor(context),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 120,
-                  height: 120,
-                  child: CircularProgressIndicator(
-                    value: score / 100,
-                    strokeWidth: 8,
-                    backgroundColor: color.withAlpha(55),
-                    valueColor: AlwaysStoppedAnimation<Color>(color),
-                  ),
-                ),
-                Text(
-                  '$score',
-                  style: GoogleFonts.outfit(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _getHealthScoreDescription(score),
-              textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: primaryColor(context),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildStatisticsSection(
       AIAdvisorProvider provider, BuildContext context) {
     final stats = provider.getInsightsStatistics();
 
     return SliverToBoxAdapter(
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16, right: 16, left: 16),
+        margin: const EdgeInsets.only(bottom: 16, right: 16, left: 16, top: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: boxColor(context),
@@ -413,18 +340,5 @@ class _InsightsTabState extends State<InsightsTab> {
         ],
       ),
     );
-  }
-
-  Color _getHealthScoreColor(int score) {
-    if (score >= 80) return Colors.green;
-    if (score >= 60) return Colors.orange;
-    return Colors.red;
-  }
-
-  String _getHealthScoreDescription(int score) {
-    if (score >= 80) return 'Excellent financial health! Keep it up.';
-    if (score >= 60) return 'Good financial health with room for improvement.';
-    if (score >= 40) return 'Fair financial health. Consider the suggestions.';
-    return 'Financial health needs attention. Take action now.';
   }
 }

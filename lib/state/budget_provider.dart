@@ -1,21 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wallone/models/icon_map_model.dart';
 import 'package:wallone/models/investment_model.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/investment_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'dart:convert';
-
-/// Icon mapping for string keys to IconData
-final Map<String, IconData> iconMap = {
-  'food': Icons.fastfood,
-  'travel': Icons.flight,
-  'shopping': Icons.shopping_cart,
-  'salary': Icons.attach_money,
-  'home': Icons.home,
-  'entertainment': Icons.movie,
-  'others': Icons.category,
-};
 
 class Budget {
   final String category;
@@ -176,16 +166,27 @@ class BudgetProvider with ChangeNotifier {
     await _prefs.setString(_budgetsKey, encoded);
   }
 
-  Future<void> addBudget(String category, double amount, String iconKey) async {
-    final budget = Budget(
-      category: category,
-      amount: amount,
-      spent: 0,
-      iconKey: iconKey,
-    );
-    _budgets.add(budget);
-    await _saveBudgets();
-    _syncWithBalanceProvider();
+  /// Adds a new budget. Returns true on success, false on failure.
+  Future<bool> addBudget(String category, double amount, String iconKey) async {
+    try {
+      final budget = Budget(
+        category: category,
+        amount: amount,
+        spent: 0,
+        iconKey: iconKey,
+      );
+
+      _budgets.add(budget);
+      await _saveBudgets();
+
+      // Recompute spent values and notify listeners
+      _syncWithBalanceProvider();
+      return true;
+    } catch (e, st) {
+      debugPrint('[BudgetProvider] Failed to add budget: $e');
+      debugPrint('[BudgetProvider] Stack: $st');
+      return false;
+    }
   }
 
   Future<void> updateBudgetSpent(String id, double spent) async {

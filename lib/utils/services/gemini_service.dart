@@ -304,26 +304,32 @@ class GeminiFinancialAdvisor {
 
     final totalBalance = _balanceProvider.totalBalance;
 
-    return filteredInsights.where((insight) {
+    // Apply balance-based filters and capping in a deterministic loop
+    final List<FinancialInsight> finalFiltered = [];
+    for (final insight in filteredInsights) {
       if ((insight.type == InsightType.investment ||
               insight.type == InsightType.savings ||
               insight.type == InsightType.budget) &&
           totalBalance <= 0) {
         _log(
             'Filtered out ${insight.type.name} insight due to zero/negative balance');
-        return false;
+        continue;
       }
 
       // Optionally, cap recommended amounts based on balance
       if (insight.recommendedAmount != null &&
           insight.recommendedAmount! > totalBalance * 0.3) {
         _log(
-            'Capped recommended amount for ${insight.title} to 30% of total balance');
-        insight.copyWith(recommendedAmount: totalBalance * 0.3);
+            'Capping recommended amount for ${insight.title} to 30% of total balance');
+        final capped = insight.copyWith(recommendedAmount: totalBalance * 0.3);
+        finalFiltered.add(capped);
+        continue;
       }
 
-      return true;
-    }).toList();
+      finalFiltered.add(insight);
+    }
+
+    return finalFiltered;
   }
 
   /// Check if insight is duplicate based on existing data
@@ -841,8 +847,7 @@ class GeminiFinancialAdvisor {
   Map<String, dynamic> _gatherFinancialData() {
     // Filter out investment-related transactions so they don't count as expenses
     final recentTransactions = _listProvider.transactions
-        .where((t) => !(t.category.toLowerCase().contains('investment') ||
-            t.title.toLowerCase().contains('investment')))
+        .where((t) => t.transactionType != TransactionType.investment)
         .take(50)
         .map((t) => {
               'title': t.title,
@@ -996,6 +1001,7 @@ Make insights actionable where possible. Return only valid JSON.
 
     final headers = {
       'Content-Type': 'application/json',
+      // Gemini expects API key either as query param or header; prefer header for clarity.
       'x-goog-api-key': _apiKey,
     };
 
@@ -1035,19 +1041,52 @@ Make insights actionable where possible. Return only valid JSON.
       ]
     });
 
-    final response = await http.post(
-      Uri.parse('$_baseUrl?key=$_apiKey'),
-      headers: headers,
-      body: body,
-    );
+    // Make the request with a timeout and a small retry strategy for transient failures
+    const int maxRetries = 2;
+    int attempt = 0;
+    while (true) {
+      attempt++;
+      try {
+        final resp = await http
+            .post(Uri.parse(_baseUrl), headers: headers, body: body)
+            .timeout(const Duration(seconds: 15));
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final content = data['candidates'][0]['content']['parts'][0]['text'];
-      return content;
-    } else {
-      throw HttpException(
-          'API call failed: ${response.statusCode} - ${response.body}');
+        if (resp.statusCode == 200) {
+          final data = jsonDecode(resp.body);
+          // attempt different safe paths for content
+          String? content;
+          try {
+            content =
+                data['candidates'][0]['content']['parts'][0]['text'] as String?;
+          } catch (_) {
+            // fallback: try to extract any string within response
+            content = resp.body;
+          }
+
+          return content ?? '';
+        }
+
+        // Non-200: if retryable, try again, else throw
+        if (resp.statusCode >= 500 && attempt <= maxRetries) {
+          await Future.delayed(Duration(milliseconds: 500 * attempt));
+          continue;
+        }
+
+        throw HttpException(
+            'API call failed: ${resp.statusCode} - ${resp.body}');
+      } on TimeoutException {
+        if (attempt <= maxRetries) {
+          await Future.delayed(Duration(milliseconds: 400 * attempt));
+          continue;
+        }
+        rethrow;
+      } catch (e) {
+        if (attempt <= maxRetries) {
+          await Future.delayed(Duration(milliseconds: 400 * attempt));
+          continue;
+        }
+        rethrow;
+      }
     }
   }
 

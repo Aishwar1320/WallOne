@@ -26,6 +26,8 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
   late Animation<double> _scaleAnimation;
   Timer? _timer;
   final PageController _pageController = PageController();
+  final TextEditingController _amountController = TextEditingController();
+  String? _selectedCategoryForDialog;
 
   @override
   void initState() {
@@ -47,6 +49,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
   void dispose() {
     _timer?.cancel();
     _animationController.dispose();
+    _amountController.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -71,8 +74,10 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
   }
 
   Widget _buildAddBudgetDialog() {
-    final TextEditingController amountController = TextEditingController();
-    String? selectedCategory;
+    // Use a persistent controller so the typed value isn't lost if the
+    // dialog's internal StatefulBuilder rebuilds. The controller is cleared
+    // before the dialog is shown.
+    final TextEditingController amountController = _amountController;
 
     return StatefulBuilder(
       builder: (context, setState) {
@@ -132,12 +137,13 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                     boxColor: boxColor(context),
                     hintText: "Select Category",
                     onItemSelected: (value) {
+                      // update the dialog-local selection stored on the parent state
                       setState(() {
-                        selectedCategory = value;
+                        _selectedCategoryForDialog = value;
                       });
                     },
                     items: categories.map((c) => c.name).toList(),
-                    value: selectedCategory,
+                    value: _selectedCategoryForDialog,
                   );
                 },
               ),
@@ -172,22 +178,55 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
-                        if (selectedCategory != null &&
-                            amountController.text.isNotEmpty) {
-                          final amount = double.tryParse(amountController.text);
-                          if (amount != null) {
-                            final categoryProvider =
-                                context.read<CategoryProvider>();
-                            final iconKey = categoryProvider
-                                .getIconForCategory(selectedCategory!);
-                            context.read<BudgetProvider>().addBudget(
-                                  selectedCategory!,
+                      onPressed: () async {
+                        // Basic validation
+                        if ((_selectedCategoryForDialog == null) ||
+                            amountController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              content: Text(
+                                  'Please select a category and enter an amount')));
+                          return;
+                        }
+
+                        final amount = double.tryParse(amountController.text);
+                        if (amount == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content:
+                                      Text('Enter a valid numeric amount')));
+                          return;
+                        }
+
+                        if (amount <= 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text(
+                                      'Amount must be greater than zero')));
+                          return;
+                        }
+
+                        final categoryProvider =
+                            context.read<CategoryProvider>();
+                        final iconKey = categoryProvider
+                            .getIconForCategory(_selectedCategoryForDialog!);
+
+                        // Await the provider call and show feedback on failure
+                        final success =
+                            await context.read<BudgetProvider>().addBudget(
+                                  _selectedCategoryForDialog!,
                                   amount,
                                   iconKey,
                                 );
-                            Navigator.pop(context);
-                          }
+
+                        if (success) {
+                          // clear dialog state
+                          _amountController.clear();
+                          _selectedCategoryForDialog = null;
+                          if (context.mounted) Navigator.pop(context);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Failed to add budget')));
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -222,9 +261,10 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
   Widget _buildBudgetProgress(Budget budget) {
     final code = context.read<BalanceProvider>().currencyCode;
     final symbol = NumberFormat.simpleCurrency(name: code).currencySymbol;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Container(
-      padding: const EdgeInsets.all(15),
+      padding: EdgeInsets.all(screenWidth / 40),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -248,12 +288,15 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(
+                  screenWidth / 40,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -286,7 +329,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                     Text(
                       budget.category,
                       style: GoogleFonts.outfit(
-                        fontSize: 18,
+                        fontSize: screenWidth / 24,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -313,7 +356,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                         Text(
                           budget.statusText,
                           style: GoogleFonts.outfit(
-                            fontSize: 14,
+                            fontSize: screenWidth / 30,
                             color: budget.color(context),
                             fontWeight: FontWeight.w500,
                           ),
@@ -329,7 +372,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                   Text(
                     '$symbol${budget.spent.toStringAsFixed(0)}',
                     style: GoogleFonts.outfit(
-                      fontSize: 20,
+                      fontSize: screenWidth / 25,
                       fontWeight: FontWeight.w600,
                       color: budget.color(context),
                     ),
@@ -337,7 +380,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                   Text(
                     'of $symbol${budget.amount.toStringAsFixed(0)}',
                     style: GoogleFonts.outfit(
-                      fontSize: 14,
+                      fontSize: screenWidth / 30,
                       color: budgetTextLight(context),
                     ),
                   ),
@@ -345,11 +388,11 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Stack(
             children: [
               Container(
-                height: 10,
+                height: 8,
                 decoration: BoxDecoration(
                   color: budget.color(context).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
@@ -495,6 +538,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
     return Consumer<BudgetProvider>(
       builder: (context, budgetProvider, child) {
         final budgets = budgetProvider.budgets;
+        final screenWidth = MediaQuery.of(context).size.width;
 
         if (budgets.isEmpty) {
           return Card(
@@ -554,6 +598,8 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                   const SizedBox(height: 28),
                   ElevatedButton.icon(
                     onPressed: () {
+                      _amountController.clear();
+                      _selectedCategoryForDialog = null;
                       showDialog(
                         context: context,
                         builder: (context) => Dialog(
@@ -654,6 +700,8 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                         ),
                         IconButton(
                           onPressed: () {
+                            _amountController.clear();
+                            _selectedCategoryForDialog = null;
                             showDialog(
                               context: context,
                               builder: (context) => Dialog(
@@ -706,7 +754,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                       firstChild: Column(
                         children: [
                           SizedBox(
-                            height: 105,
+                            height: screenWidth / 4.5,
                             child: PageView.builder(
                               controller: _pageController,
                               itemCount: budgets.length,

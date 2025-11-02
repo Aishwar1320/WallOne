@@ -33,75 +33,240 @@ class ResetBalanceService {
 
   Future<void> _initializeStorage() async {
     _isInitializing = true;
+    print('[ResetBalanceService] Starting initialization...');
+
     _storage = await BalanceStorage.create();
 
-    await _checkAndResetDailyIfNeeded();
-    await _checkAndResetWeeklyIfNeeded();
-    await _checkAndResetMonthlyIfNeeded();
+    // Load and check all resets in sequence
+    await _loadAndCheckResets();
 
+    // Mark initialized BEFORE scheduling
+    _isInitialized = true;
+
+    // Schedule future resets
     _scheduleNextDailyReset();
     _scheduleNextWeeklyReset();
     _scheduleNextMonthlyReset();
 
-    _isInitialized = true;
     _isInitializing = false;
+    print('[ResetBalanceService] Initialization complete');
   }
 
-  // ----------- DAILY RESET -----------
-  void _scheduleNextDailyReset() {
-    _dailyTimer?.cancel();
-
-    if (!_isInitialized) {
-      print(
-          '[ResetBalanceService] Not scheduling daily reset - not initialized');
-      return;
-    }
-
-    final now = DateTime.now();
-    final nextMidnight = DateTime(now.year, now.month, now.day + 1, 0, 0, 1);
-    final duration = nextMidnight.difference(now);
-
-    // Ensure minimum 1 minute delay
-    final finalDuration =
-        duration.inMinutes < 1 ? Duration(minutes: 1) : duration;
-
-    print(
-        '[ResetBalanceService] Scheduling next daily reset in ${finalDuration.inHours} hours');
-
-    _dailyTimer = Timer(finalDuration, () {
-      print('[ResetBalanceService] Daily timer triggered');
-      _dailyResetProcessed = false;
-      _executeDailyReset().then((_) {
-        _scheduleNextDailyReset();
-      });
-    });
-  }
-
-  Future<void> _checkAndResetDailyIfNeeded() async {
-    if (_storage == null) return;
+  /// Central method to load data and check if resets are needed
+  Future<void> _loadAndCheckResets() async {
+    if (_storage == null || _context == null) return;
 
     try {
+      print('[ResetBalanceService] Loading balances and checking resets...');
+
+      // Load all data
       final balances = await _storage!.loadBalances();
-      final lastResetDateStr = balances['lastResetDate'];
+      final prefs = await SharedPreferences.getInstance();
+
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      final todayString =
-          today.toIso8601String().split('T')[0]; // Use only date part
+      final todayString = today.toIso8601String().split('T')[0];
 
+      // Extract values
+      String? lastResetDateStr = balances['lastResetDate'];
+      final dailyExpenses = (balances['dailyExpenses'] ?? 0.0) as double;
+      final dailyIncomes = (balances['dailyIncomes'] ?? 0.0) as double;
+      final weeklyExpenses = (balances['weeklyExpenses'] ?? 0.0) as double;
+      final weeklyIncomes = (balances['weeklyIncomes'] ?? 0.0) as double;
+      final monthlyExpenses = (balances['monthlyExpenses'] ?? 0.0) as double;
+      final monthlyIncomes = (balances['monthlyIncomes'] ?? 0.0) as double;
+
+      final lastWeeklyReset = prefs.getString('lastWeeklyResetDate');
+      final lastMonthlyReset = prefs.getString('lastMonthlyResetDate');
+
+      final currentWeekKey = _getWeekKey(now);
+      final currentMonthKey = _getMonthKey(now);
+
+      // If there's no stored last daily reset date, initialize it to today
+      // to avoid accidental resets on a cold start where prefs exist but
+      // the reset date wasn't previously recorded.
+      if (lastResetDateStr == null) {
+        try {
+          print(
+              '[ResetBalanceService] No last daily reset date found - initializing to today to avoid accidental cold-start reset');
+          await _storage!.saveLastResetDate(today);
+          // set local variable so subsequent checks treat it as today's date
+          lastResetDateStr = today.toIso8601String();
+        } catch (e) {
+          print('[ResetBalanceService] Failed to initialize lastResetDate: $e');
+        }
+      }
+
+      print('[ResetBalanceService] Current state:');
+      print('  Today: $todayString');
+      print('  Last daily reset: $lastResetDateStr');
       print(
-          '[ResetBalanceService] Checking daily reset - Today: $todayString, Last reset: $lastResetDateStr');
+          '  Last weekly reset: $lastWeeklyReset (current week: $currentWeekKey)');
+      print(
+          '  Last monthly reset: $lastMonthlyReset (current month: $currentMonthKey)');
+      print('  Daily values: expenses=$dailyExpenses, incomes=$dailyIncomes');
+      print(
+          '  Weekly values: expenses=$weeklyExpenses, incomes=$weeklyIncomes');
+      print(
+          '  Monthly values: expenses=$monthlyExpenses, incomes=$monthlyIncomes');
 
-      if (lastResetDateStr == null || lastResetDateStr != todayString) {
-        print('[ResetBalanceService] Daily reset needed');
+      // Check DAILY reset
+      final needsDailyReset = _needsDailyReset(
+        lastResetDateStr,
+        todayString,
+        dailyExpenses,
+        dailyIncomes,
+      );
+
+      // Check WEEKLY reset
+      final needsWeeklyReset = _needsWeeklyReset(
+        lastWeeklyReset,
+        currentWeekKey,
+        weeklyExpenses,
+        weeklyIncomes,
+      );
+
+      // Check MONTHLY reset
+      final needsMonthlyReset = _needsMonthlyReset(
+        lastMonthlyReset,
+        currentMonthKey,
+        monthlyExpenses,
+        monthlyIncomes,
+      );
+
+      // Execute resets if needed
+      if (needsDailyReset) {
+        print('[ResetBalanceService] Daily reset is needed - executing...');
         await _executeDailyReset();
       } else {
         print(
-            '[ResetBalanceService] Daily reset not needed - already done today');
+            '[ResetBalanceService] Daily reset not needed - marking as processed');
         _dailyResetProcessed = true;
       }
-    } catch (e) {
-      print('[ResetBalanceService] Error checking daily reset: $e');
+
+      if (needsWeeklyReset) {
+        print('[ResetBalanceService] Weekly reset is needed - executing...');
+        await _executeWeeklyReset();
+      } else {
+        print(
+            '[ResetBalanceService] Weekly reset not needed - marking as processed');
+        _weeklyResetProcessed = true;
+      }
+
+      if (needsMonthlyReset) {
+        print('[ResetBalanceService] Monthly reset is needed - executing...');
+        await _executeMonthlyReset();
+      } else {
+        print(
+            '[ResetBalanceService] Monthly reset not needed - marking as processed');
+        _monthlyResetProcessed = true;
+      }
+    } catch (e, stackTrace) {
+      print('[ResetBalanceService] Error in _loadAndCheckResets: $e');
+      print('[ResetBalanceService] Stack trace: $stackTrace');
     }
+  }
+
+  // ----------- RESET CHECKS -----------
+
+  bool _needsDailyReset(
+    String? lastResetDateStr,
+    String todayString,
+    double dailyExpenses,
+    double dailyIncomes,
+  ) {
+    // Reset is needed if:
+    // 1. No reset date exists (first time), OR
+    // 2. The reset date is different from today AND there are non-zero values
+
+    if (lastResetDateStr == null) {
+      print('[ResetBalanceService] No daily reset date found - reset needed');
+      return true;
+    }
+
+    // Extract only the date part from lastResetDateStr for comparison
+    // It could be in format "2025-11-01T00:00:00.000" or "2025-11-01"
+    String lastResetDateOnly = lastResetDateStr.split('T')[0];
+
+    if (lastResetDateOnly != todayString) {
+      final hasNonZeroValues = dailyExpenses != 0 || dailyIncomes != 0;
+      print(
+          '[ResetBalanceService] Date mismatch: last=$lastResetDateOnly, today=$todayString, hasValues=$hasNonZeroValues');
+      return hasNonZeroValues;
+    }
+
+    print(
+        '[ResetBalanceService] Daily reset already done today (last: $lastResetDateOnly, today: $todayString)');
+    return false;
+  }
+
+  bool _needsWeeklyReset(
+    String? lastWeeklyReset,
+    String currentWeekKey,
+    double weeklyExpenses,
+    double weeklyIncomes,
+  ) {
+    if (lastWeeklyReset == null) {
+      print('[ResetBalanceService] No weekly reset date found - reset needed');
+      return true;
+    }
+
+    if (lastWeeklyReset != currentWeekKey) {
+      final hasNonZeroValues = weeklyExpenses != 0 || weeklyIncomes != 0;
+      print(
+          '[ResetBalanceService] Week mismatch: last=$lastWeeklyReset, current=$currentWeekKey, hasValues=$hasNonZeroValues');
+      return hasNonZeroValues;
+    }
+
+    print('[ResetBalanceService] Weekly reset already done this week');
+    return false;
+  }
+
+  bool _needsMonthlyReset(
+    String? lastMonthlyReset,
+    String currentMonthKey,
+    double monthlyExpenses,
+    double monthlyIncomes,
+  ) {
+    if (lastMonthlyReset == null) {
+      print('[ResetBalanceService] No monthly reset date found - reset needed');
+      return true;
+    }
+
+    if (lastMonthlyReset != currentMonthKey) {
+      final hasNonZeroValues = monthlyExpenses != 0 || monthlyIncomes != 0;
+      print(
+          '[ResetBalanceService] Month mismatch: last=$lastMonthlyReset, current=$currentMonthKey, hasValues=$hasNonZeroValues');
+      return hasNonZeroValues;
+    }
+
+    print('[ResetBalanceService] Monthly reset already done this month');
+    return false;
+  }
+
+  // ----------- DAILY RESET -----------
+
+  void _scheduleNextDailyReset() {
+    _dailyTimer?.cancel();
+    final now = DateTime.now();
+    DateTime nextMidnight =
+        DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+    Duration duration = nextMidnight.difference(now);
+
+    if (duration.inMilliseconds <= 0) {
+      nextMidnight = nextMidnight.add(const Duration(days: 1));
+      duration = nextMidnight.difference(now);
+    }
+
+    print(
+        '[ResetBalanceService] Scheduling next daily reset in ${duration.inHours} hours (at $nextMidnight)');
+
+    _dailyTimer = Timer(duration, () async {
+      print('[ResetBalanceService] Daily timer triggered');
+      _dailyResetProcessed = false;
+      await _executeDailyReset();
+      _scheduleNextDailyReset();
+    });
   }
 
   Future<void> _executeDailyReset() async {
@@ -115,77 +280,58 @@ class ResetBalanceService {
 
     try {
       print('[ResetBalanceService] Executing daily reset...');
-      final provider = Provider.of<BalanceProvider>(_context!, listen: false);
-      final resetHappened = await provider.resetDailyBalance();
 
-      if (resetHappened) {
-        print('[ResetBalanceService] Daily reset completed successfully');
-      }
-    } catch (e) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final todayString = today.toIso8601String().split('T')[0];
+
+      final provider = Provider.of<BalanceProvider>(_context!, listen: false);
+
+      // Reset daily values to 0
+      provider.resetDailyValues();
+
+      // Save the reset date
+      await _storage!.saveLastResetDate(today);
+
+      print(
+          '[ResetBalanceService] Daily reset completed successfully for date: $todayString');
+    } catch (e, stackTrace) {
       print('[ResetBalanceService] Error executing daily reset: $e');
-      _dailyResetProcessed = false; // Reset flag on error
+      print('[ResetBalanceService] Stack trace: $stackTrace');
+      _dailyResetProcessed = false;
     }
   }
 
   // ----------- WEEKLY RESET -----------
+
   void _scheduleNextWeeklyReset() {
     _weeklyTimer?.cancel();
-
     final now = DateTime.now();
     final nextMonday = _getNextMonday(now);
-    final duration = nextMonday.difference(now);
+    Duration duration = nextMonday.difference(now);
+
+    if (duration.inMilliseconds <= 0) {
+      duration = nextMonday.add(const Duration(days: 7)).difference(now);
+    }
 
     print(
         '[ResetBalanceService] Scheduling next weekly reset in ${duration.inHours} hours (${nextMonday})');
 
-    _weeklyTimer = Timer(duration, () {
+    _weeklyTimer = Timer(duration, () async {
       print('[ResetBalanceService] Weekly timer triggered');
       _weeklyResetProcessed = false;
-      _executeWeeklyReset().then((_) {
-        _scheduleNextWeeklyReset();
-      });
+      await _executeWeeklyReset();
+      _scheduleNextWeeklyReset();
     });
   }
 
   DateTime _getNextMonday(DateTime from) {
-    // If today is Monday (weekday = 1), get next Monday
-    // Otherwise, get the coming Monday
-    final daysUntilMonday = from.weekday == DateTime.monday
-        ? 7
-        : (DateTime.monday - from.weekday + 7) % 7;
-    final nextMonday =
-        DateTime(from.year, from.month, from.day + daysUntilMonday);
-
-    // Set to start of day (00:00:01 to avoid exact midnight issues)
-    final scheduledTime =
-        DateTime(nextMonday.year, nextMonday.month, nextMonday.day, 0, 0, 1);
-
-    // If the calculated time is in the past or too close (less than 1 minute), add a week
-    if (scheduledTime.isBefore(from) ||
-        scheduledTime.difference(from).inMinutes < 1) {
-      return scheduledTime.add(Duration(days: 7));
-    }
-
-    return scheduledTime;
-  }
-
-  Future<void> _checkAndResetWeeklyIfNeeded() async {
-    final prefs = await SharedPreferences.getInstance();
-    final lastReset = prefs.getString('lastWeeklyResetDate');
-    final now = DateTime.now();
-    final currentWeekKey = _getWeekKey(now);
-
-    print(
-        '[ResetBalanceService] Weekly reset check: currentWeek=$currentWeekKey, lastReset=$lastReset');
-
-    if (lastReset == null || lastReset != currentWeekKey) {
-      print('[ResetBalanceService] Weekly reset needed');
-      await _executeWeeklyReset();
-    } else {
-      print(
-          '[ResetBalanceService] Weekly reset not needed - already done this week');
-      _weeklyResetProcessed = true;
-    }
+    final int daysUntilMonday = (DateTime.monday - from.weekday) % 7;
+    final int addDays = daysUntilMonday == 0 ? 7 : daysUntilMonday;
+    final nextMondayDate =
+        DateTime(from.year, from.month, from.day).add(Duration(days: addDays));
+    return DateTime(
+        nextMondayDate.year, nextMondayDate.month, nextMondayDate.day, 0, 0, 0);
   }
 
   Future<void> _executeWeeklyReset() async {
@@ -199,7 +345,8 @@ class ResetBalanceService {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final currentWeekKey = _getWeekKey(DateTime.now());
+      final now = DateTime.now();
+      final currentWeekKey = _getWeekKey(now);
 
       // Double-check to avoid duplicate reset
       final lastReset = prefs.getString('lastWeeklyResetDate');
@@ -210,114 +357,56 @@ class ResetBalanceService {
       }
 
       print('[ResetBalanceService] Executing weekly reset...');
-      final provider = Provider.of<BalanceProvider>(_context!, listen: false);
-      provider.resetWeeklyBalance();
 
+      final provider = Provider.of<BalanceProvider>(_context!, listen: false);
+
+      // Reset weekly values to 0
+      provider.resetWeeklyValues();
+
+      // Save the reset date
       await prefs.setString('lastWeeklyResetDate', currentWeekKey);
+
       print(
           '[ResetBalanceService] Weekly reset completed for week: $currentWeekKey');
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('[ResetBalanceService] Error executing weekly reset: $e');
-      _weeklyResetProcessed = false; // Reset flag on error
+      print('[ResetBalanceService] Stack trace: $stackTrace');
+      _weeklyResetProcessed = false;
     }
   }
 
   // ----------- MONTHLY RESET -----------
+
   void _scheduleNextMonthlyReset() {
     _monthlyTimer?.cancel();
-
     final now = DateTime.now();
-    final nextMonth = _getNextMonthStart(now);
-    final duration = nextMonth.difference(now);
+    DateTime nextMonth = _getNextMonthStart(now);
+    Duration duration = nextMonth.difference(now);
+
+    if (duration.inMilliseconds <= 0) {
+      nextMonth = _getNextMonthStart(nextMonth.add(const Duration(days: 1)));
+      duration = nextMonth.difference(now);
+    }
 
     print(
         '[ResetBalanceService] Scheduling next monthly reset in ${duration.inDays} days, ${duration.inHours % 24} hours (${nextMonth})');
 
-    // IMPORTANT: For very long durations (>7 days), use a shorter interval and recheck
-    Duration scheduleDuration;
-    if (duration.inDays > 7) {
-      // Schedule a check in 24 hours instead of the full duration
-      scheduleDuration = Duration(hours: 24);
-      print(
-          '[ResetBalanceService] Using 24-hour check instead of full duration due to long delay');
-    } else if (duration.inHours < 1) {
-      // Minimum 1 hour delay
-      scheduleDuration = Duration(hours: 1);
-      print('[ResetBalanceService] Applied minimum 1-hour delay');
-    } else {
-      scheduleDuration = duration;
-    }
-
-    _monthlyTimer = Timer(scheduleDuration, () {
+    _monthlyTimer = Timer(duration, () async {
       print('[ResetBalanceService] Monthly timer triggered');
-
-      // Check if it's actually time for the reset
-      final checkTime = DateTime.now();
-      final targetMonth = _getNextMonthStart(checkTime
-          .subtract(Duration(days: 1))); // Check if we're in the target month
-
-      if (checkTime.isAfter(targetMonth) ||
-          checkTime.isAtSameMomentAs(targetMonth)) {
-        print('[ResetBalanceService] Time for monthly reset');
-        _monthlyResetProcessed = false;
-        _executeMonthlyReset().then((_) {
-          _scheduleNextMonthlyReset();
-        });
-      } else {
-        print(
-            '[ResetBalanceService] Not yet time for monthly reset, rescheduling...');
-        _scheduleNextMonthlyReset();
-      }
+      _monthlyResetProcessed = false;
+      await _executeMonthlyReset();
+      _scheduleNextMonthlyReset();
     });
   }
 
   DateTime _getNextMonthStart(DateTime from) {
-    // Get the first day of next month
     DateTime nextMonth;
-
     if (from.month == 12) {
-      nextMonth = DateTime(from.year + 1, 1, 1, 0, 0, 1);
+      nextMonth = DateTime(from.year + 1, 1, 1, 0, 0, 0);
     } else {
-      nextMonth = DateTime(from.year, from.month + 1, 1, 0, 0, 1);
+      nextMonth = DateTime(from.year, from.month + 1, 1, 0, 0, 0);
     }
-
-    // Debug logging
-    print('[ResetBalanceService] Current time: $from');
-    print('[ResetBalanceService] Calculated next month start: $nextMonth');
-    print('[ResetBalanceService] Duration: ${nextMonth.difference(from)}');
-
-    // If the calculated time is in the past or too soon (less than 1 hour), move to next month
-    if (nextMonth.isBefore(from) || nextMonth.difference(from).inHours < 1) {
-      print(
-          '[ResetBalanceService] Next month start is too soon, moving to following month');
-      if (nextMonth.month == 12) {
-        nextMonth = DateTime(nextMonth.year + 1, 1, 1, 0, 0, 1);
-      } else {
-        nextMonth = DateTime(nextMonth.year, nextMonth.month + 1, 1, 0, 0, 1);
-      }
-      print('[ResetBalanceService] Adjusted next month start: $nextMonth');
-    }
-
     return nextMonth;
-  }
-
-  Future<void> _checkAndResetMonthlyIfNeeded() async {
-    final prefs = await SharedPreferences.getInstance();
-    final lastReset = prefs.getString('lastMonthlyResetDate');
-    final now = DateTime.now();
-    final currentMonthKey = _getMonthKey(now);
-
-    print(
-        '[ResetBalanceService] Monthly reset check: currentMonth=$currentMonthKey, lastReset=$lastReset');
-
-    if (lastReset == null || lastReset != currentMonthKey) {
-      print('[ResetBalanceService] Monthly reset needed');
-      await _executeMonthlyReset();
-    } else {
-      print(
-          '[ResetBalanceService] Monthly reset not needed - already done this month');
-      _monthlyResetProcessed = true;
-    }
   }
 
   Future<void> _executeMonthlyReset() async {
@@ -331,7 +420,8 @@ class ResetBalanceService {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final currentMonthKey = _getMonthKey(DateTime.now());
+      final now = DateTime.now();
+      final currentMonthKey = _getMonthKey(now);
 
       // Double-check to avoid duplicate reset
       final lastReset = prefs.getString('lastMonthlyResetDate');
@@ -342,26 +432,30 @@ class ResetBalanceService {
       }
 
       print('[ResetBalanceService] Executing monthly reset...');
-      final provider = Provider.of<BalanceProvider>(_context!, listen: false);
-      provider.resetMonthlyBalance();
 
+      final provider = Provider.of<BalanceProvider>(_context!, listen: false);
+
+      // Reset monthly values to 0
+      provider.resetMonthlyValues();
+
+      // Save the reset date
       await prefs.setString('lastMonthlyResetDate', currentMonthKey);
+
       print(
           '[ResetBalanceService] Monthly reset completed for month: $currentMonthKey');
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('[ResetBalanceService] Error executing monthly reset: $e');
-      _monthlyResetProcessed = false; // Reset flag on error
+      print('[ResetBalanceService] Stack trace: $stackTrace');
+      _monthlyResetProcessed = false;
     }
   }
 
   // ----------- HELPERS -----------
 
   String _getWeekKey(DateTime date) {
-    // Get the Monday of the week containing this date
     final monday = date.subtract(Duration(days: date.weekday - 1));
     final mondayDateOnly = DateTime(monday.year, monday.month, monday.day);
 
-    // Calculate week number based on the first Monday of the year
     final firstDayOfYear = DateTime(mondayDateOnly.year, 1, 1);
     final firstMonday = firstDayOfYear.weekday == DateTime.monday
         ? firstDayOfYear
@@ -394,7 +488,6 @@ class ResetBalanceService {
     _isInitializing = false;
   }
 
-  // Debug method to check current state
   void debugPrintState() {
     final now = DateTime.now();
     print('[ResetBalanceService] Current state:');

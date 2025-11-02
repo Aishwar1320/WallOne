@@ -35,7 +35,7 @@ class InvestmentModel {
       startDate: startDate ?? now,
       lastDeductionDate: lastDeductionDate ?? now,
       category: category,
-      monthlyDeductions: monthlyDeductions ?? [amount],
+      monthlyDeductions: monthlyDeductions ?? [],
     );
   }
 

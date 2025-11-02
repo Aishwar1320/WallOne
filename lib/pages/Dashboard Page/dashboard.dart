@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_sticky_header/flutter_sticky_header.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:wallone/common_widgets/dynamic_buttons.dart';
 import 'package:wallone/common_widgets/filter_control.dart';
+import 'package:wallone/common_widgets/health_score_card.dart';
 import 'package:wallone/common_widgets/item_list.dart';
 import 'package:wallone/common_widgets/total_expense.dart';
+import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/utils/constants.dart';
 
 class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key});
+  final Function(bool isBalanceVisible) onBalanceVisibilityChanged;
+  const DashboardPage({
+    super.key,
+    required this.onBalanceVisibilityChanged,
+  });
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -21,46 +28,110 @@ class _DashboardPageState extends State<DashboardPage> {
   bool isExpensesSelected = true;
   String selectedPeriod = 'All Dates';
 
+  final ScrollController _scrollController = ScrollController();
+  bool isBalanceVisible = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    // When scroll offset > 80, assume the Balance section is off-screen
+    if (_scrollController.offset > 80 && isBalanceVisible) {
+      setState(() {
+        isBalanceVisible = false;
+      });
+      widget.onBalanceVisibilityChanged(false);
+    } else if (_scrollController.offset <= 80 && !isBalanceVisible) {
+      setState(() {
+        isBalanceVisible = true;
+      });
+      widget.onBalanceVisibilityChanged(true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final code = context.read<BalanceProvider>().currencyCode;
     final symbol = NumberFormat.simpleCurrency(name: code).currencySymbol;
     final balanceProvider = Provider.of<BalanceProvider>(context);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 110),
+
+    return CustomScrollView(
+      controller: _scrollController,
       physics: const BouncingScrollPhysics(),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Column(
-          spacing: 10,
-          children: [
-            Align(
+      slivers: [
+        // Scroll Below - Balance Section
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 17.0),
+            child: Align(
               alignment: Alignment.centerLeft,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Balance',
-                    style: GoogleFonts.outfit(
-                      fontSize: 30,
-                      color: purpleColors(context),
-                      fontWeight: FontWeight.bold,
+              child: Hero(
+                tag: 'balanceHero',
+                child: Material(
+                  color: Colors.transparent,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 350),
+                    transitionBuilder: (child, anim) {
+                      final offsetAnim = anim.drive(
+                        Tween<Offset>(
+                                begin: const Offset(0, 0.25), end: Offset.zero)
+                            .chain(
+                          CurveTween(curve: Curves.easeOut),
+                        ),
+                      );
+                      return SlideTransition(
+                        position: offsetAnim,
+                        child: FadeTransition(
+                          opacity: anim,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Balance',
+                          style: GoogleFonts.outfit(
+                            fontSize: 30,
+                            color: purpleColors(context),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          symbol + balanceProvider.totalBalance.toString(),
+                          key: ValueKey(balanceProvider.totalBalance),
+                          style: GoogleFonts.outfit(
+                            fontSize: 35,
+                            color: primaryColor(context),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    symbol + balanceProvider.totalBalance.toString(),
-                    style: GoogleFonts.outfit(
-                      fontSize: 35,
-                      color: primaryColor(context),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
+          ),
+        ),
 
-            // Expenses And Income Button With Month Drop Down List
-            Container(
+        // Stick at top - Filter Controls
+        SliverStickyHeader(
+          sticky: true,
+          header: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16),
+            child: Container(
               decoration: BoxDecoration(
                 color: inversePrimaryColor(context),
                 borderRadius: BorderRadius.circular(25),
@@ -83,9 +154,6 @@ class _DashboardPageState extends State<DashboardPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        //
-
-                        // Dynamic Switch Buttons
                         Expanded(
                           flex: 3,
                           child: DynamicButtonsWidget(
@@ -103,10 +171,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             },
                           ),
                         ),
-
                         const SizedBox(width: 10),
-
-                        // Drop Down Menu
                         Expanded(
                           flex: 2,
                           child: TransactionFilterControls(
@@ -131,8 +196,6 @@ class _DashboardPageState extends State<DashboardPage> {
                         )
                       ],
                     ),
-
-                    // Day - Week - Month Total
                     Row(
                       spacing: 10,
                       children: [
@@ -163,68 +226,89 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
             ),
-
-            // Header
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10.0),
-              child: Text(
-                "T R A N S A C T I O N S",
-                style: GoogleFonts.outfit(
-                  fontSize: 20,
-                  color: primaryColor(context),
-                  fontWeight: FontWeight.bold,
-                ),
+          ),
+          sliver: SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(
+                left: 16.0,
+                right: 16,
+              ),
+              child: HealthScoreSection(
+                provider: context.read<AIAdvisorProvider>(),
               ),
             ),
+          ),
+        ),
 
-            // Transaction List
-            Consumer<ListProvider>(
-              key: ValueKey('${isExpensesSelected}_$selectedPeriod'),
-              builder: (context, listProvider, child) {
-                final transactions = listProvider.getFilteredTransactions(
-                  isExpensesSelected,
-                  selectedPeriod,
-                );
+        // Stick at top - Transactions Header
+        SliverStickyHeader(
+          sticky: true,
+          header: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+            color: mainColor(context),
+            child: Text(
+              "T R A N S A C T I O N S",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                fontSize: 20,
+                color: primaryColor(context),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
 
-                // Group transactions by date
-                final Map<String, List<AllListProvider>> groupedTransactions =
-                    {};
-                for (final transaction in transactions) {
-                  DateTime parsedDate;
-                  try {
-                    parsedDate = DateTime.parse(transaction.date);
-                  } catch (e) {
-                    parsedDate =
-                        DateFormat('dd-MM-yyyy').parse(transaction.date);
-                  }
-                  final dateKey = DateFormat('yyyy-MM-dd').format(parsedDate);
+          // List
+          sliver: Consumer<ListProvider>(
+            key: ValueKey('${isExpensesSelected}_$selectedPeriod'),
+            builder: (context, listProvider, child) {
+              final transactions = listProvider.getFilteredTransactions(
+                isExpensesSelected,
+                selectedPeriod,
+              );
 
-                  (groupedTransactions[dateKey] ??= []).add(transaction);
+              // Group transactions by date
+              final Map<String, List<AllListProvider>> groupedTransactions = {};
+              for (final transaction in transactions) {
+                DateTime parsedDate;
+                try {
+                  parsedDate = DateTime.parse(transaction.date);
+                } catch (e) {
+                  parsedDate = DateFormat('dd-MM-yyyy').parse(transaction.date);
                 }
+                final dateKey = DateFormat('yyyy-MM-dd').format(parsedDate);
+                (groupedTransactions[dateKey] ??= []).add(transaction);
+              }
 
-                // Sort dates descending
-                final sortedDates = groupedTransactions.keys.toList()
-                  ..sort((a, b) => b.compareTo(a));
+              // Sort dates descending
+              final sortedDates = groupedTransactions.keys.toList()
+                ..sort((a, b) => b.compareTo(a));
 
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: sortedDates.length,
-                  itemBuilder: (context, index) {
+              // Return SliverList with proper delegate
+              return SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
                     final date = sortedDates[index];
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      padding: EdgeInsets.only(
+                        left: 16.0,
+                        right: 16,
+                        bottom: index == sortedDates.length - 1 ? 100 : 16.0,
+                      ),
                       child: ItemListWidget(
                         transactions: groupedTransactions[date]!,
                       ),
                     );
                   },
-                );
-              },
-            ),
-          ],
+                  childCount: sortedDates.length,
+                ),
+              );
+            },
+          ),
         ),
-      ),
+      ],
     );
   }
 }

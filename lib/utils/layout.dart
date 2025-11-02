@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wallone/pages/About%20Us/about_us.dart';
 import 'package:wallone/pages/Ai%20Control%20Panel/ai_ml_dashboard.dart';
 import 'package:wallone/pages/Analytics%20Page/analytics.dart';
@@ -11,6 +14,7 @@ import 'package:wallone/pages/Settings/settings.dart';
 import 'package:wallone/pages/Transaction%20Management/add_transactions.dart';
 import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
+import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/constants.dart';
 
 class DesignLayout extends StatefulWidget {
@@ -22,10 +26,33 @@ class DesignLayout extends StatefulWidget {
 
 class _DesignLayoutState extends State<DesignLayout> {
   int _selectedIndex = 0;
+  bool _showAppBarBalance = false;
+  String? userName;
+  String? coverImagePath;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userName = prefs.getString('userName');
+      coverImagePath = prefs.getString('coverImagePath');
+    });
+  }
 
   // List of pages to display based on the selected index
   List<Widget> get _pages => [
-        const DashboardPage(),
+        DashboardPage(
+          onBalanceVisibilityChanged: (isVisible) {
+            setState(() {
+              _showAppBarBalance = !isVisible;
+            });
+          },
+        ),
         const BudgetPage(),
         const AddTransactionsPage(),
         AnalyticsPage(
@@ -50,6 +77,9 @@ class _DesignLayoutState extends State<DesignLayout> {
     final symbol = NumberFormat.simpleCurrency(name: code).currencySymbol;
     final balanceProvider = Provider.of<BalanceProvider>(context);
     final screenWidth = MediaQuery.of(context).size.width;
+    final profile = context.watch<UserProfileProvider>();
+    final profileName = profile.userName ?? 'Guest User';
+    final profileImagePath = profile.coverImagePath;
 
     return Scaffold(
       // Drawer
@@ -60,10 +90,62 @@ class _DesignLayoutState extends State<DesignLayout> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             DrawerHeader(
-              child: Icon(
-                Icons.favorite,
-                size: screenWidth / 5,
-                color: purpleColors(context),
+              child: Column(
+                children: [
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (context) {
+                          return const SettingsPage();
+                        },
+                      ));
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                          color: mainColor(context),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: boxColor(context),
+                            width: 3,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: shadowColor(context),
+                              blurRadius: 5,
+                            )
+                          ]),
+                      child: ClipOval(
+                        child: profileImagePath != null &&
+                                File(profileImagePath).existsSync()
+                            ? Image.file(
+                                File(profileImagePath),
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                              )
+                            : CircleAvatar(
+                                radius: 40,
+                                backgroundColor:
+                                    purpleColors(context).withAlpha(50),
+                                child: Icon(
+                                  Icons.person,
+                                  size: 40,
+                                  color: purpleColors(context),
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    profileName,
+                    style: GoogleFonts.outfit(
+                      color: purpleColors(context),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ),
             TextButton(
@@ -135,46 +217,68 @@ class _DesignLayoutState extends State<DesignLayout> {
       appBar: AppBar(
         backgroundColor: mainColor(context),
         centerTitle: true,
-        title: Padding(
-          padding: const EdgeInsets.only(right: 8.0),
-          child: _selectedIndex != 0
-              ? Column(
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: symbol,
-                            style: GoogleFonts.russoOne(
-                              fontSize: 20,
-                              color: purpleColors(context),
-                              fontWeight: FontWeight.bold,
+        scrolledUnderElevation: 0,
+        title: !_showAppBarBalance && _selectedIndex == 0
+            ? Text(
+                "Wall One",
+                style: GoogleFonts.outfit(
+                  color: purpleColors(context),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              )
+            : Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: (_selectedIndex != 0 || _showAppBarBalance)
+                    ? Hero(
+                        tag: 'balanceHero',
+                        child: Material(
+                          color: Colors.transparent,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 350),
+                            transitionBuilder: (child, anim) {
+                              final offsetAnim = anim.drive(
+                                Tween<Offset>(
+                                        begin: const Offset(0, -0.18),
+                                        end: Offset.zero)
+                                    .chain(CurveTween(curve: Curves.easeOut)),
+                              );
+                              return SlideTransition(
+                                position: offsetAnim,
+                                child: FadeTransition(
+                                  opacity: anim,
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  symbol +
+                                      balanceProvider.totalBalance.toString(),
+                                  key: ValueKey(balanceProvider.totalBalance),
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 20,
+                                    color: primaryColor(context),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  "Total Balance",
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 13,
+                                    color: purpleColors(context),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const WidgetSpan(
-                            child: SizedBox(width: 1),
-                          ),
-                          TextSpan(
-                            text: balanceProvider.totalBalance.toString(),
-                            style: GoogleFonts.russoOne(
-                              fontSize: 20,
-                              color: primaryColor(context),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      "Total Balance",
-                      style: GoogleFonts.outfit(
-                        fontSize: 13,
-                        color: primaryColor(context),
-                      ),
-                    ),
-                  ],
-                )
-              : const SizedBox.shrink(),
-        ),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
         actions: [
           if (_selectedIndex == 4)
             Consumer<AIAdvisorProvider>(
@@ -215,7 +319,9 @@ class _DesignLayoutState extends State<DesignLayout> {
       // Body
       body: Stack(
         children: [
-          _pages[_selectedIndex],
+          Positioned.fill(
+            child: _pages[_selectedIndex],
+          ),
 
           //
 

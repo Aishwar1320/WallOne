@@ -138,6 +138,7 @@ class DropdownMenuDynamicWidget extends StatefulWidget {
   final List<String>? items;
   final Function(String?) onItemSelected;
   final String? customDisplayText;
+  final Map<String, String>? itemDisplayMap;
 
   const DropdownMenuDynamicWidget({
     super.key,
@@ -147,6 +148,7 @@ class DropdownMenuDynamicWidget extends StatefulWidget {
     this.items,
     required this.onItemSelected,
     this.customDisplayText,
+    this.itemDisplayMap, // NEW
   });
 
   @override
@@ -166,9 +168,24 @@ class _DropdownMenuDynamicWidgetState extends State<DropdownMenuDynamicWidget> {
     selectedItem = items.contains(widget.value) ? widget.value : null;
   }
 
+  @override
+  void didUpdateWidget(covariant DropdownMenuDynamicWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the parent provided value changed, keep internal state in sync.
+    if (oldWidget.value != widget.value) {
+      final items = _getFilteredItems();
+      selectedItem = items.contains(widget.value) ? widget.value : null;
+    }
+  }
+
   /// Removes duplicate items and ensures no null values
   List<String> _getFilteredItems() {
     return (widget.items ?? []).toSet().toList(); // Removes duplicates
+  }
+
+  /// Get display text for an item
+  String _getDisplayText(String value) {
+    return widget.itemDisplayMap?[value] ?? value;
   }
 
   @override
@@ -180,7 +197,7 @@ class _DropdownMenuDynamicWidgetState extends State<DropdownMenuDynamicWidget> {
         Container(
           height: 50,
           decoration: BoxDecoration(
-            color: budgetBackgroundLight(context),
+            color: boxColor(context),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -223,7 +240,7 @@ class _DropdownMenuDynamicWidgetState extends State<DropdownMenuDynamicWidget> {
                   return DropdownMenuItem<String>(
                     value: value,
                     child: Text(
-                      value,
+                      _getDisplayText(value), // Use display text from map
                       style: GoogleFonts.outfit(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,

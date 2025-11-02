@@ -298,8 +298,10 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                                   ),
                                 ),
                                 Transform.scale(
-                                  scale: screenWidth / 500,
+                                  scale: screenWidth / 700,
                                   child: Switch.adaptive(
+                                    padding:
+                                        const EdgeInsetsGeometry.only(right: 0),
                                     value: investment.isActive,
                                     onChanged: (value) {
                                       budgetProvider.toggleInvestment(index);
@@ -308,6 +310,8 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                                   ),
                                 ),
                                 PopupMenuButton<String>(
+                                  padding:
+                                      const EdgeInsetsGeometry.only(left: 0),
                                   onSelected: (value) {
                                     if (value == 'Edit') {
                                       _showEditInvestmentDialog(
@@ -431,7 +435,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                   ),
                 ),
 
-                // // Demo Button
+                // Demo Button ***************************************************
                 // ElevatedButton(
                 //   onPressed: () {
                 //     Provider.of<InvestmentProvider>(context, listen: false)
@@ -695,6 +699,8 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
           child: Consumer<BudgetProvider>(
             builder: (context, provider, _) {
               if (provider.showDateTimePicker) {
+                final pickerKey =
+                    ValueKey(selectedDate?.millisecondsSinceEpoch ?? 0);
                 return ScaleTransition(
                   scale: CurvedAnimation(
                     parent: anim1,
@@ -753,6 +759,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                                 ],
                               ),
                               child: CupertinoDatePicker(
+                                key: pickerKey,
                                 mode: CupertinoDatePickerMode.dateAndTime,
                                 initialDateTime:
                                     provider.selectedInvestmentDate,

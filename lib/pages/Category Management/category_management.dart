@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:wallone/models/icon_map_model.dart';
 import 'package:wallone/state/category_provider.dart';
 import 'package:wallone/utils/constants.dart';
 
@@ -21,78 +22,206 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
           "Manage Categories",
           style: GoogleFonts.outfit(
             color: primaryColor(context),
-            fontSize: 20,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
+            letterSpacing: -0.5,
           ),
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: primaryColor(context)),
+          icon: Icon(Icons.arrow_back_ios_new,
+              color: primaryColor(context), size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         backgroundColor: mainColor(context),
         elevation: 0,
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddCategoryDialog(context),
         backgroundColor: purpleColors(context),
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add_rounded, size: 24),
+        label: Text(
+          'Add Category',
+          style: GoogleFonts.outfit(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        elevation: 4,
       ),
       body: Consumer<CategoryProvider>(
         builder: (context, categoryProvider, child) {
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: categoryProvider.categories.length,
-            itemBuilder: (context, index) {
-              final category = categoryProvider.categories[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                color: boxColor(context),
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
+          if (categoryProvider.categories.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: purpleColors(context).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
+                      color: purpleColors(context).withOpacity(0.1),
+                      shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      category.icon,
-                      color: purpleColors(context),
+                      Icons.category_outlined,
+                      size: 80,
+                      color: purpleColors(context).withOpacity(0.5),
                     ),
                   ),
-                  title: Text(
-                    category.name,
+                  const SizedBox(height: 24),
+                  Text(
+                    'No Categories Yet',
                     style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
                       color: primaryColor(context),
                     ),
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          Icons.edit,
-                          color: primaryColor(context),
-                        ),
-                        onPressed: () =>
-                            _showEditCategoryDialog(context, category),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.delete,
-                          color: primaryColor(context),
-                        ),
-                        onPressed: () =>
-                            _showDeleteConfirmation(context, category),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tap the button below to create your first category',
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      color: primaryColor(context).withOpacity(0.6),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+            itemCount: categoryProvider.categories.length,
+            itemBuilder: (context, index) {
+              final category = categoryProvider.categories[index];
+              return TweenAnimationBuilder(
+                duration: Duration(milliseconds: 300 + (index * 50)),
+                tween: Tween<double>(begin: 0, end: 1),
+                curve: Curves.easeOutCubic,
+                builder: (context, double value, child) {
+                  return Transform.translate(
+                    offset: Offset(0, 20 * (1 - value)),
+                    child: Opacity(
+                      opacity: value,
+                      child: child,
+                    ),
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: boxColor(context),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
                     ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => _showEditCategoryDialog(context, category),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Hero(
+                              tag: 'category_${category.name}',
+                              child: Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      purpleColors(context),
+                                      purpleColors(context).withOpacity(0.7),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: purpleColors(context)
+                                          .withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  category.icon,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    category.name,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryColor(context),
+                                      letterSpacing: -0.3,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Tap to edit',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 13,
+                                      color: primaryColor(context)
+                                          .withOpacity(0.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: primaryColor(context).withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.edit_rounded,
+                                      color: purpleColors(context),
+                                      size: 20,
+                                    ),
+                                    onPressed: () => _showEditCategoryDialog(
+                                        context, category),
+                                    tooltip: 'Edit',
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete_rounded,
+                                      color: Colors.red,
+                                      size: 20,
+                                    ),
+                                    onPressed: () => _showDeleteConfirmation(
+                                        context, category),
+                                    tooltip: 'Delete',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -111,6 +240,15 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
         onSave: (name, iconName) {
           context.read<CategoryProvider>().addCategory(name, iconName);
           Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Category "$name" added successfully'),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
         },
       ),
     );
@@ -128,6 +266,15 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
               .read<CategoryProvider>()
               .updateCategory(category.name, name, iconName);
           Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Category updated successfully'),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
         },
       ),
     );
@@ -137,21 +284,57 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Category'),
-        content: Text('Are you sure you want to delete ${category.name}?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.warning_rounded, color: Colors.red),
+            ),
+            const SizedBox(width: 12),
+            const Text('Delete Category'),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to delete "${category.name}"? This action cannot be undone.',
+          style: GoogleFonts.outfit(),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+            ),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               context.read<CategoryProvider>().removeCategory(category.name);
               Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Category "${category.name}" deleted'),
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: Colors.red,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              );
             },
-            child: const Text(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(
               'Delete',
-              style: TextStyle(color: Colors.red),
+              style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -178,35 +361,9 @@ class _CategoryDialog extends StatefulWidget {
 }
 
 class _CategoryDialogState extends State<_CategoryDialog> {
-  static const Map<String, IconData> _iconMap = {
-    'shopping_cart': Icons.shopping_cart,
-    'fastfood': Icons.fastfood,
-    'shopping_bag': Icons.shopping_bag,
-    'receipt': Icons.receipt,
-    'local_grocery_store': Icons.local_grocery_store,
-    'sports_esports': Icons.sports_esports,
-    'people': Icons.people,
-    'home': Icons.home,
-    'school': Icons.school,
-    'attach_money': Icons.attach_money,
-    'movie': Icons.movie,
-    'directions_car': Icons.directions_car,
-    'medical_services': Icons.medical_services,
-    'pets': Icons.pets,
-    'sports_basketball': Icons.sports_basketball,
-    'flight': Icons.flight,
-    'hotel': Icons.hotel,
-    'restaurant': Icons.restaurant,
-    'local_bar': Icons.local_bar,
-    'fitness_center': Icons.fitness_center,
-    'category': Icons.category,
-  };
-
   String _selectedIconName = 'category';
-
   late TextEditingController _nameController;
-
-  final List<String> _availableIconNames = _iconMap.keys.toList();
+  final List<String> _availableIconNames = iconMap.keys.toList();
 
   @override
   void initState() {
@@ -224,104 +381,194 @@ class _CategoryDialogState extends State<_CategoryDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              widget.title,
-              style: GoogleFonts.outfit(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: 'Category Name',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Select Icon',
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              height: 200,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: GridView.builder(
-                padding: const EdgeInsets.all(8),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 5,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                ),
-                itemCount: _availableIconNames.length,
-                itemBuilder: (context, index) {
-                  final iconName = _availableIconNames[index];
-                  final isSelected = iconName == _selectedIconName;
-                  return InkWell(
-                    onTap: () => setState(() => _selectedIconName = iconName),
-                    child: Container(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? purpleColors(context)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isSelected
-                              ? purpleColors(context)
-                              : Colors.grey.shade300,
-                        ),
+                        color: purpleColors(context).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
-                        _iconMap[iconName],
-                        color: isSelected ? Colors.white : Colors.grey.shade600,
+                        iconMap[_selectedIconName],
+                        color: purpleColors(context),
+                        size: 28,
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        widget.title,
+                        style: GoogleFonts.outfit(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    if (_nameController.text.isNotEmpty) {
-                      widget.onSave(_nameController.text, _selectedIconName);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: purpleColors(context),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                const SizedBox(height: 24),
+                Text(
+                  'Category Name',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: primaryColor(context).withOpacity(0.7),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter category name',
+                    filled: true,
+                    fillColor: primaryColor(context).withOpacity(0.03),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: primaryColor(context).withOpacity(0.1),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: purpleColors(context),
+                        width: 2,
+                      ),
                     ),
                   ),
-                  child: const Text('Save'),
+                  style: GoogleFonts.outfit(fontSize: 16),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Select Icon',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: primaryColor(context).withOpacity(0.7),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  height: 240,
+                  decoration: BoxDecoration(
+                    color: primaryColor(context).withOpacity(0.03),
+                    border: Border.all(
+                      color: primaryColor(context).withOpacity(0.1),
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: GridView.builder(
+                    padding: const EdgeInsets.all(12),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 5,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                    ),
+                    itemCount: _availableIconNames.length,
+                    itemBuilder: (context, index) {
+                      final iconName = _availableIconNames[index];
+                      final isSelected = iconName == _selectedIconName;
+                      return InkWell(
+                        onTap: () =>
+                            setState(() => _selectedIconName = iconName),
+                        borderRadius: BorderRadius.circular(12),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? purpleColors(context)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? purpleColors(context)
+                                  : primaryColor(context).withOpacity(0.15),
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          child: Icon(
+                            iconMap[iconName],
+                            color: isSelected
+                                ? Colors.white
+                                : primaryColor(context).withOpacity(0.6),
+                            size: 24,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (_nameController.text.trim().isNotEmpty) {
+                          widget.onSave(
+                            _nameController.text.trim(),
+                            _selectedIconName,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: purpleColors(context),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: Text(
+                        'Save',
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );

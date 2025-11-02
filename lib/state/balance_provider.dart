@@ -2,7 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wallone/models/balance_model.dart';
+import 'package:wallone/pages/onboarding_page.dart';
 import 'package:wallone/state/adviser_provider.dart';
+import 'package:wallone/state/budget_provider.dart';
+import 'package:wallone/state/category_provider.dart';
+import 'package:wallone/state/investment_provider.dart';
 import 'package:wallone/utils/services/shared_pref.dart';
 import 'package:wallone/state/list_provider.dart';
 
@@ -32,14 +36,6 @@ class BalanceProvider extends ChangeNotifier {
 
   BalanceModel _balance = const BalanceModel();
   bool _showDateTimePicker = false;
-  String? _lastResetDateString;
-  String? _lastWeeklyResetDateString;
-  String? _lastMonthlyResetDateString;
-
-  // Separate flags for different reset types
-  bool _isProcessingDailyReset = false;
-  bool _isProcessingWeeklyReset = false;
-  bool _isProcessingMonthlyReset = false;
   final String _tag = 'BalanceProvider';
 
   // --------------------------------------------------
@@ -54,7 +50,7 @@ class BalanceProvider extends ChangeNotifier {
   double get weeklyIncomes => _balance.weeklyIncomes;
   double get monthlyIncomes => _balance.monthlyIncomes;
 
-  // Formatted getters for UI.
+  // Formatted getters for UI
   String get formattedTotalBalance => _balance.formattedTotalBalance;
   String get formattedDailyExpenses => _balance.formattedDailyExpenses;
   String get formattedWeeklyExpenses => _balance.formattedWeeklyExpenses;
@@ -66,34 +62,29 @@ class BalanceProvider extends ChangeNotifier {
 
   // --------------------------------------------------
   // CONSTRUCTOR & INITIALIZATION
+  // --------------------------------------------------
   BalanceProvider(BalanceStorage storage) {
     _storage = storage;
     _log('Constructor initialized');
     _initializeData();
   }
 
+  // Expose a helper that returns saved balance snapshot for a given date
+  Future<double?> getSavedBalanceForDate(DateTime date) async {
+    try {
+      return await _storage.getBalanceForDate(date);
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<void> _initializeData() async {
     try {
       _log('Initializing data...');
       await _loadBalances();
-      await _loadResetDates(); // Load all reset dates from SharedPreferences
       _log('Data initialized successfully');
     } catch (e, stackTrace) {
       _logError('Failed to initialize data', e, stackTrace);
-    }
-  }
-
-  // Load reset dates from SharedPreferences
-  Future<void> _loadResetDates() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _lastWeeklyResetDateString = prefs.getString('lastWeeklyResetDate');
-      _lastMonthlyResetDateString = prefs.getString('lastMonthlyResetDate');
-
-      _log(
-          'Reset dates loaded - Weekly: $_lastWeeklyResetDateString, Monthly: $_lastMonthlyResetDateString');
-    } catch (e, stackTrace) {
-      _logError('Failed to load reset dates', e, stackTrace);
     }
   }
 
@@ -121,9 +112,15 @@ class BalanceProvider extends ChangeNotifier {
       _log('Loading balances...');
       final balances = await _storage.loadBalances();
       _balance = BalanceModel.fromMap(balances);
-      _lastResetDateString = balances['lastResetDate'];
 
       _log('Balances loaded successfully');
+      _log(
+          'Daily: expenses=${_balance.dailyExpenses}, incomes=${_balance.dailyIncomes}');
+      _log(
+          'Weekly: expenses=${_balance.weeklyExpenses}, incomes=${_balance.weeklyIncomes}');
+      _log(
+          'Monthly: expenses=${_balance.monthlyExpenses}, incomes=${_balance.monthlyIncomes}');
+
       notifyListeners();
     } catch (e, stackTrace) {
       _logError('Failed to load balances', e, stackTrace);
@@ -136,6 +133,13 @@ class BalanceProvider extends ChangeNotifier {
     try {
       _log('Saving balances...');
       await _storage.saveBalances(_balance.toMap());
+      // Also save a daily snapshot for today's date
+      try {
+        await _storage.saveBalanceSnapshot(
+            DateTime.now(), _balance.totalBalance);
+      } catch (e) {
+        // Ignore snapshot errors
+      }
       _log('Balances saved successfully');
     } catch (e, stackTrace) {
       _logError('Failed to save balances', e, stackTrace);
@@ -210,176 +214,64 @@ class BalanceProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> resetDailyBalance() async {
-    // Prevent multiple simultaneous calls
-    if (_isProcessingDailyReset) {
-      _log('Daily reset already in progress - ignoring additional call');
-      return false;
-    }
+  // --------------------------------------------------
+  // RESET METHODS (Called by ResetBalanceService)
+  // --------------------------------------------------
 
+  /// Resets daily balance values to 0
+  /// This method is called by ResetBalanceService
+  void resetDailyValues() {
     try {
-      _isProcessingDailyReset = true;
-      _log('Manual daily balance reset requested...');
-
-      // Check both conditions: if daily values are non-zero OR if lastResetDate is not today
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final todayString =
-          today.toIso8601String().split('T')[0]; // Use only date part
-
-      final hasNonZeroDailyValues =
-          _balance.dailyExpenses != 0 || _balance.dailyIncomes != 0;
-      final isResetDateOutdated =
-          _lastResetDateString == null || _lastResetDateString != todayString;
-
-      _log(
-          'Reset check: hasNonZeroDailyValues=$hasNonZeroDailyValues, isResetDateOutdated=$isResetDateOutdated');
-
-      if (hasNonZeroDailyValues || isResetDateOutdated) {
-        _balance = _balance.copyWith(
-          dailyExpenses: 0,
-          dailyIncomes: 0,
-        );
-
-        _lastResetDateString = todayString;
-        await _storage.saveLastResetDate(today);
-        await _saveBalances();
-
-        if (hasNonZeroDailyValues) {
-          _log('Daily balance reset completed - values were reset');
-        } else {
-          _log('Daily balance reset completed - only date was updated');
-        }
-
-        notifyListeners();
-        return true; // Reset actually happened
-      } else {
-        _log('Daily balance already reset - skipping');
-        return false; // Reset was skipped
-      }
+      _log('Resetting daily values to 0...');
+      _balance = _balance.copyWith(
+        dailyExpenses: 0,
+        dailyIncomes: 0,
+      );
+      _saveBalances();
+      notifyListeners();
+      _log('Daily values reset successfully');
     } catch (e, stackTrace) {
-      _logError('Failed to reset daily balance', e, stackTrace);
-      return false;
-    } finally {
-      _isProcessingDailyReset = false;
+      _logError('Failed to reset daily values', e, stackTrace);
     }
   }
 
-  Future<bool> resetWeeklyBalance() async {
-    if (_isProcessingWeeklyReset) {
-      _log('Weekly reset already in progress - ignoring additional call');
-      return false;
-    }
-
+  /// Resets weekly balance values to 0
+  /// This method is called by ResetBalanceService
+  void resetWeeklyValues() {
     try {
-      _isProcessingWeeklyReset = true;
-      _log('Manual weekly balance reset requested...');
-
-      final prefs = await SharedPreferences.getInstance();
-      final now = DateTime.now();
-      final currentWeekKey = _getWeekKey(now);
-
-      // Check if reset is needed
-      final lastReset = prefs.getString('lastWeeklyResetDate');
-      final isResetOutdated = lastReset == null || lastReset != currentWeekKey;
-      final hasNonZeroValues =
-          _balance.weeklyExpenses != 0 || _balance.weeklyIncomes != 0;
-
-      _log(
-          'Weekly reset check: currentWeek=$currentWeekKey, lastReset=$lastReset, hasNonZeroValues=$hasNonZeroValues');
-
-      if (hasNonZeroValues || isResetOutdated) {
-        _balance = _balance.copyWith(
-          weeklyExpenses: 0,
-          weeklyIncomes: 0,
-        );
-
-        _lastWeeklyResetDateString = currentWeekKey;
-        await prefs.setString('lastWeeklyResetDate', currentWeekKey);
-        await _saveBalances();
-
-        _log('Weekly reset completed for week: $currentWeekKey');
-        notifyListeners();
-        return true;
-      } else {
-        _log('Weekly balance already reset - skipping');
-        return false;
-      }
+      _log('Resetting weekly values to 0...');
+      _balance = _balance.copyWith(
+        weeklyExpenses: 0,
+        weeklyIncomes: 0,
+      );
+      _saveBalances();
+      notifyListeners();
+      _log('Weekly values reset successfully');
     } catch (e, stackTrace) {
-      _logError('Failed to reset weekly balance', e, stackTrace);
-      return false;
-    } finally {
-      _isProcessingWeeklyReset = false;
+      _logError('Failed to reset weekly values', e, stackTrace);
     }
   }
 
-  Future<bool> resetMonthlyBalance() async {
-    if (_isProcessingMonthlyReset) {
-      _log('Monthly reset already in progress - ignoring additional call');
-      return false;
-    }
-
+  /// Resets monthly balance values to 0
+  /// This method is called by ResetBalanceService
+  void resetMonthlyValues() {
     try {
-      _isProcessingMonthlyReset = true;
-      _log('Manual monthly balance reset requested...');
-
-      final prefs = await SharedPreferences.getInstance();
-      final now = DateTime.now();
-      final currentMonthKey = _getMonthKey(now);
-
-      // Check if reset is needed
-      final lastReset = prefs.getString('lastMonthlyResetDate');
-      final isResetOutdated = lastReset == null || lastReset != currentMonthKey;
-      final hasNonZeroValues =
-          _balance.monthlyExpenses != 0 || _balance.monthlyIncomes != 0;
-
-      _log(
-          'Monthly reset check: currentMonth=$currentMonthKey, lastReset=$lastReset, hasNonZeroValues=$hasNonZeroValues');
-
-      if (hasNonZeroValues || isResetOutdated) {
-        _balance = _balance.copyWith(
-          monthlyExpenses: 0,
-          monthlyIncomes: 0,
-        );
-
-        _lastMonthlyResetDateString = currentMonthKey;
-        await prefs.setString('lastMonthlyResetDate', currentMonthKey);
-        await _saveBalances();
-
-        _log('Monthly reset completed for month: $currentMonthKey');
-        notifyListeners();
-        return true;
-      } else {
-        _log('Monthly balance already reset - skipping');
-        return false;
-      }
+      _log('Resetting monthly values to 0...');
+      _balance = _balance.copyWith(
+        monthlyExpenses: 0,
+        monthlyIncomes: 0,
+      );
+      _saveBalances();
+      notifyListeners();
+      _log('Monthly values reset successfully');
     } catch (e, stackTrace) {
-      _logError('Failed to reset monthly balance', e, stackTrace);
-      return false;
-    } finally {
-      _isProcessingMonthlyReset = false;
+      _logError('Failed to reset monthly values', e, stackTrace);
     }
   }
 
-  // Helper methods to generate consistent keys
-  String _getWeekKey(DateTime date) {
-    final monday = date.subtract(Duration(days: date.weekday - 1));
-    final mondayDateOnly = DateTime(monday.year, monday.month, monday.day);
-
-    final firstDayOfYear = DateTime(mondayDateOnly.year, 1, 1);
-    final firstMonday = firstDayOfYear.weekday == DateTime.monday
-        ? firstDayOfYear
-        : firstDayOfYear
-            .add(Duration(days: DateTime.monday - firstDayOfYear.weekday + 7));
-
-    final weekNumber =
-        ((mondayDateOnly.difference(firstMonday).inDays) / 7).floor() + 1;
-
-    return '${mondayDateOnly.year}-W${weekNumber.toString().padLeft(2, '0')}-${mondayDateOnly.month.toString().padLeft(2, '0')}-${mondayDateOnly.day.toString().padLeft(2, '0')}';
-  }
-
-  String _getMonthKey(DateTime date) =>
-      '${date.year}-${date.month.toString().padLeft(2, '0')}';
+  // --------------------------------------------------
+  // UI HELPERS
+  // --------------------------------------------------
 
   void toggleDateTimePicker() {
     try {
@@ -391,6 +283,10 @@ class BalanceProvider extends ChangeNotifier {
       _logError('Failed to toggle date time picker', e, stackTrace);
     }
   }
+
+  // --------------------------------------------------
+  // LOGGING
+  // --------------------------------------------------
 
   void _log(String message) {
     print('[$_tag] $message');
@@ -406,38 +302,153 @@ class BalanceProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> resetApp(AIAdvisorProvider aiAdvisorProvider) async {
-    // 1️⃣ Reset in-memory balance
-    _balance = const BalanceModel();
+  // --------------------------------------------------
+  // APP RESET
+  // --------------------------------------------------
 
-    // 2️⃣ Reset in-memory dates
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    _lastResetDateString = today.toIso8601String().split('T')[0];
-    _lastWeeklyResetDateString = null;
-    _lastMonthlyResetDateString = null;
+  Future<void> resetApp(
+    AIAdvisorProvider aiAdvisorProvider,
+    BuildContext context, {
+    CategoryProvider? categoryProvider,
+    BudgetProvider? budgetProvider,
+    InvestmentProvider? investmentProvider,
+  }) async {
+    try {
+      _log('Starting complete app reset...');
 
-    // 3️⃣ Clear all stored balance/investment data
-    await _storage.clearAll();
-    await listProvider?.clearTransactions();
+      // 1️⃣ Reset in-memory values
+      _balance = const BalanceModel();
+      _showDateTimePicker = false;
 
-    // 4️⃣ Save fresh reset date + zero balance
-    await _storage.saveLastResetDate(today);
-    await _storage.saveBalances(_balance.toMap());
-    await _storage.saveInvestments([]); // Clear investments
-    await _storage.saveLastInvestmentCheckDate(today);
+      // 2️⃣ Clear all stored data in storage
+      await _storage.clearAll();
 
-    // 5️⃣ Clear AI insights and related data
-    await aiAdvisorProvider.clearCache();
-    _log('AI insights and cache cleared.');
+      // 3️⃣ Clear transactions
+      if (listProvider != null) {
+        await listProvider!.clearTransactions();
+        _log('Transactions cleared');
+      }
 
-    // 6️⃣ Clear any extra preferences outside BalanceStorage if needed
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // ⚠️ Clears ALL keys in SharedPreferences
+      // 4️⃣ Clear investments
+      if (investmentProvider != null) {
+        await investmentProvider.clearAll();
+        _log('Investments cleared');
+      }
 
-    // 7️⃣ Notify UI
-    notifyListeners();
-    _log(
-        'App reset: all balances, investments, AI insights, and reset dates cleared.');
+      // 5️⃣ Save zero balance + reset dates
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      await _storage.saveLastResetDate(today);
+      await _storage.saveBalances(_balance.toMap());
+      await _storage.saveInvestments([]);
+      await _storage.saveLastInvestmentCheckDate(today);
+      await _storage.saveBalanceHistory({});
+
+      // 6️⃣ Clear AI cache
+      await aiAdvisorProvider.clearCache();
+      _log('AI cache cleared');
+
+      // 7️⃣ Clear budgets
+      if (budgetProvider != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('budgets');
+        _log('Budgets cleared');
+      }
+
+      // 8️⃣ Reset categories to defaults
+      if (categoryProvider != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('categories');
+        _log('Categories reset to defaults');
+      }
+
+      // 9️⃣ Completely wipe all SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('userName');
+      await prefs.remove('coverImagePath');
+      await prefs.remove('profileImagePath');
+      await prefs.remove('userEmail');
+      await prefs.remove('geminiApiKey');
+      await prefs.remove('totalBalance');
+      await prefs.remove('dailyExpenses');
+      await prefs.remove('weeklyExpenses');
+      await prefs.remove('monthlyExpenses');
+      await prefs.remove('dailyIncomes');
+      await prefs.remove('weeklyIncomes');
+      await prefs.remove('monthlyIncomes');
+      await prefs.remove('lastResetDate');
+      await prefs.remove('lastWeeklyResetDate');
+      await prefs.remove('lastMonthlyResetDate');
+      await prefs.remove('lastInvestmentCheckDate');
+      await prefs.remove('balanceHistory');
+      await prefs.remove('transactions');
+      await prefs.remove('investments');
+      await prefs.remove('totalInvestments');
+      await prefs.remove('budgets');
+      await prefs.remove('categories');
+      await prefs.remove('ai_insights');
+      await prefs.remove('ai_settings');
+      await prefs.remove('executed_insights');
+      await prefs.remove('dismissed_insights');
+
+      _log('All SharedPreferences cleared');
+
+      // 🔟 Notify UI listeners
+      notifyListeners();
+
+      _log('Full reset complete — all data cleared');
+
+      // 1️⃣1️⃣ Navigate back to onboarding screen
+      if (context.mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const OnboardingPage()),
+          (route) => false,
+        );
+        _log('Navigated to onboarding page');
+      }
+    } catch (e, stackTrace) {
+      _logError('Failed to complete app reset', e, stackTrace);
+
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Reset Failed'),
+            content: Text('Failed to reset app: $e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
+  /// Helper method to verify reset was successful
+  Future<bool> verifyReset() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      final hasBalance = prefs.containsKey('totalBalance');
+      final hasTransactions = prefs.containsKey('transactions');
+      final hasInvestments = prefs.containsKey('investments');
+      final hasUserName = prefs.containsKey('userName');
+
+      final isReset =
+          !hasBalance && !hasTransactions && !hasInvestments && !hasUserName;
+
+      _log('Reset verification: ${isReset ? "SUCCESS" : "FAILED"}');
+      _log(
+          'Has balance: $hasBalance, Has transactions: $hasTransactions, Has investments: $hasInvestments, Has userName: $hasUserName');
+
+      return isReset;
+    } catch (e, stackTrace) {
+      _logError('Failed to verify reset', e, stackTrace);
+      return false;
+    }
   }
 }

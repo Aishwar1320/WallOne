@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import 'package:wallone/state/category_provider.dart';
 import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/state/theme_provider.dart';
 import 'package:wallone/state/transaction_type_provider.dart';
+import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/layout.dart';
 import 'package:wallone/utils/services/reset_timer.dart';
 import 'package:wallone/utils/services/shared_pref.dart';
@@ -25,6 +27,12 @@ Future<void> main() async {
   // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
 
+  // Debug output
+  final hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;
+  if (kDebugMode) {
+    debugPrint('[main] hasSeenOnboarding from prefs: $hasSeenOnboarding');
+  }
+
   // Retrieve the API key from the .env file
   final apiKeyFromEnv = dotenv.env['GEMINI_API_KEY']?.trim();
 
@@ -33,11 +41,15 @@ Future<void> main() async {
     // Save the API key to SharedPreferences for later use
     // You might want to do this only once or on app start.
     await prefs.setString('GEMINI_API_KEY', apiKeyFromEnv);
-    print(
-        '[Main] API Key successfully loaded from .env and saved to SharedPreferences.');
+    if (kDebugMode) {
+      debugPrint(
+          '[Main] API Key successfully loaded from .env and saved to SharedPreferences.');
+    }
   } else {
-    print(
-        '[Main] WARNING: GEMINI_API_KEY is missing or empty in the .env file.');
+    if (kDebugMode) {
+      debugPrint(
+          '[Main] WARNING: GEMINI_API_KEY is missing or empty in the .env file.');
+    }
   }
 
   // Initialize BalanceStorage
@@ -49,7 +61,7 @@ Future<void> main() async {
   final listProvider = ListProvider(balanceProvider, investmentProvider);
 
   // Set up provider relationships BEFORE creating BudgetProvider
-  print('[Main] Setting up provider relationships...');
+  if (kDebugMode) debugPrint('[Main] Setting up provider relationships...');
 
   // Set balance provider reference in investment provider
   investmentProvider.setBalanceProvider(balanceProvider);
@@ -69,7 +81,23 @@ Future<void> main() async {
 
   final aiAdvisorProvider = AIAdvisorProvider(prefs);
 
-  print('[Main] All providers initialized and linked');
+  // Wire up a quick refresh when new transactions are added.
+  // Use a short debounce to avoid spamming the AI service when multiple
+  // transactions are created in quick succession.
+  Timer? _aiRefreshTimer;
+  listProvider.onTransactionAdded = (transaction) {
+    try {
+      _aiRefreshTimer?.cancel();
+      _aiRefreshTimer = Timer(const Duration(milliseconds: 800), () async {
+        try {
+          // If the advisor is not ready this call will be a no-op.
+          await aiAdvisorProvider.refreshInsights(forceRefresh: true);
+        } catch (_) {}
+      });
+    } catch (_) {}
+  };
+
+  if (kDebugMode) debugPrint('[Main] All providers initialized and linked');
 
   runApp(
     DevicePreview(
@@ -89,15 +117,20 @@ Future<void> main() async {
           ChangeNotifierProvider(create: (context) => CategoryProvider(prefs)),
           ChangeNotifierProvider<AIAdvisorProvider>.value(
               value: aiAdvisorProvider),
+          ChangeNotifierProvider(create: (_) => UserProfileProvider()),
         ],
-        child: const MyApp(),
+        child: MyApp(initialHasSeenOnboarding: hasSeenOnboarding),
       ),
     ),
   );
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  final bool? initialHasSeenOnboarding;
+  const MyApp({
+    super.key,
+    this.initialHasSeenOnboarding,
+  });
 
   @override
   _MyAppState createState() => _MyAppState();
@@ -106,22 +139,45 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   static ResetBalanceService? _resetBalanceService;
   bool _hasInitialized = false;
+  bool? _hasSeenOnboarding;
 
   @override
   void initState() {
     super.initState();
+    // start with supplied value if available (makes startup snappier),
+    // but still re-check prefs to be sure.
+    _hasSeenOnboarding = widget.initialHasSeenOnboarding;
+
+    // async load and overwrite with the real stored value
+    _loadHasSeenOnboarding();
+
     _initializeAI();
     WidgetsBinding.instance.addObserver(this);
 
     // Initialize the service only once
     if (_resetBalanceService == null) {
       _resetBalanceService = ResetBalanceService();
-      print('[MyApp] Created new ResetBalanceService instance');
+      if (kDebugMode) {
+        debugPrint('[MyApp] Created new ResetBalanceService instance');
+      }
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeResetService();
     });
+  }
+
+  Future<void> _loadHasSeenOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getBool('hasSeenOnboarding') ?? false;
+    if (kDebugMode) {
+      debugPrint('[MyApp] _loadHasSeenOnboarding -> $value');
+    }
+    if (mounted) {
+      setState(() {
+        _hasSeenOnboarding = value;
+      });
+    }
   }
 
   Future<void> _initializeAI() async {
@@ -149,29 +205,36 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   void _initializeResetService() {
     if (!_hasInitialized && _resetBalanceService != null) {
-      print('[MyApp] Initializing reset service...');
+      if (kDebugMode) debugPrint('[MyApp] Initializing reset service...');
       _resetBalanceService!.startResetTimers(context);
       _hasInitialized = true;
     } else {
-      print('[MyApp] Reset service already initialized or service is null');
+      if (kDebugMode) {
+        debugPrint(
+            '[MyApp] Reset service already initialized or service is null');
+      }
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    print('[MyApp] App lifecycle state changed to: $state');
+    if (kDebugMode) {
+      debugPrint('[MyApp] App lifecycle state changed to: $state');
+    }
 
     if (state == AppLifecycleState.resumed && _resetBalanceService != null) {
       // Only reinitialize if we haven't already done so today
-      print(
-          '[MyApp] App resumed - checking if reset service needs reinitialization');
+      if (kDebugMode) {
+        debugPrint(
+            '[MyApp] App resumed - checking if reset service needs reinitialization');
+      }
       _resetBalanceService!.startResetTimers(context);
     }
   }
 
   @override
   void dispose() {
-    print('[MyApp] Disposing MyApp...');
+    if (kDebugMode) debugPrint('[MyApp] Disposing MyApp...');
     WidgetsBinding.instance.removeObserver(this);
 
     _resetBalanceService?.stop();
@@ -183,13 +246,59 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    // while we are still loading the pref show a simple splash/progress
+    if (_hasSeenOnboarding == null) {
+      return MaterialApp(
+        theme: ThemeData.light(),
+        darkTheme: ThemeData.dark(),
+        themeMode: themeProvider.themeMode,
+        debugShowCheckedModeBanner: false,
+        home: const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    final showOnboarding = !(_hasSeenOnboarding!);
 
     return MaterialApp(
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),
       themeMode: themeProvider.themeMode,
       debugShowCheckedModeBanner: false,
-      home: const OnboardingPage(),
+      home: showOnboarding
+          ? OnboardingPage(
+              onFinish: () async {
+                final prefs = await SharedPreferences.getInstance();
+
+                // Write
+                final succeeded =
+                    await prefs.setBool('hasSeenOnboarding', true);
+                debugPrint('[Onboarding] prefs.setBool returned: $succeeded');
+
+                // Read back immediately
+                final readBack = prefs.getBool('hasSeenOnboarding');
+                debugPrint('[Onboarding] prefs.getBool after set: $readBack');
+
+                // Confirm by getting a fresh instance (optional extra check)
+                final freshPrefs = await SharedPreferences.getInstance();
+                final freshRead = freshPrefs.getBool('hasSeenOnboarding');
+                debugPrint('[Onboarding] freshPrefs.getBool: $freshRead');
+
+                if (!succeeded) {
+                  debugPrint('[Onboarding] WARNING: setBool reported failure');
+                }
+
+                if (context.mounted) {
+                  // update local state if you used _hasSeenOnboarding in MyApp
+                  // then navigate
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const DesignLayout()),
+                  );
+                }
+              },
+            )
+          : const DesignLayout(),
     );
   }
 }

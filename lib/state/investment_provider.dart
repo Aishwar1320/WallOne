@@ -29,6 +29,9 @@ class InvestmentProvider with ChangeNotifier {
   Timer? _monthlyDeductionTimer;
   double lastMonthTotal = 0.0;
 
+  // Initialization flag to prevent multiple loads
+  bool _isInitialized = false;
+
   static const String _tag = 'InvestmentProvider';
 
   List<InvestmentModel> get investments => _investments;
@@ -62,8 +65,7 @@ class InvestmentProvider with ChangeNotifier {
   void setListProvider(ListProvider provider) {
     listProvider = provider;
     _log('List provider set');
-    // Don't automatically load transactions here to avoid circular calls
-    // Instead, check for pending deductions after a brief delay
+    // Check for pending deductions after a brief delay to ensure full initialization
     Future.delayed(Duration(milliseconds: 100), () {
       _checkPendingInvestmentDeductions();
     });
@@ -71,30 +73,76 @@ class InvestmentProvider with ChangeNotifier {
 
   /// Load investments and reconstruct state
   Future<void> loadInvestments() async {
+    // Prevent multiple simultaneous loads
+    if (_isInitialized) {
+      _log('Already initialized, skipping reload to prevent duplicates');
+      return;
+    }
+
     try {
       final raw = await storage.loadInvestments();
-      _investments = raw
-          .map((e) => InvestmentModel.fromMap(
-                Map<String, dynamic>.from(e as Map),
-              ))
-          .toList();
+      final List<dynamic> items = List<dynamic>.from(raw);
 
-      // Rebuild transactions list from monthly deductions
+      // Handle multiple possible return formats from storage:
+      // 1) List<InvestmentModel> (current storage implementation)
+      // 2) List<Map<String, dynamic>> or List<dynamic> where each item is a Map
+      // Normalize whatever format storage returned into a List<InvestmentModel>
+      _investments = [];
+      if (items.isNotEmpty) {
+        for (final e in items) {
+          try {
+            if (e == null) continue;
+            if (e is InvestmentModel) {
+              _investments.add(e);
+            } else if (e is Map) {
+              _investments
+                  .add(InvestmentModel.fromMap(Map<String, dynamic>.from(e)));
+            } else {
+              // Try to call toMap() on the object (some storage variants)
+              try {
+                final dynamicMap = (e as dynamic).toMap();
+                if (dynamicMap is Map) {
+                  _investments.add(InvestmentModel.fromMap(
+                      Map<String, dynamic>.from(dynamicMap)));
+                } else {
+                  debugPrint(
+                      '[InvestmentProvider] Unknown investment item type: ${e.runtimeType}');
+                }
+              } catch (err) {
+                debugPrint(
+                    '[InvestmentProvider] Failed to convert investment item of type ${e.runtimeType}: $err');
+              }
+            }
+          } catch (err) {
+            debugPrint(
+                '[InvestmentProvider] Skipping invalid investment item: $err');
+          }
+        }
+      }
+
+      // Clear and rebuild transactions with distributed dates (approx 30 days apart)
       _transactions.clear();
       for (final inv in _investments) {
-        for (int i = 0; i < inv.monthlyDeductions.length; i++) {
-          final amount = inv.monthlyDeductions[i];
+        final len = inv.monthlyDeductions.length;
+        for (int j = 0; j < len; j++) {
+          final amount = inv.monthlyDeductions[j];
+          final daysOffset = (len - 1 - j) * 30;
+          final txDate =
+              inv.lastDeductionDate.subtract(Duration(days: daysOffset));
           _transactions.add(InvestmentTransactionModel(
             amount: amount,
-            date: inv.lastDeductionDate,
-            id: '${inv.name}_${amount.toString()}_${inv.lastDeductionDate.toIso8601String()}_$i',
+            date: txDate,
+            id: '${inv.name}_${amount.toString()}_${txDate.toIso8601String()}_$j',
           ));
         }
       }
 
       _recalcTotal();
       _log(
-          'Loaded ${_investments.length} investments with ${_transactions.length} transactions');
+          'Loaded ${_investments.length} investments with ${_transactions.length} transactions. Total: $_totalInvestments');
+
+      // Mark as initialized to prevent future reloads
+      _isInitialized = true;
 
       // Notify listeners after loading
       notifyListeners();
@@ -102,6 +150,7 @@ class InvestmentProvider with ChangeNotifier {
       _logError('Failed to load investments', e, stackTrace);
       _investments = [];
       _transactions = [];
+      _isInitialized = true; // Mark as initialized even on error
       notifyListeners();
     }
   }
@@ -168,8 +217,9 @@ class InvestmentProvider with ChangeNotifier {
 
       _investments.add(inv);
 
-      // Record the initial transaction
-      recordTransaction(inv.name, amount, date: startDate ?? DateTime.now());
+      // Record the initial transaction (this updates _investments and _transactions)
+      _recordTransactionInternal(inv.name, amount,
+          date: startDate ?? DateTime.now());
 
       // Deduct from balance if balance provider is available
       if (balanceProvider != null) {
@@ -185,6 +235,7 @@ class InvestmentProvider with ChangeNotifier {
           amount: amount,
           isIncome: false,
           date: (startDate ?? DateTime.now()).toIso8601String(),
+          transactionType: TransactionType.investment,
         );
 
         listProvider!.addTransaction(transaction,
@@ -194,7 +245,7 @@ class InvestmentProvider with ChangeNotifier {
 
       await saveInvestments();
 
-      // IMPORTANT: Notify listeners after all operations
+      // IMPORTANT: Notify listeners once after all operations
       notifyListeners();
 
       _log(
@@ -226,7 +277,8 @@ class InvestmentProvider with ChangeNotifier {
       // IMPORTANT: Notify listeners after removal
       notifyListeners();
 
-      _log('Investment "${removedInv.name}" removed successfully');
+      _log(
+          'Investment "${removedInv.name}" removed successfully. Total: $_totalInvestments');
     } catch (e, stackTrace) {
       _logError('Failed to remove investment at index $index', e, stackTrace);
     }
@@ -325,8 +377,10 @@ class InvestmentProvider with ChangeNotifier {
     }
   }
 
-  /// Record a deduction transaction for given investment name
-  void recordTransaction(String invName, double amount, {DateTime? date}) {
+  /// Internal method to record a deduction transaction for given investment name
+  /// This does NOT call notifyListeners - caller is responsible for that
+  void _recordTransactionInternal(String invName, double amount,
+      {DateTime? date}) {
     try {
       final invIndex = _investments.indexWhere((inv) => inv.name == invName);
       if (invIndex == -1) {
@@ -342,18 +396,22 @@ class InvestmentProvider with ChangeNotifier {
       final tx = InvestmentTransactionModel(
         amount: amount,
         date: dedDate,
-        id: '${inv.name}_${dedDate.toIso8601String()}_${inv.monthlyDeductions.length}',
+        id: '${inv.name}_${amount.toString()}_${dedDate.toIso8601String()}_${updatedInv.monthlyDeductions.length}',
       );
       _transactions.add(tx);
 
       _recalcTotal();
       _log(
           'Recorded transaction: +$amount for $invName at ${dedDate.toIso8601String()}. New total: $_totalInvestments');
-
-      // Note: Don't call notifyListeners here if called from addInvestment to avoid double notification
     } catch (e, stackTrace) {
       _logError('Failed to record transaction for $invName', e, stackTrace);
     }
+  }
+
+  /// Public method to record a transaction (kept for backwards compatibility)
+  void recordTransaction(String invName, double amount, {DateTime? date}) {
+    _recordTransactionInternal(invName, amount, date: date);
+    notifyListeners();
   }
 
   /// Remove a transaction and its corresponding deduction
@@ -435,7 +493,19 @@ class InvestmentProvider with ChangeNotifier {
       );
 
   void _recalcTotal() {
+    final oldTotal = _totalInvestments;
     _totalInvestments = _transactions.fold(0.0, (sum, tx) => sum + tx.amount);
+    _log(
+        'Recalc: ${_transactions.length} transactions, total changed from $oldTotal to $_totalInvestments');
+
+    // Debug: Log transaction details to spot duplicates
+    if (_transactions.isNotEmpty) {
+      final ids = _transactions.map((tx) => tx.id).toSet();
+      if (ids.length != _transactions.length) {
+        _log(
+            'WARNING: Duplicate transaction IDs detected! ${_transactions.length} transactions but only ${ids.length} unique IDs');
+      }
+    }
   }
 
   // --------------------------------------------------
@@ -544,29 +614,25 @@ class InvestmentProvider with ChangeNotifier {
             amount: inv.amount,
             isIncome: false,
             date: now.toIso8601String(),
+            transactionType: TransactionType.investment,
           );
 
           listProvider!.addTransaction(transaction,
               updateBalance: false); // Balance already updated above
         }
 
-        // Update investment
-        final invIndex = _investments.indexWhere((i) => i.name == inv.name);
-        if (invIndex != -1) {
-          _investments[invIndex] = inv.addMonthlyDeduction(inv.amount, now);
-          _log(
-              "Updated last deduction date for ${inv.name}: ${now.toIso8601String()}");
-        }
-
-        // Record transaction
-        recordTransaction(inv.name, inv.amount, date: now);
+        // Record transaction internally (without notifying)
+        _recordTransactionInternal(inv.name, inv.amount, date: now);
+        _log(
+            "Updated last deduction date for ${inv.name}: ${now.toIso8601String()}");
         hasDeductions = true;
       }
 
       if (hasDeductions) {
         await saveInvestments();
         notifyListeners();
-        _log('Investment deductions processed successfully');
+        _log(
+            'Investment deductions processed successfully. Total: $_totalInvestments');
       } else {
         _log('No investment deductions were processed');
       }
@@ -583,7 +649,7 @@ class InvestmentProvider with ChangeNotifier {
     try {
       _log('Simulating full investment deduction (forced)');
 
-      // 1️⃣ Store current total as "last month" before deduction
+      // Store current total as "last month" before deduction
       lastMonthTotal = investments.fold(0.0, (sum, inv) => sum + inv.amount);
 
       await _processInvestmentDeductions(force: true);
