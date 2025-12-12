@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:wallone/state/adviser_provider.dart';
+import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/constants.dart';
 
 /// AI Settings Tab
@@ -30,6 +31,7 @@ class AISettingsTab extends StatelessWidget {
       ),
       body: Consumer<AIAdvisorProvider>(
         builder: (context, provider, child) {
+          final user = Provider.of<UserProfileProvider>(context, listen: false);
           return ListView(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             children: [
@@ -45,14 +47,74 @@ class AISettingsTab extends StatelessWidget {
                       ),
                     ),
                     subtitle: Text(
-                      'Get AI-powered financial insights',
+                      user.isPremium
+                          ? 'Get AI-powered financial insights'
+                          : 'Premium feature',
                       style: GoogleFonts.outfit(
                         color: budgetTextLight(context),
                       ),
                     ),
                     value: provider.isAIEnabled,
-                    onChanged: provider.setAIEnabled,
+                    onChanged: user.isPremium
+                        ? (value) => provider.setAIEnabled(value)
+                        : (value) {
+                            // Show upgrade dialog for non-premium users
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: Text(
+                                  'Premium Required',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                content: Text(
+                                  'AI Advisor is a premium feature. Upgrade to unlock it.',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.outfit(),
+                                ),
+                                actions: [
+                                  Center(
+                                    child: ElevatedButton(
+                                      style: ButtonStyle(
+                                        backgroundColor: WidgetStatePropertyAll(
+                                          purpleColors(context),
+                                        ),
+                                        padding: const WidgetStatePropertyAll(
+                                          EdgeInsets.symmetric(
+                                              horizontal: 40, vertical: 16),
+                                        ),
+                                        shape: WidgetStatePropertyAll(
+                                          RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                        ),
+                                      ),
+                                      onPressed: () => Navigator.pop(context),
+                                      child: Text(
+                                        'Close',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 16,
+                                          color: primaryColor(context),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                    secondary: user.isPremium
+                        ? null
+                        : const Icon(
+                            Icons.lock,
+                            color: Colors.grey,
+                          ),
                   ),
+
                   // SwitchListTile(
                   //   title: Text(
                   //     'Smart Notifications',

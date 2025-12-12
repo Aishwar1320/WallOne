@@ -173,7 +173,7 @@ class _ItemListWidgetState extends State<ItemListWidget> {
     );
 
     if (confirm == true && mounted) {
-      context.read<ListProvider>().removeTransaction(transaction.id, context);
+      context.read<ListProvider>().removeTransaction(transaction.id);
     }
   }
 

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:wallone/utils/services/gemini_service.dart';
+import 'package:wallone/utils/services/rule_based_advisor.dart';
 
 void main() {
   group('FinancialInsight.fromJson', () {

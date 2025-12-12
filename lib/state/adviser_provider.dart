@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 
 import 'package:wallone/state/balance_provider.dart';
@@ -7,16 +10,19 @@ import 'package:wallone/state/investment_provider.dart';
 import 'package:wallone/state/budget_provider.dart';
 import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/state/category_provider.dart';
-import 'package:wallone/utils/services/gemini_service.dart';
+import 'package:wallone/utils/services/rule_based_advisor.dart';
 
 /// Enhanced provider for managing AI financial advisor functionality with smart insight management
 class AIAdvisorProvider with ChangeNotifier {
   final SharedPreferences _prefs;
-  GeminiFinancialAdvisor? _advisor;
+
+  /// Underlying advisor instance (rule-based). Gemini support has been removed
+  /// and the app uses the local rule-based advisor implementation.
+  FinancialAdvisor? _advisor;
 
   List<FinancialInsight> _insights = [];
   bool _isLoading = false;
-  bool _isAIEnabled = true;
+  bool _isAIEnabled = false;
   String? _error;
 
   // Auto-pilot settings
@@ -81,9 +87,15 @@ class AIAdvisorProvider with ChangeNotifier {
   int get analysisFrequencyHours => _analysisFrequencyHours;
   bool get hasAdvisor => _advisor != null;
 
-  /// Initialize AI advisor with API key and providers
+  /// Human-friendly advisor type (always 'rule-based' after Gemini removal)
+  String get advisorType {
+    if (_advisor == null) return 'none';
+    return 'rule-based';
+  }
+
+  /// Initialize AI advisor and attach required providers.
+  /// This app now uses the local rule-based advisor only.
   Future<void> initializeAdvisor({
-    required String apiKey,
     required BalanceProvider balanceProvider,
     required InvestmentProvider investmentProvider,
     required BudgetProvider budgetProvider,
@@ -93,8 +105,9 @@ class AIAdvisorProvider with ChangeNotifier {
     try {
       _log('Initializing AI advisor...');
 
-      _advisor = GeminiFinancialAdvisor(
-        apiKey: apiKey,
+      // Use rule-based advisor (Gemini removed)
+      _log('Using RuleBasedAdvisor (gemini removed)');
+      _advisor = RuleBasedAdvisor(
         balanceProvider: balanceProvider,
         investmentProvider: investmentProvider,
         budgetProvider: budgetProvider,
@@ -104,7 +117,7 @@ class AIAdvisorProvider with ChangeNotifier {
 
       _error = null;
       _log('AI advisor initialized successfully');
-      notifyListeners();
+      _safeNotify();
 
       // Run initial analysis if enabled
       if (_isAIEnabled) {
@@ -113,7 +126,7 @@ class AIAdvisorProvider with ChangeNotifier {
     } catch (e, stackTrace) {
       _logError('Failed to initialize AI advisor', e, stackTrace);
       _error = 'Failed to initialize AI advisor: $e';
-      notifyListeners();
+      _safeNotify();
     }
   }
 
@@ -127,7 +140,7 @@ class AIAdvisorProvider with ChangeNotifier {
     try {
       _isLoading = true;
       _error = null;
-      notifyListeners();
+      _safeNotify();
 
       _log('Refreshing AI insights...');
 
@@ -147,7 +160,7 @@ class AIAdvisorProvider with ChangeNotifier {
       _error = 'Failed to get AI insights: $e';
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _safeNotify();
     }
   }
 
@@ -189,7 +202,7 @@ class AIAdvisorProvider with ChangeNotifier {
 
         // Trigger refresh to get new insights after execution
         await refreshInsights(forceRefresh: true);
-        notifyListeners();
+        _safeNotify();
       } else {
         _log('Failed to execute insight: $insightId');
       }
@@ -211,7 +224,7 @@ class AIAdvisorProvider with ChangeNotifier {
     _saveDismissedInsights();
 
     _log('Dismissed insight: $insightId');
-    notifyListeners();
+    _safeNotify();
   }
 
   /// Restore a dismissed insight
@@ -220,6 +233,28 @@ class AIAdvisorProvider with ChangeNotifier {
     _saveDismissedInsights();
 
     _log('Restored insight: $insightId');
+    _safeNotify();
+  }
+
+  void reset() {
+    _isAIEnabled = false;
+    notifyListeners();
+  }
+
+  Future<void> loadUserSettings(bool isPremium) async {
+    if (!isPremium) {
+      _isAIEnabled = false; // force OFF for free users
+      notifyListeners();
+      return;
+    }
+
+    // load settings normally for premium user
+    final doc = await FirebaseFirestore.instance
+        .collection('ai_settings')
+        .doc(FirebaseAuth.instance.currentUser!.uid)
+        .get();
+
+    _isAIEnabled = doc.data()?['isAIEnabled'] ?? false;
     notifyListeners();
   }
 
@@ -339,43 +374,54 @@ class AIAdvisorProvider with ChangeNotifier {
     }
 
     await refreshInsights();
+    Future.microtask(() {
+      _safeNotify();
+    });
   }
 
-  // Enhanced settings management
   void setAIEnabled(bool enabled) {
-    _isAIEnabled = enabled;
-    _saveSettings();
-    notifyListeners();
+    // this prevents free users from enabling AI internally
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      FirebaseFirestore.instance.collection('users').doc(uid).get().then((doc) {
+        final isPremium = doc.data()?['isPremium'] ?? false;
+        if (!isPremium) return; // block changes for free users
+
+        _isAIEnabled = enabled;
+        _saveSettings();
+        _safeNotify();
+      });
+    }
   }
 
   void setAutoBudgetOptimization(bool enabled) {
     _autoBudgetOptimization = enabled;
     _saveSettings();
-    notifyListeners();
+    _safeNotify();
   }
 
   void setAutoInvestmentSuggestions(bool enabled) {
     _autoInvestmentSuggestions = enabled;
     _saveSettings();
-    notifyListeners();
+    _safeNotify();
   }
 
   void setAutoExpenseCategorization(bool enabled) {
     _autoExpenseCategorization = enabled;
     _saveSettings();
-    notifyListeners();
+    _safeNotify();
   }
 
   void setSmartNotifications(bool enabled) {
     _smartNotifications = enabled;
     _saveSettings();
-    notifyListeners();
+    _safeNotify();
   }
 
   void setAnalysisFrequency(int hours) {
     _analysisFrequencyHours = hours;
     _saveSettings();
-    notifyListeners();
+    _safeNotify();
   }
 
   /// Get insights by priority
@@ -496,6 +542,26 @@ class AIAdvisorProvider with ChangeNotifier {
   Future<void> runFullAnalysis() async {
     if (_advisor == null || !_isAIEnabled) {
       _log('AI advisor not available or disabled');
+      return;
+    }
+
+    // enforce premium feature: require current user to be signed-in and flagged premium
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      _log('Full analysis requires sign-in with a Premium account');
+      return;
+    }
+    try {
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final isPremium = doc.data()?['isPremium'];
+      if (isPremium != true) {
+        _log('Full analysis blocked — user is not Premium');
+        return;
+      }
+    } catch (_) {
+      // on error conservatively block
+      _log('Could not verify premium status — blocking full analysis');
       return;
     }
 
@@ -668,7 +734,7 @@ class AIAdvisorProvider with ChangeNotifier {
 
       await _saveSettings();
 
-      notifyListeners();
+      _safeNotify();
       _log('Cache cleared');
     } catch (e, stackTrace) {
       _logError('Failed to clear cache', e, stackTrace);
@@ -698,6 +764,32 @@ class AIAdvisorProvider with ChangeNotifier {
     debugPrint('Error details: $error');
     if (stackTrace != null) {
       debugPrint('Stack trace: $stackTrace');
+    }
+  }
+
+  /// Safely notify listeners. If called during the build phase this will
+  /// schedule a post-frame callback to avoid calling `notifyListeners()`
+  /// synchronously and triggering "setState() or markNeedsBuild() called during build".
+  bool _notifyScheduled = false;
+
+  void _safeNotify() {
+    // Coalesce repeated notifications into a single post-frame callback.
+    if (_notifyScheduled) return;
+    _notifyScheduled = true;
+
+    try {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _notifyScheduled = false;
+        try {
+          notifyListeners();
+        } catch (_) {}
+      });
+    } catch (_) {
+      // Fallback: try notifying synchronously if scheduling fails.
+      _notifyScheduled = false;
+      try {
+        notifyListeners();
+      } catch (_) {}
     }
   }
 }

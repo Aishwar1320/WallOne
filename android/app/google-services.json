@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "771196702174",
+    "project_id": "wallone-a5ac2",
+    "storage_bucket": "wallone-a5ac2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:771196702174:android:5e67c4deb89ceb6fa9e14f",
+        "android_client_info": {
+          "package_name": "com.example.wallone"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDCpVQV0-HyLR9EwwffpOwr6oxsB__jHWQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wallone/pages/Ai%20Control%20Panel/tabs/ai_settings_tab.dart';
 import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/state/budget_provider.dart';
@@ -24,23 +23,12 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  String? userName;
-  String? coverImagePath;
   final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
-  }
-
-  Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      userName = prefs.getString('userName');
-      coverImagePath = prefs.getString('coverImagePath');
-    });
+    // profile data comes from UserProfileProvider — no local prefs load
   }
 
   Future<void> _pickImage() async {
@@ -52,10 +40,7 @@ class _SettingsPageState extends State<SettingsPage> {
       // Save via provider so everyone updates instantly
       await context.read<UserProfileProvider>().setImagePath(picked.path);
 
-      if (!mounted) return;
-      setState(() {
-        coverImagePath = picked.path; // keep local UI in sync
-      });
+      // provider updated the profile image path — the UI watches provider
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile image updated')),
@@ -69,7 +54,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _editName() async {
-    final controller = TextEditingController(text: userName ?? '');
+    final controller = TextEditingController(
+        text: context.read<UserProfileProvider>().userName ?? '');
     final newName = await showDialog<String?>(
       context: context,
       builder: (context) {
@@ -130,11 +116,8 @@ class _SettingsPageState extends State<SettingsPage> {
     );
 
     if (newName == null) return;
-// Save via provider
+    // Save via provider; widgets which read provider will rebuild
     await context.read<UserProfileProvider>().setName(newName);
-
-    if (!mounted) return;
-    setState(() => userName = newName);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Name updated')),
@@ -145,12 +128,13 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final screenWidth = MediaQuery.of(context).size.width;
+    final profile = context.watch<UserProfileProvider>();
+    final profileName = profile.userName;
+    final profileImagePath = profile.coverImagePath;
 
     return Scaffold(
       onDrawerChanged: (isOpened) {
-        if (isOpened) {
-          _loadUserData();
-        }
+        // no-op — profile data lives in provider and will update listeners
       },
 
       //
@@ -168,8 +152,6 @@ class _SettingsPageState extends State<SettingsPage> {
             icon: Icon(Icons.arrow_back_ios_new, color: primaryColor(context)),
             onPressed: () async {
               Navigator.pop(context);
-
-              await _loadUserData();
             }),
         elevation: 0,
         backgroundColor: mainColor(context),
@@ -203,10 +185,10 @@ class _SettingsPageState extends State<SettingsPage> {
                                 )
                               ]),
                           child: ClipOval(
-                            child: coverImagePath != null &&
-                                    File(coverImagePath!).existsSync()
+                            child: profileImagePath != null &&
+                                    File(profileImagePath).existsSync()
                                 ? Image.file(
-                                    File(coverImagePath!),
+                                    File(profileImagePath),
                                     width: 120,
                                     height: 120,
                                     fit: BoxFit.cover,
@@ -261,7 +243,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       spacing: 5,
                       children: [
                         Text(
-                          userName ?? "Guest User",
+                          profileName ?? "Guest User",
                           style: GoogleFonts.outfit(
                             color: primaryColor(context),
                             fontSize: 18,

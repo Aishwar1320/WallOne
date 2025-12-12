@@ -1,4 +1,5 @@
 class InvestmentModel {
+  final String? id; // Optional Firestore document ID
   final String name;
   final double amount;
   final bool isActive;
@@ -8,6 +9,7 @@ class InvestmentModel {
   final List<double> monthlyDeductions;
 
   const InvestmentModel({
+    this.id,
     required this.name,
     required this.amount,
     this.isActive = true,
@@ -19,6 +21,7 @@ class InvestmentModel {
 
   // Factory constructor with defaults
   factory InvestmentModel.create({
+    String? id,
     required String name,
     required double amount,
     bool isActive = true,
@@ -29,6 +32,7 @@ class InvestmentModel {
   }) {
     final now = DateTime.now();
     return InvestmentModel(
+      id: id,
       name: name,
       amount: amount,
       isActive: isActive,
@@ -44,6 +48,7 @@ class InvestmentModel {
       monthlyDeductions.fold(0.0, (sum, amount) => sum + amount);
 
   InvestmentModel copyWith({
+    String? id,
     String? name,
     double? amount,
     bool? isActive,
@@ -53,6 +58,7 @@ class InvestmentModel {
     List<double>? monthlyDeductions,
   }) {
     return InvestmentModel(
+      id: id ?? this.id,
       name: name ?? this.name,
       amount: amount ?? this.amount,
       isActive: isActive ?? this.isActive,
@@ -89,6 +95,7 @@ class InvestmentModel {
 
   Map<String, dynamic> toMap() {
     return {
+      if (id != null) 'id': id,
       'name': name,
       'amount': amount,
       'isActive': isActive,
@@ -100,28 +107,61 @@ class InvestmentModel {
   }
 
   factory InvestmentModel.fromMap(Map<String, dynamic> map) {
+    // Helper function to safely parse dates
+    DateTime parseDate(dynamic value) {
+      if (value == null) return DateTime.now();
+      if (value is DateTime) return value;
+      try {
+        return DateTime.parse(value.toString());
+      } catch (e) {
+        return DateTime.now();
+      }
+    }
+
+    // Helper function to safely parse doubles
+    double parseDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is num) return value.toDouble();
+      try {
+        return double.parse(value.toString());
+      } catch (e) {
+        return 0.0;
+      }
+    }
+
+    // Helper function to safely parse list of doubles
+    List<double> parseDoubleList(dynamic value) {
+      if (value == null) return [];
+      if (value is List) {
+        return value.map((e) => parseDouble(e)).toList();
+      }
+      return [];
+    }
+
     return InvestmentModel(
+      id: map['id'] as String?,
       name: map['name'] ?? '',
-      amount: (map['amount'] ?? 0).toDouble(),
+      amount: parseDouble(map['amount']),
       isActive: map['isActive'] ?? true,
-      startDate:
-          DateTime.parse(map['startDate'] ?? DateTime.now().toIso8601String()),
-      lastDeductionDate: DateTime.parse(
-          map['lastDeductionDate'] ?? DateTime.now().toIso8601String()),
+      startDate: parseDate(map['startDate']),
+      lastDeductionDate: parseDate(map['lastDeductionDate']),
       category: map['category'] ?? 'Other',
-      monthlyDeductions: List<double>.from(map['monthlyDeductions'] ?? []),
+      monthlyDeductions: parseDoubleList(map['monthlyDeductions']),
     );
   }
 
   @override
   String toString() {
-    return 'InvestmentModel(name: $name, amount: $amount, isActive: $isActive, startDate: $startDate, lastDeductionDate: $lastDeductionDate, category: $category, monthlyDeductions: $monthlyDeductions)';
+    return 'InvestmentModel(id: $id, name: $name, amount: $amount, isActive: $isActive, startDate: $startDate, lastDeductionDate: $lastDeductionDate, category: $category, monthlyDeductions: $monthlyDeductions)';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is InvestmentModel &&
+        other.id == id &&
         other.name == name &&
         other.amount == amount &&
         other.isActive == isActive &&
@@ -133,7 +173,8 @@ class InvestmentModel {
 
   @override
   int get hashCode {
-    return name.hashCode ^
+    return id.hashCode ^
+        name.hashCode ^
         amount.hashCode ^
         isActive.hashCode ^
         startDate.hashCode ^

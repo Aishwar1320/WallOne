@@ -1,15 +1,16 @@
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wallone/pages/About%20Us/about_us.dart';
 import 'package:wallone/pages/Ai%20Control%20Panel/ai_ml_dashboard.dart';
 import 'package:wallone/pages/Analytics%20Page/analytics.dart';
 import 'package:wallone/pages/Budget%20Page/budget_page.dart';
 import 'package:wallone/pages/Dashboard%20Page/dashboard.dart';
+import 'package:wallone/pages/Onboarding/user_setup.dart';
 import 'package:wallone/pages/Settings/settings.dart';
 import 'package:wallone/pages/Transaction%20Management/add_transactions.dart';
 import 'package:wallone/state/adviser_provider.dart';
@@ -27,21 +28,11 @@ class DesignLayout extends StatefulWidget {
 class _DesignLayoutState extends State<DesignLayout> {
   int _selectedIndex = 0;
   bool _showAppBarBalance = false;
-  String? userName;
-  String? coverImagePath;
-
   @override
   void initState() {
     super.initState();
-    _loadUserData();
-  }
-
-  Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      userName = prefs.getString('userName');
-      coverImagePath = prefs.getString('coverImagePath');
-    });
+    // No local SharedPreferences reads — user profile data comes from
+    // UserProfileProvider via Provider and is accessed in build().
   }
 
   // List of pages to display based on the selected index
@@ -197,18 +188,41 @@ class _DesignLayoutState extends State<DesignLayout> {
             ),
             const Spacer(),
             // Logout Button
-            // TextButton(
-            //   onPressed: () {},
-            //   child: Text(
-            //     "Logout",
-            //     style: GoogleFonts.outfit(
-            //       fontSize: 30,
-            //       color: primaryColor(context),
-            //       fontWeight: FontWeight.bold,
-            //     ),
-            //   ),
-            // ),
-            // const SizedBox(height: 30),
+            TextButton(
+              onPressed: () async {
+                try {
+                  final aiProvider =
+                      Provider.of<AIAdvisorProvider>(context, listen: false);
+                  aiProvider.reset();
+                  // Sign out from Firebase
+                  await FirebaseAuth.instance.signOut();
+
+                  // Navigate back to UserSetupPage (or login page)
+                  if (context.mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const UserSetupPage()),
+                      (route) => false, // remove all previous routes
+                    );
+                  }
+                } catch (e) {
+                  // Optional: show error
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Failed to logout: $e")),
+                  );
+                }
+              },
+              child: Text(
+                "Logout",
+                style: GoogleFonts.outfit(
+                  fontSize: screenWidth / 15,
+                  color: purpleColors(context),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 30),
           ],
         ),
       ),

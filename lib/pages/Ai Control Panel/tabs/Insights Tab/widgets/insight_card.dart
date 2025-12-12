@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:wallone/pages/Ai%20Control%20Panel/tabs/Insights%20Tab/widgets/execution_dialog.dart';
 import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/utils/constants.dart';
-import 'package:wallone/utils/services/gemini_service.dart';
+import 'package:wallone/utils/services/rule_based_advisor.dart';
 
 /// Enhanced InsightCard with dismissal and custom execution features
 class InsightCard extends StatelessWidget {

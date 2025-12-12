@@ -5,7 +5,7 @@ import 'package:wallone/pages/Ai%20Control%20Panel/tabs/Insights%20Tab/widgets/i
 import 'package:wallone/pages/Ai%20Control%20Panel/tabs/Insights%20Tab/widgets/placeholders.dart';
 import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/utils/constants.dart';
-import 'package:wallone/utils/services/gemini_service.dart';
+import 'package:wallone/utils/services/rule_based_advisor.dart';
 
 /// Enhanced Insights Tab with filtering and statistics
 class InsightsTab extends StatefulWidget {
