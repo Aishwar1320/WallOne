@@ -4,9 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:provider/provider.dart';
+import 'package:wallone/common_widgets/ads/banner_ad_widget.dart';
 import 'package:wallone/common_widgets/dropdown_menu.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/transaction_type_provider.dart';
+import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/state/category_provider.dart';
@@ -37,7 +39,7 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
     // Pre-populate dropdowns and text field with the current transaction values.
     selectedTitle = widget.transaction.title;
     selectedCategory = widget.transaction.category;
-    _controller.text = widget.transaction.amount.toStringAsFixed(0);
+    _controller.text = widget.transaction.amount.toStringAsFixed(2);
     _updateFieldWidth();
 
     // Set the transaction type based on the existing transaction.
@@ -262,6 +264,7 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
     final listProvider = Provider.of<ListProvider>(context, listen: false);
     final code = context.read<BalanceProvider>().currencyCode;
     final symbol = intl.NumberFormat.simpleCurrency(name: code).currencySymbol;
+    final userHasPremium = context.read<UserProfileProvider>().isPremium;
 
     return Scaffold(
       backgroundColor: mainColor(context),
@@ -359,7 +362,10 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
                   width: _fieldWidth,
                   child: TextField(
                     controller: _controller,
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      signed: false,
+                      decimal: true,
+                    ),
                     textAlign: TextAlign.center,
                     style: GoogleFonts.outfit(
                       fontSize: 70,
@@ -374,7 +380,8 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
                       border: InputBorder.none,
                     ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
+                      FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d+\.?\d{0,2}$')),
                       LengthLimitingTextInputFormatter(7),
                     ],
                   ),
@@ -493,6 +500,11 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
                 ],
               ),
             ),
+            if (!userHasPremium)
+              const Padding(
+                padding: EdgeInsets.only(top: 8.0),
+                child: BannerAdWidget(),
+              ),
           ],
         ),
       ),

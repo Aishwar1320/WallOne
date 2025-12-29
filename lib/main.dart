@@ -4,7 +4,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:wallone/firebase_options.dart';
 import 'package:wallone/pages/Onboarding/onboarding_page.dart';
 import 'package:wallone/state/adviser_provider.dart';
@@ -21,6 +23,14 @@ import 'package:wallone/utils/layout.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Google Mobile Ads SDK
+  try {
+    await MobileAds.instance.initialize();
+    if (kDebugMode) debugPrint('[main] MobileAds initialized');
+  } catch (e) {
+    if (kDebugMode) debugPrint('[main] MobileAds initialization error: $e');
+  }
+
   // Initialize Firebase FIRST
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -28,15 +38,6 @@ Future<void> main() async {
 
   if (kDebugMode) {
     debugPrint('[main] Firebase initialized successfully');
-  }
-
-  // Initialize SharedPreferences (only for UI preferences like onboarding, theme)
-  final prefs = await SharedPreferences.getInstance();
-
-  // Debug output
-  final hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;
-  if (kDebugMode) {
-    debugPrint('[main] hasSeenOnboarding from prefs: $hasSeenOnboarding');
   }
 
   // Create providers in the correct order
@@ -75,7 +76,7 @@ Future<void> main() async {
   // Create BudgetProvider after all relationships are established
   final budgetProvider = BudgetProvider(balanceProvider, investmentProvider);
 
-  final aiAdvisorProvider = AIAdvisorProvider(prefs);
+  final aiAdvisorProvider = AIAdvisorProvider();
 
   // Wire up a quick refresh when new transactions are added.
   // Use a short debounce to avoid spamming the AI service when multiple
@@ -115,26 +116,22 @@ Future<void> main() async {
           ChangeNotifierProvider<ListProvider>.value(value: listProvider),
           ChangeNotifierProvider<BudgetProvider>.value(value: budgetProvider),
 
-          // Create new instances for these
+          // Create new instances for these (now use Firestore)
           ChangeNotifierProvider(create: (_) => TransactionTypeProvider()),
           ChangeNotifierProvider(create: (_) => ThemeProvider()),
-          ChangeNotifierProvider(create: (context) => CategoryProvider(prefs)),
+          ChangeNotifierProvider(create: (_) => CategoryProvider()),
           ChangeNotifierProvider<AIAdvisorProvider>.value(
               value: aiAdvisorProvider),
           ChangeNotifierProvider(create: (_) => UserProfileProvider()),
         ],
-        child: MyApp(initialHasSeenOnboarding: hasSeenOnboarding),
+        child: const MyApp(),
       ),
     ),
   );
 }
 
 class MyApp extends StatefulWidget {
-  final bool? initialHasSeenOnboarding;
-  const MyApp({
-    super.key,
-    this.initialHasSeenOnboarding,
-  });
+  const MyApp({super.key});
 
   @override
   _MyAppState createState() => _MyAppState();
@@ -151,11 +148,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       debugPrint('[MyApp] initState called');
     }
 
-    // Start with supplied value if available (makes startup snappier),
-    // but still re-check prefs to be sure.
-    _hasSeenOnboarding = widget.initialHasSeenOnboarding;
-
-    // Async load and overwrite with the real stored value
+    // Start with null (loading state), load from Firestore
+    _hasSeenOnboarding = null;
     _loadHasSeenOnboarding();
 
     // Add observer for app lifecycle
@@ -170,10 +164,25 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   Future<void> _loadHasSeenOnboarding() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final value = prefs.getBool('hasSeenOnboarding') ?? false;
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        if (kDebugMode) {
+          debugPrint('[MyApp] No user logged in, hasSeenOnboarding -> false');
+        }
+        if (mounted) {
+          setState(() {
+            _hasSeenOnboarding = false;
+          });
+        }
+        return;
+      }
+
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      final value = userDoc.data()?['hasSeenOnboarding'] as bool? ?? false;
       if (kDebugMode) {
-        debugPrint('[MyApp] _loadHasSeenOnboarding -> $value');
+        debugPrint('[MyApp] _loadHasSeenOnboarding from Firestore -> $value');
       }
       if (mounted) {
         setState(() {
@@ -263,34 +272,17 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           ? OnboardingPage(
               onFinish: () async {
                 try {
-                  final prefs = await SharedPreferences.getInstance();
-
-                  // Write
-                  final succeeded =
-                      await prefs.setBool('hasSeenOnboarding', true);
-                  if (kDebugMode) {
-                    debugPrint(
-                        '[Onboarding] prefs.setBool returned: $succeeded');
-                  }
-
-                  // Read back immediately
-                  final readBack = prefs.getBool('hasSeenOnboarding');
-                  if (kDebugMode) {
-                    debugPrint(
-                        '[Onboarding] prefs.getBool after set: $readBack');
-                  }
-
-                  // Confirm by getting a fresh instance (optional extra check)
-                  final freshPrefs = await SharedPreferences.getInstance();
-                  final freshRead = freshPrefs.getBool('hasSeenOnboarding');
-                  if (kDebugMode) {
-                    debugPrint('[Onboarding] freshPrefs.getBool: $freshRead');
-                  }
-
-                  if (!succeeded) {
+                  // Mark onboarding as complete in Firestore
+                  final uid = FirebaseAuth.instance.currentUser?.uid;
+                  if (uid != null) {
+                    await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(uid)
+                        .set({'hasSeenOnboarding': true},
+                            SetOptions(merge: true));
                     if (kDebugMode) {
                       debugPrint(
-                          '[Onboarding] WARNING: setBool reported failure');
+                          '[Onboarding] hasSeenOnboarding saved to Firestore');
                     }
                   }
 

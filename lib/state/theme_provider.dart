@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
@@ -11,14 +12,31 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   void _loadThemeMode() async {
-    final prefs = await SharedPreferences.getInstance();
-    String? theme = prefs.getString('themeMode');
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        _themeMode = ThemeMode.system;
+        notifyListeners();
+        return;
+      }
 
-    if (theme == 'dark') {
-      _themeMode = ThemeMode.dark;
-    } else if (theme == 'light') {
-      _themeMode = ThemeMode.light;
-    } else {
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      if (doc.exists) {
+        String? theme = doc.data()?['themeMode'] as String?;
+
+        if (theme == 'dark') {
+          _themeMode = ThemeMode.dark;
+        } else if (theme == 'light') {
+          _themeMode = ThemeMode.light;
+        } else {
+          _themeMode = ThemeMode.system;
+        }
+      } else {
+        _themeMode = ThemeMode.system;
+      }
+    } catch (e) {
       _themeMode = ThemeMode.system;
     }
 
@@ -27,14 +45,27 @@ class ThemeProvider extends ChangeNotifier {
 
   void setThemeMode(ThemeMode mode) async {
     _themeMode = mode;
-    final prefs = await SharedPreferences.getInstance();
 
-    if (mode == ThemeMode.dark) {
-      await prefs.setString('themeMode', 'dark');
-    } else if (mode == ThemeMode.light) {
-      await prefs.setString('themeMode', 'light');
-    } else {
-      await prefs.setString('themeMode', 'system');
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        notifyListeners();
+        return;
+      }
+
+      String themeString = 'system';
+      if (mode == ThemeMode.dark) {
+        themeString = 'dark';
+      } else if (mode == ThemeMode.light) {
+        themeString = 'light';
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .set({'themeMode': themeString}, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Error saving theme: $e');
     }
 
     notifyListeners();

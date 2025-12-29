@@ -3,8 +3,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:wallone/common_widgets/ads/banner_ad_widget.dart';
 import 'package:wallone/common_widgets/insights_quickaccess.dart';
 import 'package:wallone/state/balance_provider.dart';
+import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'dart:math' as math;
 
@@ -46,6 +48,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
   @override
   Widget build(BuildContext context) {
+    final userHasPremium = context.read<UserProfileProvider>().isPremium;
     return Consumer<BalanceProvider>(
       builder: (context, provider, _) {
         return FadeTransition(
@@ -61,7 +64,13 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                   _buildSectionWithBadge("Finance Overview"),
                   const SizedBox(height: 16),
                   _buildMonthlyComparisonChart(context, provider),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 20),
+                  if (!userHasPremium)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: BannerAdWidget(),
+                    ),
+                  const SizedBox(height: 20),
                   _buildSectionWithInfoButton(
                     "WallOne AI",
                     context,

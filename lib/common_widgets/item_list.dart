@@ -306,7 +306,7 @@ class _TransactionTile extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "$symbol${transaction.amount}",
+                      "$symbol${transaction.amount.toStringAsFixed(2)}",
                       style: GoogleFonts.outfit(
                         fontSize: 20,
                         color: primaryColor(context),

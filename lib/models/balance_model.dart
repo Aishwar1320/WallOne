@@ -65,15 +65,15 @@ class BalanceModel {
   }
 
   // Formatted getters for UI
-  String get formattedTotalBalance => _formatValue(totalBalance);
-  String get formattedDailyExpenses => _formatValue(dailyExpenses);
-  String get formattedWeeklyExpenses => _formatValue(weeklyExpenses);
-  String get formattedMonthlyExpenses => _formatValue(monthlyExpenses);
-  String get formattedDailyIncomes => _formatValue(dailyIncomes);
-  String get formattedWeeklyIncomes => _formatValue(weeklyIncomes);
-  String get formattedMonthlyIncomes => _formatValue(monthlyIncomes);
+  String get formattedTotalBalance => formatValue(totalBalance);
+  String get formattedDailyExpenses => formatValue(dailyExpenses);
+  String get formattedWeeklyExpenses => formatValue(weeklyExpenses);
+  String get formattedMonthlyExpenses => formatValue(monthlyExpenses);
+  String get formattedDailyIncomes => formatValue(dailyIncomes);
+  String get formattedWeeklyIncomes => formatValue(weeklyIncomes);
+  String get formattedMonthlyIncomes => formatValue(monthlyIncomes);
 
-  String _formatValue(double value) {
+  String formatValue(double value) {
     try {
       if (value.abs() >= 1000) {
         double valueInK = value / 1000;

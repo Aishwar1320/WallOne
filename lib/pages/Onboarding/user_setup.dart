@@ -5,10 +5,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:wallone/utils/ad_manager.dart';
 import 'package:wallone/utils/constants.dart';
 import 'package:wallone/utils/layout.dart';
 import 'package:wallone/state/userprofile_provider.dart';
@@ -29,9 +30,70 @@ class _UserSetupPageState extends State<UserSetupPage> {
   bool isLoading = false;
   bool _isSignIn = true;
   bool _showProfileSetup = false;
+  InterstitialAd? _interstitialAd;
+  bool _isInterstitialReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInterstitialAd();
+  }
+
+  void _loadInterstitialAd() {
+    InterstitialAd.load(
+      adUnitId: AdManager.interstitialAdUnitId,
+      request: const AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          _interstitialAd = ad;
+          _isInterstitialReady = true;
+        },
+        onAdFailedToLoad: (error) {
+          _interstitialAd = null;
+          _isInterstitialReady = false;
+        },
+      ),
+    );
+  }
+
+  void _showAdAndGoHome() {
+    final isPremium = context.read<UserProfileProvider>().isPremium;
+
+    if (isPremium) {
+      _goToHome();
+      return;
+    }
+
+    if (_isInterstitialReady && _interstitialAd != null) {
+      _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
+        onAdDismissedFullScreenContent: (ad) {
+          ad.dispose();
+          _goToHome();
+        },
+        onAdFailedToShowFullScreenContent: (ad, error) {
+          ad.dispose();
+          _goToHome();
+        },
+      );
+
+      _interstitialAd!.show();
+      _interstitialAd = null;
+      _isInterstitialReady = false;
+    } else {
+      _goToHome();
+    }
+  }
+
+  void _goToHome() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const DesignLayout()),
+    );
+  }
 
   @override
   void dispose() {
+    _interstitialAd?.dispose();
     _email.dispose();
     _password.dispose();
     _name.dispose();
@@ -103,10 +165,7 @@ class _UserSetupPageState extends State<UserSetupPage> {
       }
 
       // Go to the main app
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const DesignLayout()),
-      );
+      _showAdAndGoHome();
     } catch (e) {
       snack("$e");
     } finally {
@@ -156,14 +215,20 @@ class _UserSetupPageState extends State<UserSetupPage> {
         }
       } catch (_) {}
 
-      // Mark onboarding as complete
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('hasSeenOnboarding', true);
+      // Mark onboarding as complete in Firestore
+      try {
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid)
+              .set({'hasSeenOnboarding': true}, SetOptions(merge: true));
+        }
+      } catch (e) {
+        debugPrint('Error saving onboarding state: $e');
+      }
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const DesignLayout()),
-      );
+      _showAdAndGoHome();
     } catch (e) {
       snack("$e");
     } finally {

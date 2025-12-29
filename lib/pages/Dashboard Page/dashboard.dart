@@ -3,6 +3,7 @@ import 'package:flutter_sticky_header/flutter_sticky_header.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:wallone/common_widgets/ads/banner_ad_widget.dart';
 import 'package:wallone/common_widgets/dynamic_buttons.dart';
 import 'package:wallone/common_widgets/filter_control.dart';
 import 'package:wallone/common_widgets/health_score_card.dart';
@@ -11,6 +12,7 @@ import 'package:wallone/common_widgets/total_expense.dart';
 import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/list_provider.dart';
+import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/constants.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -26,7 +28,7 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   bool isExpensesSelected = true;
-  String selectedPeriod = 'All Dates';
+  String selectedPeriod = 'All Transactions';
 
   final ScrollController _scrollController = ScrollController();
   bool isBalanceVisible = true;
@@ -63,6 +65,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final code = context.read<BalanceProvider>().currencyCode;
     final symbol = NumberFormat.simpleCurrency(name: code).currencySymbol;
     final balanceProvider = Provider.of<BalanceProvider>(context);
+    final userHasPremium = context.read<UserProfileProvider>().isPremium;
 
     return CustomScrollView(
       controller: _scrollController,
@@ -166,7 +169,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                   .setFilter(
                                 isExpensesSelected: isExpensesSelected,
                                 period: selectedPeriod,
-                                isActive: selectedPeriod != 'All Dates',
+                                isActive: selectedPeriod != 'All Transactions',
                               );
                             },
                           ),
@@ -180,7 +183,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             onTypeChanged: (value) =>
                                 setState(() => isExpensesSelected = value),
                             onPeriodChanged: (period) {
-                              final newPeriod = period ?? 'All Dates';
+                              final newPeriod = period ?? 'All Transactions';
                               setState(() {
                                 selectedPeriod = newPeriod;
                               });
@@ -189,64 +192,98 @@ class _DashboardPageState extends State<DashboardPage> {
                                   .setFilter(
                                 isExpensesSelected: isExpensesSelected,
                                 period: newPeriod,
-                                isActive: newPeriod != 'All Dates',
+                                isActive: newPeriod != 'All Transactions',
                               );
                             },
                           ),
                         )
                       ],
                     ),
-                    Row(
-                      spacing: 10,
-                      children: [
-                        Expanded(
-                          child: TotalExpenseBoxWidget(
-                            label: "D A Y",
-                            balanceType: 'daily',
-                            isExpensesSelected: isExpensesSelected,
+                    // Show only daily box for specific dates, otherwise show all three
+                    selectedPeriod != 'All Transactions'
+                        ? Row(
+                            spacing: 20,
+                            children: [
+                              Expanded(
+                                child: SizedBox(
+                                  child: TotalExpenseBoxWidget(
+                                    label: "D A Y",
+                                    balanceType: 'daily',
+                                    isExpensesSelected: isExpensesSelected,
+                                    selectedPeriod: selectedPeriod,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Card(
+                                  color: Colors.transparent,
+                                  elevation: 0,
+                                  child: Text(
+                                    "Total for selected period",
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 14,
+                                      color: primaryColor(context),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Row(
+                            spacing: 10,
+                            children: [
+                              Expanded(
+                                child: TotalExpenseBoxWidget(
+                                  label: "D A Y",
+                                  balanceType: 'daily',
+                                  isExpensesSelected: isExpensesSelected,
+                                  selectedPeriod: selectedPeriod,
+                                ),
+                              ),
+                              Expanded(
+                                child: TotalExpenseBoxWidget(
+                                  label: "W E E K",
+                                  balanceType: 'weekly',
+                                  isExpensesSelected: isExpensesSelected,
+                                ),
+                              ),
+                              Expanded(
+                                child: TotalExpenseBoxWidget(
+                                  label: "M O N T H",
+                                  balanceType: 'monthly',
+                                  isExpensesSelected: isExpensesSelected,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        Expanded(
-                          child: TotalExpenseBoxWidget(
-                            label: "W E E K",
-                            balanceType: 'weekly',
-                            isExpensesSelected: isExpensesSelected,
-                          ),
-                        ),
-                        Expanded(
-                          child: TotalExpenseBoxWidget(
-                            label: "M O N T H",
-                            balanceType: 'monthly',
-                            isExpensesSelected: isExpensesSelected,
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),
             ),
           ),
-          sliver: SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(
-                left: 16.0,
-                right: 16,
-              ),
-              child: HealthScoreSection(
-                provider: context.read<AIAdvisorProvider>(),
-              ),
-            ),
-          ),
+          sliver: userHasPremium
+              ? SliverToBoxAdapter(
+                  child: Padding(
+                      padding: const EdgeInsets.only(
+                        left: 16.0,
+                        right: 16,
+                      ),
+                      child: HealthScoreSection(
+                        provider: context.read<AIAdvisorProvider>(),
+                      )),
+                )
+              : null,
         ),
 
         // Stick at top - Transactions Header
         SliverStickyHeader(
           sticky: true,
           header: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              bottom: 16,
+              top: userHasPremium ? 16 : 0,
             ),
             color: mainColor(context),
             child: Text(
@@ -291,15 +328,29 @@ class _DashboardPageState extends State<DashboardPage> {
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     final date = sortedDates[index];
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        left: 16.0,
-                        right: 16,
-                        bottom: index == sortedDates.length - 1 ? 100 : 16.0,
-                      ),
-                      child: ItemListWidget(
-                        transactions: groupedTransactions[date]!,
-                      ),
+                    final isLastItem = index == sortedDates.length - 1;
+                    return Column(
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.only(
+                            left: 16.0,
+                            right: 16,
+                            bottom: isLastItem ? 100 : 16.0,
+                          ),
+                          child: Column(
+                            children: [
+                              ItemListWidget(
+                                transactions: groupedTransactions[date]!,
+                              ),
+                              if (!userHasPremium && !isLastItem)
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 8.0),
+                                  child: BannerAdWidget(),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     );
                   },
                   childCount: sortedDates.length,

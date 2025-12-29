@@ -49,5 +49,8 @@
 		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<!-- TODO: Replace the value below with your real AdMob App ID before publishing -->
+		<key>GADApplicationIdentifier</key>
+		<string>ca-app-pub-3940256099942544~1458002511</string>
 	</dict>
 </plist>

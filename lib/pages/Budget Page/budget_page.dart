@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:wallone/common_widgets/ads/banner_ad_widget.dart';
 import 'package:wallone/common_widgets/usage_card.dart';
 import 'package:wallone/state/budget_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
+import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'package:wallone/common_widgets/budget_card.dart';
 import 'package:wallone/common_widgets/investment_card.dart';
@@ -45,6 +47,7 @@ class _BudgetPageState extends State<BudgetPage>
   Widget build(BuildContext context) {
     final budgetProvider = Provider.of<BudgetProvider>(context);
     final balanceProvider = Provider.of<BalanceProvider>(context);
+    final userHasPremium = context.read<UserProfileProvider>().isPremium;
 
     final double progress = (budgetProvider.monthlyIncome > 0)
         ? (balanceProvider.monthlyExpenses / budgetProvider.monthlyIncome)
@@ -82,7 +85,13 @@ class _BudgetPageState extends State<BudgetPage>
                 ),
                 const SizedBox(height: 16),
                 const BudgetOverviewCard(),
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
+                if (!userHasPremium)
+                  const Align(
+                    alignment: Alignment.center,
+                    child: BannerAdWidget(),
+                  ),
+                const SizedBox(height: 20),
                 _buildSectionWithInfoButton(
                   "Fixed Investments",
                   context,

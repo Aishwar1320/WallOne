@@ -22,7 +22,9 @@ class TransactionFilterControls extends StatelessWidget {
     final keyFormat = DateFormat('yyyy-MM-dd');
     final displayFormat = DateFormat('MM-dd');
 
-    final Map<String, String> options = {'All Dates': 'All Dates'};
+    final Map<String, String> options = {
+      'All Transactions': 'All Transactions'
+    };
 
     for (int i = 0; i < days; i++) {
       final date = now.subtract(Duration(days: i));
@@ -37,7 +39,8 @@ class TransactionFilterControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateOptions = _generateDateOptions();
-    final actualValue = selectedPeriod.isEmpty ? 'All Dates' : selectedPeriod;
+    final actualValue =
+        selectedPeriod.isEmpty ? 'All Transactions' : selectedPeriod;
 
     return DropdownMenuDynamicWidget(
       boxColor: boxColor(context),

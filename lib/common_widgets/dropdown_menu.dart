@@ -241,6 +241,8 @@ class _DropdownMenuDynamicWidgetState extends State<DropdownMenuDynamicWidget> {
                     value: value,
                     child: Text(
                       _getDisplayText(value), // Use display text from map
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.outfit(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,

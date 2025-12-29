@@ -2,12 +2,18 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:wallone/common_widgets/ads/banner_ad_widget.dart';
 import 'package:wallone/common_widgets/dropdown_menu.dart';
 import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/transaction_type_provider.dart';
+import 'package:wallone/state/userprofile_provider.dart';
+import 'package:wallone/utils/ad_manager.dart';
 import 'package:wallone/utils/constants.dart';
 import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/state/category_provider.dart';
@@ -29,6 +35,8 @@ class _AddTransactionsPageState extends State<AddTransactionsPage>
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   bool dateConfirmed = false;
+  InterstitialAd? _interstitialAd;
+  bool _isInterstitialReady = false;
 
   @override
   void initState() {
@@ -39,6 +47,78 @@ class _AddTransactionsPageState extends State<AddTransactionsPage>
           .resetToExpenses();
     });
     _controller.addListener(_updateFieldWidth);
+    _loadInterstitialAd();
+  }
+
+  void _loadInterstitialAd() {
+    InterstitialAd.load(
+      adUnitId: AdManager.interstitialAdUnitId,
+      request: const AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          _interstitialAd = ad;
+          _isInterstitialReady = true;
+        },
+        onAdFailedToLoad: (_) {
+          _interstitialAd = null;
+          _isInterstitialReady = false;
+        },
+      ),
+    );
+  }
+
+  Future<bool> _shouldShowTransactionAd() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return false;
+
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      int count = userDoc.data()?['txAddCount'] ?? 0;
+      count++;
+
+      // Update count in Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .set({'txAddCount': count}, SetOptions(merge: true));
+
+      // Show ad every 5 transactions
+      return count % 5 == 0;
+    } catch (e) {
+      debugPrint('Error checking transaction ad: $e');
+      return false;
+    }
+  }
+
+  void _showAdThenClose(bool isPremium) async {
+    if (isPremium) {
+      Navigator.pop(context);
+      return;
+    }
+
+    final shouldShowAd = await _shouldShowTransactionAd();
+
+    if (!shouldShowAd || !_isInterstitialReady || _interstitialAd == null) {
+      Navigator.pop(context);
+      return;
+    }
+
+    _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        ad.dispose();
+        Navigator.pop(context);
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        ad.dispose();
+        Navigator.pop(context);
+      },
+    );
+
+    _interstitialAd!.show();
+    _interstitialAd = null;
+    _isInterstitialReady = false;
   }
 
   void _updateFieldWidth() {
@@ -242,6 +322,7 @@ class _AddTransactionsPageState extends State<AddTransactionsPage>
 
   @override
   void dispose() {
+    _interstitialAd?.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -250,6 +331,7 @@ class _AddTransactionsPageState extends State<AddTransactionsPage>
   Widget build(BuildContext context) {
     final code = context.read<BalanceProvider>().currencyCode;
     final symbol = intl.NumberFormat.simpleCurrency(name: code).currencySymbol;
+    final userHasPremium = context.read<UserProfileProvider>().isPremium;
 
     final transactionTypeProvider =
         Provider.of<TransactionTypeProvider>(context);
@@ -445,7 +527,7 @@ class _AddTransactionsPageState extends State<AddTransactionsPage>
 
                         listProvider.addTransaction(newTransaction);
                         _controller.clear();
-                        Navigator.pop(context);
+                        _showAdThenClose(userHasPremium);
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -485,6 +567,11 @@ class _AddTransactionsPageState extends State<AddTransactionsPage>
                 ],
               ),
             ),
+            if (!userHasPremium)
+              const Padding(
+                padding: EdgeInsets.only(top: 8.0),
+                child: BannerAdWidget(),
+              ),
           ],
         ),
       ),

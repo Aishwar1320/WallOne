@@ -163,7 +163,7 @@ class ListProvider with ChangeNotifier {
   // Filter state
   bool _isFilterActive = false;
   bool _isExpensesSelected = true;
-  String _currentPeriod = 'All Dates';
+  String _currentPeriod = 'All Transactions';
 
   // Firestore subscription & auth
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _txSub;
@@ -345,7 +345,7 @@ class ListProvider with ChangeNotifier {
         .where((t) => isExpensesSelected ? !t.isIncome : t.isIncome)
         .toList();
 
-    if (selectedDate != 'All Dates') {
+    if (selectedDate != 'All Transactions') {
       filtered = filtered.where((t) {
         try {
           final txnDate = DateTime.parse(t.date);
@@ -385,20 +385,33 @@ class ListProvider with ChangeNotifier {
   }
 
   List<AllListProvider> getTransactionsForDate(String dateFilter) {
-    if (dateFilter == 'All Dates') return getTransactions();
+    if (dateFilter == 'All Transactions') return getTransactions();
     final result = _transactions.where((t) {
       try {
         final txnDate = DateTime.parse(t.date);
-        final txnDateOnly = DateFormat('dd-MM-yyyy').format(txnDate);
+        // Convert transaction date to yyyy-MM-dd format for comparison
+        final txnDateOnly = DateFormat('yyyy-MM-dd').format(txnDate);
+
         if (dateFilter == 'Today') {
-          final today = DateFormat('dd-MM-yyyy').format(DateTime.now());
+          final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
           return txnDateOnly == today;
         }
+
+        // If dateFilter is already in yyyy-MM-dd format (e.g., 2025-12-30)
+        if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(dateFilter)) {
+          return txnDateOnly == dateFilter;
+        }
+
+        // Try to parse as dd-MM format (legacy format)
         try {
-          final legacy = DateFormat('dd-MM-yyyy').format(DateFormat('dd-MM')
-              .parse(dateFilter + '-${DateTime.now().year}'));
-          if (txnDateOnly == legacy) return true;
+          final parsedDate = DateFormat('dd-MM').parse(dateFilter);
+          final currentYear = DateTime.now().year;
+          final legacyDate =
+              DateTime(currentYear, parsedDate.month, parsedDate.day);
+          final legacyDateOnly = DateFormat('yyyy-MM-dd').format(legacyDate);
+          if (txnDateOnly == legacyDateOnly) return true;
         } catch (_) {}
+
         return txnDateOnly == dateFilter;
       } catch (_) {
         return false;

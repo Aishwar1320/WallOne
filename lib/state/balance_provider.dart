@@ -84,7 +84,7 @@ class BalanceProvider extends ChangeNotifier {
       final docRef = _balancesDocRefForUid(uid);
       if (docRef == null) return;
 
-      _balancesSub = docRef.snapshots().listen((snap) {
+      _balancesSub = docRef.snapshots().listen((snap) async {
         if (!snap.exists) {
           _log('balances doc does not exist yet for uid=$uid');
           _balance = const BalanceModel();
@@ -94,17 +94,35 @@ class BalanceProvider extends ChangeNotifier {
 
         final data = snap.data() ?? {};
         try {
+          // Ensure we run reset-checks first so the in-memory model reflects any resets
+          await checkAndResetIfNeeded(data, docRef);
+
+          // Refresh data map in case checkAndResetIfNeeded modified the document
+          final refreshed = await docRef.get();
+          final freshData = refreshed.exists ? refreshed.data() ?? {} : data;
+
           _balance = BalanceModel.fromMap({
             'totalBalance': _toDouble(data['totalBalance']),
-            'dailyExpenses': _toDouble(data['dailyExpenses']),
-            'weeklyExpenses': _toDouble(data['weeklyExpenses']),
-            'monthlyExpenses': _toDouble(data['monthlyExpenses']),
-            'dailyIncomes': _toDouble(data['dailyIncomes']),
-            'weeklyIncomes': _toDouble(data['weeklyIncomes']),
-            'monthlyIncomes': _toDouble(data['monthlyIncomes']),
-            'lastResetDate': data['lastResetDate'],
-            'totalInvestments': _toDouble(data['totalInvestments']),
+            'dailyExpenses': _toDouble(
+                freshData['dailyExpenses'] ?? freshData['dailyExpense']),
+            'weeklyExpenses': _toDouble(
+                freshData['weeklyExpenses'] ?? freshData['weeklyExpense']),
+            'monthlyExpenses': _toDouble(
+                freshData['monthlyExpenses'] ?? freshData['monthlyExpense']),
+            'dailyIncomes': _toDouble(
+                freshData['dailyIncomes'] ?? freshData['dailyIncome']),
+            'weeklyIncomes': _toDouble(
+                freshData['weeklyIncomes'] ?? freshData['weeklyIncome']),
+            'monthlyIncomes': _toDouble(
+                freshData['monthlyIncomes'] ?? freshData['monthlyIncome']),
+            'lastResetDate':
+                freshData['lastResetDate'] ?? freshData['dailyKey'],
+            'totalInvestments': _toDouble(freshData['totalInvestments']),
           });
+          // Load currency from user doc
+          _loadCurrencyForUid(uid);
+
+          // Automatic reset logic removed — no-op here.
         } catch (e, st) {
           _logError('Error parsing balances doc', e, st);
           _balance = const BalanceModel();
@@ -116,6 +134,22 @@ class BalanceProvider extends ChangeNotifier {
       });
     } catch (e, st) {
       _logError('Failed to subscribe to balances doc', e, st);
+    }
+  }
+
+  Future<void> _loadCurrencyForUid(String uid) async {
+    try {
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      if (userDoc.exists) {
+        final currency = userDoc.data()?['currencyCode'] as String?;
+        if (currency != null && supportedCurrencies.contains(currency)) {
+          _currencyCode = currency;
+        }
+      }
+    } catch (e) {
+      _log('Error loading currency: $e');
     }
   }
 
@@ -163,7 +197,29 @@ class BalanceProvider extends ChangeNotifier {
   void setCurrency(String newCode) {
     if (newCode == _currencyCode) return;
     _currencyCode = newCode;
+
+    // Save to Firestore
+    _saveCurrencyToFirestore(newCode);
+
     notifyListeners();
+  }
+
+  Future<void> _saveCurrencyToFirestore(String currencyCode) async {
+    try {
+      final uid = _auth.currentUser?.uid;
+      if (uid == null) {
+        _log('No user logged in, skipping currency save');
+        return;
+      }
+
+      await _fs
+          .collection('users')
+          .doc(uid)
+          .set({'currencyCode': currencyCode}, SetOptions(merge: true));
+      _log('Currency saved to Firestore: $currencyCode');
+    } catch (e, st) {
+      _logError('Failed to save currency to Firestore', e, st);
+    }
   }
 
   void toggleDateTimePicker() {
@@ -213,16 +269,30 @@ class BalanceProvider extends ChangeNotifier {
       }
 
       final data = snap.data() ?? {};
+
+      // Run reset-check on manual load as well
+      await checkAndResetIfNeeded(data, docRef);
+
+      // reload in case document was modified
+      final refreshed = await docRef.get();
+      final freshData = refreshed.exists ? refreshed.data() ?? {} : data;
+
       _balance = BalanceModel.fromMap({
-        'totalBalance': _toDouble(data['totalBalance']),
-        'dailyExpenses': _toDouble(data['dailyExpenses']),
-        'weeklyExpenses': _toDouble(data['weeklyExpenses']),
-        'monthlyExpenses': _toDouble(data['monthlyExpenses']),
-        'dailyIncomes': _toDouble(data['dailyIncomes']),
-        'weeklyIncomes': _toDouble(data['weeklyIncomes']),
-        'monthlyIncomes': _toDouble(data['monthlyIncomes']),
-        'lastResetDate': data['lastResetDate'],
-        'totalInvestments': _toDouble(data['totalInvestments']),
+        'totalBalance': _toDouble(freshData['totalBalance']),
+        'dailyExpenses':
+            _toDouble(freshData['dailyExpenses'] ?? freshData['dailyExpense']),
+        'weeklyExpenses': _toDouble(
+            freshData['weeklyExpenses'] ?? freshData['weeklyExpense']),
+        'monthlyExpenses': _toDouble(
+            freshData['monthlyExpenses'] ?? freshData['monthlyExpense']),
+        'dailyIncomes':
+            _toDouble(freshData['dailyIncomes'] ?? freshData['dailyIncome']),
+        'weeklyIncomes':
+            _toDouble(freshData['weeklyIncomes'] ?? freshData['weeklyIncome']),
+        'monthlyIncomes': _toDouble(
+            freshData['monthlyIncomes'] ?? freshData['monthlyIncome']),
+        'lastResetDate': freshData['lastResetDate'] ?? freshData['dailyKey'],
+        'totalInvestments': _toDouble(freshData['totalInvestments']),
       });
       notifyListeners();
       _log('Balances loaded');
@@ -711,6 +781,67 @@ class BalanceProvider extends ChangeNotifier {
   String _dateKey(DateTime d) {
     final dt = DateTime(d.year, d.month, d.day);
     return dt.toIso8601String().split('T').first; // yyyy-MM-dd
+  }
+
+  // --- Reset helpers (day/week/month keys + check-and-reset) ---
+  String dayKey(DateTime d) =>
+      "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
+
+  String weekKey(DateTime d) {
+    final monday = d.subtract(Duration(days: d.weekday - 1));
+    return dayKey(monday);
+  }
+
+  String monthKey(DateTime d) =>
+      "${d.year}-${d.month.toString().padLeft(2, '0')}";
+
+  Future<void> checkAndResetIfNeeded(Map<String, dynamic> data,
+      DocumentReference<Map<String, dynamic>> docRef) async {
+    try {
+      final now = DateTime.now();
+
+      final todayKey = dayKey(now);
+      final thisWeekKey = weekKey(now);
+      final thisMonthKey = monthKey(now);
+
+      final updates = <String, dynamic>{};
+
+      // DAILY RESET
+      if (data['dailyKey'] != todayKey) {
+        updates.addAll({
+          'dailyKey': todayKey,
+          // Use ONLY the plural names that match BalanceModel.fromMap
+          'dailyIncomes': 0,
+          'dailyExpenses': 0,
+        });
+      }
+
+      // WEEKLY RESET (Every Monday)
+      if (data['weeklyKey'] != thisWeekKey) {
+        updates.addAll({
+          'weeklyKey': thisWeekKey,
+          // Use ONLY the plural names that match BalanceModel.fromMap
+          'weeklyIncomes': 0,
+          'weeklyExpenses': 0,
+        });
+      }
+
+      // MONTHLY RESET (1st of new month)
+      if (data['monthlyKey'] != thisMonthKey) {
+        updates.addAll({
+          'monthlyKey': thisMonthKey,
+          // Use ONLY the plural names that match BalanceModel.fromMap
+          'monthlyIncomes': 0,
+          'monthlyExpenses': 0,
+        });
+      }
+
+      if (updates.isNotEmpty) {
+        await docRef.set(updates, SetOptions(merge: true));
+      }
+    } catch (e, st) {
+      _logError('checkAndResetIfNeeded failed', e, st);
+    }
   }
 
   @override

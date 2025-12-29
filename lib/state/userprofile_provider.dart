@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class UserProfileProvider extends ChangeNotifier {
   String? userName;
@@ -21,14 +20,6 @@ class UserProfileProvider extends ChangeNotifier {
   }
 
   Future<void> _init() async {
-    // Read any cached values quickly for faster UX (optional)
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      userName = prefs.getString('userName');
-      coverImagePath = prefs.getString('coverImagePath');
-      isPremium = prefs.getBool('isPremium') ?? false;
-    } catch (_) {}
-
     // Listen to auth state so we can subscribe/unsubscribe to user's doc
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) async {
       // cancel previous firestore listener
@@ -36,7 +27,7 @@ class UserProfileProvider extends ChangeNotifier {
       _userDocSub = null;
 
       if (user == null) {
-        // logged out — clear profile in memory (keep cache if desired)
+        // logged out — clear profile in memory
         userName = null;
         coverImagePath = null;
         isPremium = false;
@@ -70,16 +61,6 @@ class UserProfileProvider extends ChangeNotifier {
           if (savedPath != null) coverImagePath = savedPath;
         }
 
-        // Cache values locally for quick startup
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          if (userName != null) await prefs.setString('userName', userName!);
-          if (coverImagePath != null) {
-            await prefs.setString('coverImagePath', coverImagePath!);
-          }
-          await prefs.setBool('isPremium', isPremium);
-        } catch (_) {}
-
         notifyListeners();
       });
     } catch (e) {
@@ -99,11 +80,6 @@ class UserProfileProvider extends ChangeNotifier {
             .collection('users')
             .doc(uid)
             .set({'name': name}, SetOptions(merge: true));
-      } catch (_) {}
-    } else {
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('userName', name);
       } catch (_) {}
     }
   }
@@ -126,16 +102,10 @@ class UserProfileProvider extends ChangeNotifier {
               .set({'coverImageBase64': base64Img}, SetOptions(merge: true));
         }
       } catch (_) {}
-    } else {
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('coverImagePath', path);
-      } catch (_) {}
     }
   }
 
-  /// Set premium status for the current user. Persists to Firestore when signed in,
-  /// otherwise caches locally in SharedPreferences.
+  /// Set premium status for the current user. Persists to Firestore when signed in.
   Future<void> setPremium(bool value) async {
     isPremium = value;
     notifyListeners();
@@ -147,11 +117,6 @@ class UserProfileProvider extends ChangeNotifier {
             .collection('users')
             .doc(uid)
             .set({'isPremium': value}, SetOptions(merge: true));
-      } catch (_) {}
-    } else {
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isPremium', value);
       } catch (_) {}
     }
   }
@@ -172,13 +137,6 @@ class UserProfileProvider extends ChangeNotifier {
         }, SetOptions(merge: true));
       } catch (_) {}
     }
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('userName');
-      await prefs.remove('coverImagePath');
-      await prefs.remove('isPremium');
-    } catch (_) {}
   }
 
   Future<String?> _saveBase64ImageToLocalFile(
