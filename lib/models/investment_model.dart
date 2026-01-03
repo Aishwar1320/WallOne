@@ -7,6 +7,8 @@ class InvestmentModel {
   final DateTime lastDeductionDate;
   final String category;
   final List<double> monthlyDeductions;
+  final bool?
+      isOneTime; // True for one-time savings, null/false for recurring investments
 
   const InvestmentModel({
     this.id,
@@ -17,6 +19,7 @@ class InvestmentModel {
     required this.lastDeductionDate,
     this.category = 'Other',
     this.monthlyDeductions = const [],
+    this.isOneTime = false,
   });
 
   // Factory constructor with defaults
@@ -29,6 +32,7 @@ class InvestmentModel {
     DateTime? lastDeductionDate,
     String category = 'Other',
     List<double>? monthlyDeductions,
+    bool? isOneTime = false,
   }) {
     final now = DateTime.now();
     return InvestmentModel(
@@ -40,6 +44,7 @@ class InvestmentModel {
       lastDeductionDate: lastDeductionDate ?? now,
       category: category,
       monthlyDeductions: monthlyDeductions ?? [],
+      isOneTime: isOneTime,
     );
   }
 
@@ -56,6 +61,7 @@ class InvestmentModel {
     DateTime? lastDeductionDate,
     String? category,
     List<double>? monthlyDeductions,
+    bool? isOneTime,
   }) {
     return InvestmentModel(
       id: id ?? this.id,
@@ -66,6 +72,7 @@ class InvestmentModel {
       lastDeductionDate: lastDeductionDate ?? this.lastDeductionDate,
       category: category ?? this.category,
       monthlyDeductions: monthlyDeductions ?? List.from(this.monthlyDeductions),
+      isOneTime: isOneTime ?? this.isOneTime,
     );
   }
 
@@ -103,6 +110,7 @@ class InvestmentModel {
       'lastDeductionDate': lastDeductionDate.toIso8601String(),
       'category': category,
       'monthlyDeductions': monthlyDeductions,
+      'isOneTime': isOneTime ?? false,
     };
   }
 
@@ -149,6 +157,7 @@ class InvestmentModel {
       lastDeductionDate: parseDate(map['lastDeductionDate']),
       category: map['category'] ?? 'Other',
       monthlyDeductions: parseDoubleList(map['monthlyDeductions']),
+      isOneTime: map['isOneTime'] as bool? ?? false,
     );
   }
 
@@ -168,6 +177,7 @@ class InvestmentModel {
         other.startDate == startDate &&
         other.lastDeductionDate == lastDeductionDate &&
         other.category == category &&
+        other.isOneTime == isOneTime &&
         _listEquals(other.monthlyDeductions, monthlyDeductions);
   }
 
@@ -180,6 +190,7 @@ class InvestmentModel {
         startDate.hashCode ^
         lastDeductionDate.hashCode ^
         category.hashCode ^
+        isOneTime.hashCode ^
         monthlyDeductions.hashCode;
   }
 

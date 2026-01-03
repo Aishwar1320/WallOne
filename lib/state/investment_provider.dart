@@ -226,6 +226,7 @@ class InvestmentProvider with ChangeNotifier {
               'id': d.id,
               'lastDeductionDate':
                   _parseTimestamp(m['lastDeductionDate']) ?? DateTime.now(),
+              'isOneTime': m['isOneTime'] ?? false,
             });
           } catch (e) {
             _logError('Error parsing investment ${d.id}', e, null);
@@ -235,6 +236,7 @@ class InvestmentProvider with ChangeNotifier {
               amount: _toDouble(m['amount']),
               category: m['category'] ?? 'Other',
               startDate: _parseTimestamp(m['startDate']) ?? DateTime.now(),
+              isOneTime: m['isOneTime'] as bool? ?? false,
             );
           }
         }).toList();
@@ -343,6 +345,7 @@ class InvestmentProvider with ChangeNotifier {
           'id': d.id,
           'lastDeductionDate':
               _parseTimestamp(m['lastDeductionDate']) ?? DateTime.now(),
+          'isOneTime': m['isOneTime'] ?? false,
         });
       }).toList();
 
@@ -492,9 +495,11 @@ class InvestmentProvider with ChangeNotifier {
     double amount, {
     String category = 'Other',
     DateTime? startDate,
+    bool isOneTime = false,
   }) async {
     try {
-      _log('Adding investment: name=$name, amount=$amount, category=$category');
+      _log(
+          'Adding investment: name=$name, amount=$amount, category=$category, isOneTime=$isOneTime');
 
       if (name.trim().isEmpty) {
         throw Exception('Investment name cannot be empty');
@@ -526,6 +531,7 @@ class InvestmentProvider with ChangeNotifier {
         amount: amount,
         category: category,
         startDate: startDate,
+        isOneTime: isOneTime,
       );
 
       // Persist investment doc
@@ -538,6 +544,7 @@ class InvestmentProvider with ChangeNotifier {
         'isActive': inv.isActive,
         'monthlyDeductions': inv.monthlyDeductions,
         'lastDeductionDate': Timestamp.fromDate(inv.lastDeductionDate),
+        'isOneTime': inv.isOneTime ?? false,
       }, SetOptions(merge: true));
 
       // Deduct amount from balance and add a transaction record
@@ -849,8 +856,11 @@ class InvestmentProvider with ChangeNotifier {
       bool anyDeduction = false;
 
       final batch = _fs.batch();
-      final activeInvestments = _investments.where((i) => i.isActive).toList();
-      _log('Processing ${activeInvestments.length} active investments');
+      final activeInvestments = _investments
+          .where((i) => i.isActive && !(i.isOneTime ?? false))
+          .toList();
+      _log(
+          'Processing ${activeInvestments.length} active investments (excluding one-time savings)');
 
       for (int i = 0; i < activeInvestments.length; i++) {
         final inv = activeInvestments[i];

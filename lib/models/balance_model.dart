@@ -6,6 +6,9 @@ class BalanceModel {
   final double dailyIncomes;
   final double weeklyIncomes;
   final double monthlyIncomes;
+  final String? dailyKey;
+  final String? weeklyKey;
+  final String? monthlyKey;
 
   const BalanceModel({
     this.totalBalance = 0.0,
@@ -15,6 +18,9 @@ class BalanceModel {
     this.dailyIncomes = 0.0,
     this.weeklyIncomes = 0.0,
     this.monthlyIncomes = 0.0,
+    this.dailyKey,
+    this.weeklyKey,
+    this.monthlyKey,
   });
 
   // Create a copy with updated values
@@ -26,6 +32,9 @@ class BalanceModel {
     double? dailyIncomes,
     double? weeklyIncomes,
     double? monthlyIncomes,
+    String? dailyKey,
+    String? weeklyKey,
+    String? monthlyKey,
   }) {
     return BalanceModel(
       totalBalance: totalBalance ?? this.totalBalance,
@@ -35,6 +44,9 @@ class BalanceModel {
       dailyIncomes: dailyIncomes ?? this.dailyIncomes,
       weeklyIncomes: weeklyIncomes ?? this.weeklyIncomes,
       monthlyIncomes: monthlyIncomes ?? this.monthlyIncomes,
+      dailyKey: dailyKey ?? this.dailyKey,
+      weeklyKey: weeklyKey ?? this.weeklyKey,
+      monthlyKey: monthlyKey ?? this.monthlyKey,
     );
   }
 
@@ -48,6 +60,9 @@ class BalanceModel {
       'dailyIncomes': dailyIncomes,
       'weeklyIncomes': weeklyIncomes,
       'monthlyIncomes': monthlyIncomes,
+      if (dailyKey != null) 'dailyKey': dailyKey,
+      if (weeklyKey != null) 'weeklyKey': weeklyKey,
+      if (monthlyKey != null) 'monthlyKey': monthlyKey,
     };
   }
 
@@ -61,6 +76,9 @@ class BalanceModel {
       dailyIncomes: (map['dailyIncomes'] ?? 0).toDouble(),
       weeklyIncomes: (map['weeklyIncomes'] ?? 0).toDouble(),
       monthlyIncomes: (map['monthlyIncomes'] ?? 0).toDouble(),
+      dailyKey: map['dailyKey'] as String?,
+      weeklyKey: map['weeklyKey'] as String?,
+      monthlyKey: map['monthlyKey'] as String?,
     );
   }
 
@@ -91,7 +109,7 @@ class BalanceModel {
 
   @override
   String toString() {
-    return 'BalanceModel(totalBalance: $totalBalance, dailyExpenses: $dailyExpenses, weeklyExpenses: $weeklyExpenses, monthlyExpenses: $monthlyExpenses, dailyIncomes: $dailyIncomes, weeklyIncomes: $weeklyIncomes, monthlyIncomes: $monthlyIncomes)';
+    return 'BalanceModel(totalBalance: $totalBalance, dailyExpenses: $dailyExpenses, weeklyExpenses: $weeklyExpenses, monthlyExpenses: $monthlyExpenses, dailyIncomes: $dailyIncomes, weeklyIncomes: $weeklyIncomes, monthlyIncomes: $monthlyIncomes, dailyKey: $dailyKey, weeklyKey: $weeklyKey, monthlyKey: $monthlyKey)';
   }
 
   @override
@@ -104,7 +122,10 @@ class BalanceModel {
         other.monthlyExpenses == monthlyExpenses &&
         other.dailyIncomes == dailyIncomes &&
         other.weeklyIncomes == weeklyIncomes &&
-        other.monthlyIncomes == monthlyIncomes;
+        other.monthlyIncomes == monthlyIncomes &&
+        other.dailyKey == dailyKey &&
+        other.weeklyKey == weeklyKey &&
+        other.monthlyKey == monthlyKey;
   }
 
   @override
@@ -115,6 +136,9 @@ class BalanceModel {
         monthlyExpenses.hashCode ^
         dailyIncomes.hashCode ^
         weeklyIncomes.hashCode ^
-        monthlyIncomes.hashCode;
+        monthlyIncomes.hashCode ^
+        dailyKey.hashCode ^
+        weeklyKey.hashCode ^
+        monthlyKey.hashCode;
   }
 }

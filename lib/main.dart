@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:wallone/firebase_options.dart';
 import 'package:wallone/pages/Onboarding/onboarding_page.dart';
+import 'package:wallone/splash_screen.dart';
 import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/investment_provider.dart';
@@ -239,25 +240,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
-    // While we are still loading the pref show a simple splash/progress
+    // While we are still loading, show the custom splash screen
     if (_hasSeenOnboarding == null) {
       return MaterialApp(
         theme: ThemeData.light(),
         darkTheme: ThemeData.dark(),
         themeMode: themeProvider.themeMode,
         debugShowCheckedModeBanner: false,
-        home: const Scaffold(
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Loading...'),
-              ],
-            ),
-          ),
-        ),
+        home: const SplashScreen(),
       );
     }
 

@@ -852,8 +852,10 @@ class ListProvider with ChangeNotifier {
   Future<void> _populateBeforeBalancesForRecent() async {
     try {
       final now = DateTime.now();
-      for (int i = 0; i < _transactions.length; i++) {
-        final t = _transactions[i];
+      // Create a copy of the list to avoid index issues during async operations
+      final snapshot = List<AllListProvider>.from(_transactions);
+
+      for (final t in snapshot) {
         if (t.beforeBalance != null) continue;
         final parsed = DateTime.tryParse(t.date);
         if (parsed == null) continue;
@@ -877,7 +879,14 @@ class ListProvider with ChangeNotifier {
                     .set({'beforeBalance': snap}, SetOptions(merge: true));
               }
             }
-            _transactions[i] = t.copyWith(beforeBalance: snap);
+            // Find and update the transaction in the current list by ID/docId
+            final idx = _transactions.indexWhere((tx) =>
+                (t.docId != null && tx.docId == t.docId) ||
+                (t.docId == null && tx.id == t.id));
+            if (idx != -1) {
+              _transactions[idx] =
+                  _transactions[idx].copyWith(beforeBalance: snap);
+            }
           }
         }
       }

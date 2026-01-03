@@ -18,7 +18,7 @@ class AIAdvisorProvider with ChangeNotifier {
 
   List<FinancialInsight> _insights = [];
   bool _isLoading = false;
-  bool _isAIEnabled = true;
+  bool _isAIEnabled = false;
   String? _error;
 
   // Auto-pilot settings

@@ -414,9 +414,11 @@ class BudgetProvider with ChangeNotifier {
   // Investment helpers (pass-throughs)
   // -------------------------
   void addInvestment(String label, double amount,
-      {String category = 'Stocks', DateTime? startDate}) {
+      {String category = 'Stocks',
+      DateTime? startDate,
+      bool isOneTime = false}) {
     _investmentProvider.addInvestment(label, amount,
-        category: category, startDate: startDate);
+        category: category, startDate: startDate, isOneTime: isOneTime);
   }
 
   void removeInvestment(int index) {

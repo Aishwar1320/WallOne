@@ -100,6 +100,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
       'Stocks': {'icon': Icons.show_chart, 'color': Colors.blue},
       'SIP': {'icon': Icons.pie_chart, 'color': Colors.purple},
       'Gold': {'icon': Icons.monetization_on, 'color': Colors.orange},
+      'Savings': {'icon': Icons.savings_outlined, 'color': Colors.green},
       // Default for other categories
       'default': {'icon': Icons.account_balance, 'color': Colors.teal},
     };
@@ -155,7 +156,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'All Investments',
+                                'Invest & Save',
                                 style: GoogleFonts.outfit(
                                   fontSize: 20,
                                   color: cardTextColor(context),
@@ -236,6 +237,8 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                           ),
                           itemBuilder: (context, index) {
                             final investment = investments[index];
+                            final isOneTime = investment.isOneTime ?? false;
+
                             return Row(
                               children: [
                                 Container(
@@ -244,29 +247,38 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                                     gradient: LinearGradient(
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
-                                      colors: [
-                                        Theme.of(context)
-                                            .primaryColor
-                                            .withOpacity(0.7),
-                                        Theme.of(context).primaryColor,
-                                      ],
+                                      colors: isOneTime
+                                          ? [
+                                              Colors.green.shade700,
+                                              Colors.green.shade900,
+                                            ]
+                                          : [
+                                              Theme.of(context)
+                                                  .primaryColor
+                                                  .withOpacity(0.7),
+                                              Theme.of(context).primaryColor,
+                                            ],
                                     ),
                                     borderRadius: BorderRadius.circular(14),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Theme.of(context)
-                                            .primaryColor
-                                            .withOpacity(0.2),
+                                        color: isOneTime
+                                            ? Colors.green.withOpacity(0.2)
+                                            : Theme.of(context)
+                                                .primaryColor
+                                                .withOpacity(0.2),
                                         blurRadius: 6,
                                         offset: const Offset(0, 3),
                                       ),
                                     ],
                                   ),
                                   child: Icon(
-                                    categoryIcons[investment.category]?['icon']
-                                            as IconData? ??
-                                        categoryIcons['default']!['icon']
-                                            as IconData,
+                                    isOneTime
+                                        ? Icons.savings_outlined
+                                        : categoryIcons[investment.category]
+                                                ?['icon'] as IconData? ??
+                                            categoryIcons['default']!['icon']
+                                                as IconData,
                                     color: Colors.white,
                                     size: screenWidth / 25,
                                   ),
@@ -277,13 +289,41 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        investment.name,
-                                        style: GoogleFonts.outfit(
-                                          fontSize: screenWidth / 28,
-                                          fontWeight: FontWeight.w600,
-                                          color: cardTextColor(context),
-                                        ),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            investment.name,
+                                            style: GoogleFonts.outfit(
+                                              fontSize: screenWidth / 28,
+                                              fontWeight: FontWeight.w600,
+                                              color: cardTextColor(context),
+                                            ),
+                                          ),
+                                          if (isOneTime) ...[
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                                vertical: 2,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.green
+                                                    .withOpacity(0.15),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                'One-time',
+                                                style: GoogleFonts.outfit(
+                                                  fontSize: screenWidth / 38,
+                                                  color: Colors.green.shade700,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
@@ -297,18 +337,20 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                                     ],
                                   ),
                                 ),
-                                Transform.scale(
-                                  scale: screenWidth / 700,
-                                  child: Switch.adaptive(
-                                    padding:
-                                        const EdgeInsetsGeometry.only(right: 0),
-                                    value: investment.isActive,
-                                    onChanged: (value) {
-                                      budgetProvider.toggleInvestment(index);
-                                    },
-                                    activeColor: Theme.of(context).primaryColor,
+                                if (!isOneTime)
+                                  Transform.scale(
+                                    scale: screenWidth / 700,
+                                    child: Switch.adaptive(
+                                      padding: const EdgeInsetsGeometry.only(
+                                          right: 0),
+                                      value: investment.isActive,
+                                      onChanged: (value) {
+                                        budgetProvider.toggleInvestment(index);
+                                      },
+                                      activeColor:
+                                          Theme.of(context).primaryColor,
+                                    ),
                                   ),
-                                ),
                                 PopupMenuButton<String>(
                                   padding:
                                       const EdgeInsetsGeometry.only(left: 0),
@@ -434,15 +476,6 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                     ],
                   ),
                 ),
-
-                // Demo Button ***************************************************
-                // ElevatedButton(
-                //   onPressed: () {
-                //     Provider.of<InvestmentProvider>(context, listen: false)
-                //         .simulateInvestmentDeduction();
-                //   },
-                //   child: const Text("Simulate Investment Deduction"),
-                // ),
               ],
             ),
           ),
@@ -506,7 +539,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Start growing your wealth by adding your first investment',
+            'Start growing your wealth by adding investments or savings',
             textAlign: TextAlign.center,
             style: GoogleFonts.outfit(
               fontSize: 16,
@@ -561,7 +594,6 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
         barrierColor: Colors.black54,
         transitionDuration: const Duration(milliseconds: 300),
         transitionBuilder: (ctx, anim, secondaryAnim, child) {
-          // Fade + scale:
           return FadeTransition(
             opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
             child: ScaleTransition(
@@ -655,13 +687,13 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
     final TextEditingController nameController = TextEditingController();
     final TextEditingController amountController = TextEditingController();
     String selectedCategory = 'Stocks'; // Default category
-    DateTime? selectedDate; // Variable to store the selected date
-    TimeOfDay? selectedTime; // Variable to store the selected time
+    String selectedType = 'Fixed Investment'; // Default type
+    DateTime? selectedDate;
+    TimeOfDay? selectedTime;
 
     selectedDate ??= DateTime.now();
     selectedTime ??= TimeOfDay.fromDateTime(selectedDate);
 
-    // Create a key to validate the form.
     final _formKey = GlobalKey<FormState>();
 
     showGeneralDialog(
@@ -812,7 +844,6 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                                           selectedTime = null;
                                           dateConfirmed = false;
                                         });
-                                        // you may want to also reset the provider back to now:
                                         provider.updateInvestmentDateTime(
                                           DateTime.now(),
                                         );
@@ -831,7 +862,6 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                                         setState(() {
                                           dateConfirmed = true;
                                         });
-                                        // set selectedDate/time if it wasn't set before
                                         selectedDate = DateTime(
                                           provider.selectedInvestmentDate.year,
                                           provider.selectedInvestmentDate.month,
@@ -858,170 +888,308 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
               } else {
                 return Form(
                   key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.deepPurple.shade700,
-                                  Colors.deepPurple.shade900,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.deepPurple.shade700,
+                                    Colors.deepPurple.shade900,
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              borderRadius: BorderRadius.circular(12),
+                              child: const Icon(
+                                Icons.savings_outlined,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.savings_outlined,
-                              color: Colors.white,
-                              size: 20,
+                            const SizedBox(width: 12),
+                            Text(
+                              'Add New Investment',
+                              style: GoogleFonts.outfit(
+                                fontSize: screenWidth / 20,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Add New Investment',
-                            style: GoogleFonts.outfit(
-                              fontSize: screenWidth / 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 28),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: CustomTextField(
-                              controller: nameController,
-                              labelText: 'Investment Name',
-                              prefixIcon: Icons.label_outline,
-                              // Add validator for name
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Please enter an investment name';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Container(
+                          ],
+                        ),
+                        const SizedBox(height: 28),
+
+                        // Type Selection
+                        StatefulBuilder(builder: (context, setStateType) {
+                          return Container(
+                            padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
+                              color: primaryColor(context).withOpacity(0.05),
                               borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: shadowColor(context).withOpacity(0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
+                              border: Border.all(
+                                color: primaryColor(context).withOpacity(0.1),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setStateType(() {
+                                        selectedType = 'Fixed Investment';
+                                        selectedCategory =
+                                            'Stocks'; // Reset to default for investments
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            selectedType == 'Fixed Investment'
+                                                ? Theme.of(context).primaryColor
+                                                : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.trending_up,
+                                            size: 18,
+                                            color: selectedType ==
+                                                    'Fixed Investment'
+                                                ? Colors.white
+                                                : cardTextColor(context),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Fixed',
+                                            textAlign: TextAlign.center,
+                                            style: GoogleFonts.outfit(
+                                              fontSize: screenWidth / 30,
+                                              fontWeight: FontWeight.w600,
+                                              color: selectedType ==
+                                                      'Fixed Investment'
+                                                  ? Colors.white
+                                                  : cardTextColor(context),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setStateType(() {
+                                        selectedType = 'One-time Savings';
+                                        selectedCategory =
+                                            'Savings'; // Set category for one-time savings
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            selectedType == 'One-time Savings'
+                                                ? Colors.green.shade600
+                                                : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.savings_outlined,
+                                            size: 18,
+                                            color: selectedType ==
+                                                    'One-time Savings'
+                                                ? Colors.white
+                                                : cardTextColor(context),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'One-time',
+                                            textAlign: TextAlign.center,
+                                            style: GoogleFonts.outfit(
+                                              fontSize: screenWidth / 30,
+                                              fontWeight: FontWeight.w600,
+                                              color: selectedType ==
+                                                      'One-time Savings'
+                                                  ? Colors.white
+                                                  : cardTextColor(context),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
-                            child: IconButton.filled(
-                              style: IconButton.styleFrom(
-                                backgroundColor: budgetBackgroundLight(context),
-                                foregroundColor: primaryColor(context),
-                              ),
-                              icon: const Icon(Icons.calendar_today),
-                              onPressed: () {
-                                provider.toggleDateTimePicker();
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      CustomTextField(
-                        controller: amountController,
-                        labelText: 'Investment Amount',
-                        prefixIcon: Icons.attach_money,
-                        keyboardType: TextInputType.number,
-                        // Add validator for amount
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter an amount';
-                          }
-                          final amount = double.tryParse(value);
-                          if (amount == null || amount <= 0) {
-                            return 'Enter a valid amount greater than 0';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 48),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              style: TextButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              child: Text(
-                                'Cancel',
-                                style: GoogleFonts.outfit(
-                                  fontSize: screenWidth / 30,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                          );
+                        }),
+                        const SizedBox(height: 20),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: CustomTextField(
+                                controller: nameController,
+                                labelText: selectedType == 'One-time Savings'
+                                    ? 'Savings Name'
+                                    : 'Investment Name',
+                                prefixIcon: Icons.label_outline,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return selectedType == 'One-time Savings'
+                                        ? 'Please enter a savings name'
+                                        : 'Please enter an investment name';
+                                  }
+                                  return null;
+                                },
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () {
-                                if (_formKey.currentState!.validate()) {
-                                  final amount =
-                                      double.parse(amountController.text);
-                                  provider.addInvestment(
-                                    nameController.text,
-                                    amount,
-                                    category: selectedCategory,
-                                    startDate: DateTime(
-                                      provider.selectedInvestmentDate.year,
-                                      provider.selectedInvestmentDate.month,
-                                      provider.selectedInvestmentDate.day,
-                                      provider.selectedInvestmentTime.hour,
-                                      provider.selectedInvestmentTime.minute,
-                                    ),
-                                  );
-                                  Navigator.pop(context);
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                                backgroundColor: Theme.of(context).primaryColor,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                elevation: 4,
-                                shadowColor: Theme.of(context)
-                                    .primaryColor
-                                    .withOpacity(0.4),
+                            const SizedBox(width: 12),
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color:
+                                        shadowColor(context).withOpacity(0.1),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                               ),
-                              child: Text(
-                                'Add Investment',
-                                style: GoogleFonts.outfit(
-                                  fontSize: screenWidth / 30,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
+                              child: IconButton.filled(
+                                style: IconButton.styleFrom(
+                                  backgroundColor:
+                                      budgetBackgroundLight(context),
+                                  foregroundColor: primaryColor(context),
+                                ),
+                                icon: const Icon(Icons.calendar_today),
+                                onPressed: () {
+                                  provider.toggleDateTimePicker();
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        CustomTextField(
+                          controller: amountController,
+                          labelText: 'Amount',
+                          prefixIcon: Icons.attach_money,
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Please enter an amount';
+                            }
+                            final amount = double.tryParse(value);
+                            if (amount == null || amount <= 0) {
+                              return 'Enter a valid amount greater than 0';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 48),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: TextButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Cancel',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: screenWidth / 30,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  if (_formKey.currentState!.validate()) {
+                                    final amount =
+                                        double.parse(amountController.text);
+                                    final isOneTime =
+                                        selectedType == 'One-time Savings';
+
+                                    provider.addInvestment(
+                                      nameController.text,
+                                      amount,
+                                      category: selectedCategory,
+                                      startDate: DateTime(
+                                        provider.selectedInvestmentDate.year,
+                                        provider.selectedInvestmentDate.month,
+                                        provider.selectedInvestmentDate.day,
+                                        provider.selectedInvestmentTime.hour,
+                                        provider.selectedInvestmentTime.minute,
+                                      ),
+                                      isOneTime: isOneTime,
+                                    );
+                                    Navigator.pop(context);
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 16),
+                                  backgroundColor:
+                                      selectedType == 'One-time Savings'
+                                          ? Colors.green.shade600
+                                          : Theme.of(context).primaryColor,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  elevation: 4,
+                                  shadowColor:
+                                      (selectedType == 'One-time Savings'
+                                              ? Colors.green.shade600
+                                              : Theme.of(context).primaryColor)
+                                          .withOpacity(0.4),
+                                ),
+                                child: Text(
+                                  selectedType == 'One-time Savings'
+                                      ? 'Add Savings'
+                                      : 'Add Investment',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: screenWidth / 30,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 );
               }
@@ -1086,7 +1254,9 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      'Edit Investment',
+                      investment.isOneTime ?? false
+                          ? 'Edit Savings'
+                          : 'Edit Investment',
                       style: GoogleFonts.outfit(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -1106,7 +1276,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                 const SizedBox(height: 32),
                 CustomTextField(
                   controller: amountController,
-                  labelText: 'Investment Amount',
+                  labelText: 'Amount',
                   prefixIcon: Icons.attach_money,
                   keyboardType: TextInputType.number,
                   validator: (value) {
@@ -1220,7 +1390,9 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
               ),
               const SizedBox(height: 24),
               Text(
-                'Delete Investment',
+                investment.isOneTime ?? false
+                    ? 'Delete Savings'
+                    : 'Delete Investment',
                 style: GoogleFonts.outfit(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -1228,7 +1400,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Are you sure you want to delete this investment? This action cannot be undone.',
+                'Are you sure you want to delete this ${investment.isOneTime ?? false ? "savings" : "investment"}? This action cannot be undone.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
                   fontSize: 16,

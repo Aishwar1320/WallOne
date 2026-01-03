@@ -528,11 +528,19 @@ class BalanceProvider extends ChangeNotifier {
   void addIncome(double amount) {
     try {
       _log('Adding income: $amount');
+      final now = DateTime.now();
+      final currentDailyKey = dayKey(now);
+      final currentWeeklyKey = weekKey(now);
+      final currentMonthlyKey = monthKey(now);
+
       _balance = _balance.copyWith(
         totalBalance: _balance.totalBalance + amount,
         dailyIncomes: _balance.dailyIncomes + amount,
         weeklyIncomes: _balance.weeklyIncomes + amount,
         monthlyIncomes: _balance.monthlyIncomes + amount,
+        dailyKey: currentDailyKey,
+        weeklyKey: currentWeeklyKey,
+        monthlyKey: currentMonthlyKey,
       );
       notifyListeners();
       _persistAfterChange();
@@ -544,11 +552,19 @@ class BalanceProvider extends ChangeNotifier {
   void addExpense(double amount) {
     try {
       _log('Adding expense: $amount');
+      final now = DateTime.now();
+      final currentDailyKey = dayKey(now);
+      final currentWeeklyKey = weekKey(now);
+      final currentMonthlyKey = monthKey(now);
+
       _balance = _balance.copyWith(
         totalBalance: _balance.totalBalance - amount,
         dailyExpenses: _balance.dailyExpenses + amount,
         weeklyExpenses: _balance.weeklyExpenses + amount,
         monthlyExpenses: _balance.monthlyExpenses + amount,
+        dailyKey: currentDailyKey,
+        weeklyKey: currentWeeklyKey,
+        monthlyKey: currentMonthlyKey,
       );
       notifyListeners();
       _persistAfterChange();
@@ -560,11 +576,19 @@ class BalanceProvider extends ChangeNotifier {
   void deductBalanceOnDelete(double amount) {
     try {
       _log('Deducting balance on delete: $amount');
+      final now = DateTime.now();
+      final currentDailyKey = dayKey(now);
+      final currentWeeklyKey = weekKey(now);
+      final currentMonthlyKey = monthKey(now);
+
       _balance = _balance.copyWith(
         totalBalance: _balance.totalBalance + amount,
         dailyExpenses: _balance.dailyExpenses - amount,
         weeklyExpenses: _balance.weeklyExpenses - amount,
         monthlyExpenses: _balance.monthlyExpenses - amount,
+        dailyKey: currentDailyKey,
+        weeklyKey: currentWeeklyKey,
+        monthlyKey: currentMonthlyKey,
       );
       notifyListeners();
       _persistAfterChange();
@@ -576,11 +600,19 @@ class BalanceProvider extends ChangeNotifier {
   void deductBalanceForIncome(double amount) {
     try {
       _log('Deducting balance for income: $amount');
+      final now = DateTime.now();
+      final currentDailyKey = dayKey(now);
+      final currentWeeklyKey = weekKey(now);
+      final currentMonthlyKey = monthKey(now);
+
       _balance = _balance.copyWith(
         totalBalance: _balance.totalBalance - amount,
         dailyIncomes: _balance.dailyIncomes - amount,
         weeklyIncomes: _balance.weeklyIncomes - amount,
         monthlyIncomes: _balance.monthlyIncomes - amount,
+        dailyKey: currentDailyKey,
+        weeklyKey: currentWeeklyKey,
+        monthlyKey: currentMonthlyKey,
       );
       notifyListeners();
       _persistAfterChange();
