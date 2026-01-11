@@ -293,36 +293,14 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                                         children: [
                                           Text(
                                             investment.name,
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
                                             style: GoogleFonts.outfit(
                                               fontSize: screenWidth / 28,
                                               fontWeight: FontWeight.w600,
                                               color: cardTextColor(context),
                                             ),
                                           ),
-                                          if (isOneTime) ...[
-                                            const SizedBox(width: 8),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 2,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: Colors.green
-                                                    .withOpacity(0.15),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: Text(
-                                                'One-time',
-                                                style: GoogleFonts.outfit(
-                                                  fontSize: screenWidth / 38,
-                                                  color: Colors.green.shade700,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
                                         ],
                                       ),
                                       const SizedBox(height: 4),

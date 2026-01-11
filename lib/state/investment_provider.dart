@@ -45,6 +45,17 @@ class InvestmentProvider with ChangeNotifier {
     _init();
   }
 
+  @override
+  void dispose() {
+    _investmentsSub?.cancel();
+    _investmentsSub = null;
+    _transactionsSub?.cancel();
+    _transactionsSub = null;
+    _authSub?.cancel();
+    _authSub = null;
+    super.dispose();
+  }
+
   // -------------------------
   // Logging helpers
   // -------------------------
@@ -1069,13 +1080,5 @@ class InvestmentProvider with ChangeNotifier {
       _logError('Failed to verify clear', e, st);
       return false;
     }
-  }
-
-  @override
-  void dispose() {
-    _investmentsSub?.cancel();
-    _transactionsSub?.cancel();
-    _authSub?.cancel();
-    super.dispose();
   }
 }

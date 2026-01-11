@@ -75,7 +75,8 @@ Future<void> main() async {
   await Future.delayed(const Duration(milliseconds: 100));
 
   // Create BudgetProvider after all relationships are established
-  final budgetProvider = BudgetProvider(balanceProvider, investmentProvider);
+  final budgetProvider =
+      BudgetProvider(balanceProvider, investmentProvider, listProvider);
 
   final aiAdvisorProvider = AIAdvisorProvider();
 

@@ -131,6 +131,8 @@ class BalanceProvider extends ChangeNotifier {
         notifyListeners();
       }, onError: (e, st) {
         _logError('Balances snapshot error', e, st);
+        _balance = const BalanceModel();
+        notifyListeners();
       });
     } catch (e, st) {
       _logError('Failed to subscribe to balances doc', e, st);
@@ -879,7 +881,9 @@ class BalanceProvider extends ChangeNotifier {
   @override
   void dispose() {
     _balancesSub?.cancel();
+    _balancesSub = null;
     _authSub?.cancel();
+    _authSub = null;
     super.dispose();
   }
 }

@@ -57,7 +57,9 @@ class AIAdvisorProvider with ChangeNotifier {
     // Stop any background AI scheduler when provider is disposed.
     try {
       AIScheduler.stop();
-    } catch (_) {}
+    } catch (e) {
+      _logError('Error stopping AIScheduler', e, null);
+    }
     super.dispose();
   }
 

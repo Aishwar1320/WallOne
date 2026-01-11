@@ -127,7 +127,6 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final screenWidth = MediaQuery.of(context).size.width;
     final profile = context.watch<UserProfileProvider>();
     final profileName = profile.userName;
     final profileImagePath = profile.coverImagePath;
@@ -156,56 +155,42 @@ class _SettingsPageState extends State<SettingsPage> {
         elevation: 0,
         backgroundColor: mainColor(context),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.center,
-                child: Column(
+      body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          const SizedBox(height: 20),
+          // Profile Section
+          Align(
+            alignment: Alignment.center,
+            child: Column(
+              children: [
+                // tappable avatar to change image
+                Stack(
                   children: [
-                    // tappable avatar to change image
-                    Stack(
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                              color: mainColor(context),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: boxColor(context),
-                                width: 3,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: shadowColor(context),
-                                  blurRadius: 5,
-                                )
-                              ]),
-                          child: ClipOval(
-                            child: profileImagePath != null &&
-                                    File(profileImagePath).existsSync()
-                                ? Image.file(
-                                    File(profileImagePath),
-                                    width: 120,
-                                    height: 120,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return CircleAvatar(
-                                        radius: 60,
-                                        backgroundColor:
-                                            purpleColors(context).withAlpha(50),
-                                        child: Icon(
-                                          Icons.person,
-                                          size: 40,
-                                          color: purpleColors(context),
-                                        ),
-                                      );
-                                    },
-                                  )
-                                : CircleAvatar(
+                    Container(
+                      decoration: BoxDecoration(
+                          color: mainColor(context),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: boxColor(context),
+                            width: 3,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: shadowColor(context),
+                              blurRadius: 5,
+                            )
+                          ]),
+                      child: ClipOval(
+                        child: profileImagePath != null &&
+                                File(profileImagePath).existsSync()
+                            ? Image.file(
+                                File(profileImagePath),
+                                width: 120,
+                                height: 120,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return CircleAvatar(
                                     radius: 60,
                                     backgroundColor:
                                         purpleColors(context).withAlpha(50),
@@ -214,189 +199,162 @@ class _SettingsPageState extends State<SettingsPage> {
                                       size: 40,
                                       color: purpleColors(context),
                                     ),
-                                  ),
-                          ),
-                        ),
-
-                        //
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          top: 0,
-                          child: IconButton(
-                            onPressed: _pickImage,
-                            icon: const Icon(
-                              Icons.add,
-                              color: Colors.white,
-                              size: 40,
-                            ),
-                          ),
-                        ),
-                      ],
+                                  );
+                                },
+                              )
+                            : CircleAvatar(
+                                radius: 60,
+                                backgroundColor:
+                                    purpleColors(context).withAlpha(50),
+                                child: Icon(
+                                  Icons.person,
+                                  size: 40,
+                                  color: purpleColors(context),
+                                ),
+                              ),
+                      ),
                     ),
-                    const SizedBox(height: 12),
-
-                    // tappable name to edit
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      spacing: 5,
-                      children: [
-                        Text(
-                          profileName ?? "Guest User",
-                          style: GoogleFonts.outfit(
-                            color: primaryColor(context),
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      child: IconButton(
+                        onPressed: _pickImage,
+                        icon: const Icon(
+                          Icons.add,
+                          color: Colors.white,
+                          size: 40,
                         ),
-                        InkWell(
-                          onTap: _editName,
-                          child: Icon(
-                            Icons.edit_outlined,
-                            color: purpleColors(context),
-                            size: 17,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 20),
-
-              // Appearance Section
-              Padding(
-                padding: const EdgeInsets.all(5),
-                child: Text(
-                  'Appearance',
-                  style: GoogleFonts.outfit(
-                    color: primaryColor(context),
-                    fontSize: screenWidth / 25,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              Container(
-                height: screenWidth / 8,
-                decoration: BoxDecoration(
-                  color: purpleColors(context),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Dark Mode',
-                        style: GoogleFonts.outfit(
-                          color: primaryColor(context),
-                          fontSize: screenWidth / 25,
-                          fontWeight: FontWeight.bold,
-                        ),
+                const SizedBox(height: 12),
+                // tappable name to edit
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: 5,
+                  children: [
+                    Text(
+                      profileName ?? "Guest User",
+                      style: GoogleFonts.outfit(
+                        color: primaryColor(context),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                      ThemeSwitcher(themeProvider: themeProvider),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 5),
-
-              // ————— Currency Section —————
-              Padding(
-                padding: const EdgeInsets.all(5),
-                child: Text(
-                  'Currency',
-                  style: GoogleFonts.outfit(
-                    color: primaryColor(context),
-                    fontSize: screenWidth / 25,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              Consumer<BalanceProvider>(
-                builder: (ctx, balanceProvider, _) {
-                  return Container(
-                    height: screenWidth / 8,
-                    decoration: BoxDecoration(
-                      color: purpleColors(context),
-                      borderRadius: BorderRadius.circular(10),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 9),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Select Currency',
-                          style: GoogleFonts.outfit(
-                            color: primaryColor(context),
-                            fontSize: screenWidth / 25,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Container(
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 15),
-                          decoration: BoxDecoration(
-                            color: primaryColor(context),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: shadowColor(context).withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: DropdownButton<String>(
-                            borderRadius: BorderRadius.circular(16),
-                            dropdownColor: primaryColor(context),
-                            value: balanceProvider.currencyCode,
-                            underline: const SizedBox(),
-                            icon: Icon(Icons.keyboard_arrow_down,
-                                color: inversePrimaryColor(context)),
-                            items:
-                                balanceProvider.supportedCurrencies.map((code) {
-                              return DropdownMenuItem(
-                                value: code,
-                                child: Text(
-                                  code,
-                                  style: GoogleFonts.outfit(
-                                    color: inversePrimaryColor(context),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (newCode) {
-                              if (newCode != null) {
-                                balanceProvider.setCurrency(newCode);
-                              }
-                            },
-                          ),
-                        ),
-                      ],
+                    InkWell(
+                      onTap: _editName,
+                      child: Icon(
+                        Icons.edit_outlined,
+                        color: purpleColors(context),
+                        size: 17,
+                      ),
                     ),
-                  );
-                },
-              ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
 
-              const SizedBox(height: 5),
-
-              // Categories Section
-              Padding(
-                padding: const EdgeInsets.all(5),
-                child: Text(
-                  'Categories',
+          // Appearance Section
+          _buildSettingsSection(
+            'Appearance',
+            [
+              ListTile(
+                title: Text(
+                  'Dark Mode',
                   style: GoogleFonts.outfit(
-                    color: primaryColor(context),
-                    fontSize: screenWidth / 25,
                     fontWeight: FontWeight.bold,
+                    color: primaryColor(context),
                   ),
                 ),
+                subtitle: Text(
+                  'Choose your preferred theme',
+                  style: GoogleFonts.outfit(
+                    color: budgetTextLight(context),
+                  ),
+                ),
+                trailing: ThemeSwitcher(themeProvider: themeProvider),
               ),
-              InkWell(
+            ],
+            context,
+          ),
+
+          // Currency Section
+          Consumer<BalanceProvider>(
+            builder: (ctx, balanceProvider, _) {
+              return _buildSettingsSection(
+                'Currency',
+                [
+                  ListTile(
+                    title: Text(
+                      'Select Currency',
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor(context),
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Current: ${balanceProvider.currencyCode}',
+                      style: GoogleFonts.outfit(
+                        color: budgetTextLight(context),
+                      ),
+                    ),
+                    trailing: DropdownButton<String>(
+                      value: balanceProvider.currencyCode,
+                      borderRadius: BorderRadius.circular(8),
+                      dropdownColor: boxColor(context),
+                      underline: const SizedBox(),
+                      icon: Icon(Icons.keyboard_arrow_down,
+                          color: budgetTextLight(context)),
+                      items: balanceProvider.supportedCurrencies.map((code) {
+                        return DropdownMenuItem(
+                          value: code,
+                          child: Text(
+                            code,
+                            style: GoogleFonts.outfit(
+                              color: primaryColor(context),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (newCode) {
+                        if (newCode != null) {
+                          balanceProvider.setCurrency(newCode);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+                context,
+              );
+            },
+          ),
+
+          // Categories Section
+          _buildSettingsSection(
+            'Categories',
+            [
+              ListTile(
+                title: Text(
+                  'Manage Categories',
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor(context),
+                  ),
+                ),
+                subtitle: Text(
+                  'Add, edit, or remove expense categories',
+                  style: GoogleFonts.outfit(
+                    color: budgetTextLight(context),
+                  ),
+                ),
+                trailing: Icon(Icons.arrow_forward_ios,
+                    color: budgetTextLight(context), size: 18),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -405,49 +363,31 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   );
                 },
-                child: Container(
-                  height: screenWidth / 8,
-                  decoration: BoxDecoration(
-                    color: purpleColors(context),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Manage Categories',
-                          style: GoogleFonts.outfit(
-                            color: primaryColor(context),
-                            fontSize: screenWidth / 25,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Icon(
-                          Icons.arrow_forward_ios,
-                          color: primaryColor(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               ),
-              const SizedBox(height: 5),
+            ],
+            context,
+          ),
 
-              // Categories Section
-              Padding(
-                padding: const EdgeInsets.all(5),
-                child: Text(
-                  'AI Advisor',
+          // AI Advisor Section
+          _buildSettingsSection(
+            'AI Advisor',
+            [
+              ListTile(
+                title: Text(
+                  'AI Advisor Settings',
                   style: GoogleFonts.outfit(
-                    color: primaryColor(context),
-                    fontSize: screenWidth / 25,
                     fontWeight: FontWeight.bold,
+                    color: primaryColor(context),
                   ),
                 ),
-              ),
-              InkWell(
+                subtitle: Text(
+                  'Configure AI features and automation',
+                  style: GoogleFonts.outfit(
+                    color: budgetTextLight(context),
+                  ),
+                ),
+                trailing: Icon(Icons.arrow_forward_ios,
+                    color: budgetTextLight(context), size: 18),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -456,78 +396,70 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   );
                 },
-                child: Container(
-                  height: screenWidth / 8,
-                  decoration: BoxDecoration(
-                    color: purpleColors(context),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'AI Advisor Settings',
-                          style: GoogleFonts.outfit(
-                            color: primaryColor(context),
-                            fontSize: screenWidth / 25,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Icon(
-                          Icons.arrow_forward_ios,
-                          color: primaryColor(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 5),
-
-              // Reset App Button
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  vertical: screenWidth / 25,
-                ),
-                child: InkWell(
-                  onTap: () async {
-                    _handleReset(context);
-                  },
-                  child: Container(
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.red, // You can adjust this color as needed
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Reset App',
-                            style: GoogleFonts.outfit(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Icon(
-                            Icons.restore,
-                            color: Colors.white,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
               ),
             ],
+            context,
+          ),
+
+          // Reset Section
+          _buildSettingsSection(
+            'Data Management',
+            [
+              ListTile(
+                title: Text(
+                  'Reset App',
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+                subtitle: Text(
+                  'Delete all app data and start fresh',
+                  style: GoogleFonts.outfit(
+                    color: budgetTextLight(context),
+                  ),
+                ),
+                trailing: const Icon(Icons.restore, color: Colors.red),
+                onTap: () async {
+                  _handleReset(context);
+                },
+              ),
+            ],
+            context,
+          ),
+
+          const SizedBox(height: 85),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsSection(
+      String title, List<Widget> children, BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 8,
+          ),
+          child: Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: budgetTextLight(context),
+            ),
           ),
         ),
-      ),
+        Card(
+          elevation: 10,
+          color: boxColor(context),
+          shadowColor: shadowColor(context),
+          child: Column(children: children),
+        ),
+        const SizedBox(height: 16),
+      ],
     );
   }
 

@@ -309,7 +309,7 @@ class AISettingsTab extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Text(
             title,
             style: GoogleFonts.outfit(

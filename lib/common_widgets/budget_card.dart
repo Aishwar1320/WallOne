@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -11,6 +12,20 @@ import 'package:wallone/state/budget_provider.dart';
 import 'package:wallone/common_widgets/dropdown_menu.dart';
 import 'package:wallone/state/category_provider.dart';
 import 'package:wallone/common_widgets/custom_text_field.dart';
+
+// Constants for better maintainability
+class _BudgetCardConstants {
+  static const double cardPadding = 28;
+  static const double cardBorderRadius = 28;
+  static const double iconContainerPadding = 14;
+  static const double iconContainerBorderRadius = 16;
+  static const double progressBarHeight = 8;
+  static const double pageViewHeight = 4.5;
+  static const double estimatedItemHeight = 130.0;
+  static const Duration animationDuration = Duration(milliseconds: 300);
+  static const Duration pageScrollDuration = Duration(milliseconds: 500);
+  static const Duration autoScrollInterval = Duration(seconds: 4);
+}
 
 // Main widget class
 class BudgetOverviewCard extends StatefulWidget {
@@ -28,6 +43,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
   final PageController _pageController = PageController();
   final TextEditingController _amountController = TextEditingController();
   String? _selectedCategoryForDialog;
+  String? _editingBudgetId;
 
   @override
   void initState() {
@@ -35,7 +51,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
     _startTimer();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: _BudgetCardConstants.animationDuration,
     );
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
       CurvedAnimation(
@@ -56,7 +72,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
 
   void _startTimer() {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 4), (timer) {
+    _timer = Timer.periodic(_BudgetCardConstants.autoScrollInterval, (timer) {
       final budgetProvider = context.read<BudgetProvider>();
       if (!budgetProvider.showAllBudgets && mounted) {
         final budgets = budgetProvider.budgets;
@@ -65,7 +81,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
               (budgetProvider.currentBudgetIndex + 1) % budgets.length;
           _pageController.animateToPage(
             nextPage,
-            duration: const Duration(milliseconds: 500),
+            duration: _BudgetCardConstants.pageScrollDuration,
             curve: Curves.easeInOut,
           );
         }
@@ -73,19 +89,51 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
     });
   }
 
-  Widget _buildAddBudgetDialog() {
-    // Use a persistent controller so the typed value isn't lost if the
-    // dialog's internal StatefulBuilder rebuilds. The controller is cleared
-    // before the dialog is shown.
+  double _calculateProgress(Budget budget) {
+    if (budget.amount <= 0) return 0.0;
+    final progress = budget.spent / budget.amount;
+    return progress.isFinite ? math.max(0.0, progress) : 0.0;
+  }
+
+  String _formatCurrency(double amount, String currencyCode) {
+    final symbol =
+        NumberFormat.simpleCurrency(name: currencyCode).currencySymbol;
+    return '$symbol${amount.toStringAsFixed(0)}';
+  }
+
+  void _showBudgetDialog({Budget? budget}) {
+    _amountController.clear();
+    _selectedCategoryForDialog = null;
+    _editingBudgetId = budget?.id;
+
+    if (budget != null) {
+      _amountController.text = budget.amount.toString();
+      _selectedCategoryForDialog = budget.category;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.circular(_BudgetCardConstants.cardBorderRadius),
+        ),
+        child: _buildAddBudgetDialog(isEditing: budget != null),
+      ),
+    );
+  }
+
+  Widget _buildAddBudgetDialog({bool isEditing = false}) {
     final TextEditingController amountController = _amountController;
 
     return StatefulBuilder(
       builder: (context, setState) {
         return Container(
-          padding: const EdgeInsets.all(28),
+          padding: const EdgeInsets.all(_BudgetCardConstants.cardPadding),
           decoration: BoxDecoration(
             color: boxColor(context),
-            borderRadius: BorderRadius.circular(28),
+            borderRadius:
+                BorderRadius.circular(_BudgetCardConstants.cardBorderRadius),
             boxShadow: [
               BoxShadow(
                 color: shadowColor(context).withOpacity(0.1),
@@ -113,15 +161,15 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
-                      Icons.add_chart,
+                    child: Icon(
+                      isEditing ? Icons.edit : Icons.add_chart,
                       color: Colors.white,
                       size: 20,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    'Add New Budget',
+                    isEditing ? 'Edit Budget' : 'Add New Budget',
                     style: GoogleFonts.outfit(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -137,7 +185,6 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                     boxColor: boxColor(context),
                     hintText: "Select Category",
                     onItemSelected: (value) {
-                      // update the dialog-local selection stored on the parent state
                       setState(() {
                         _selectedCategoryForDialog = value;
                       });
@@ -159,7 +206,10 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                 children: [
                   Expanded(
                     child: TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        _editingBudgetId = null;
+                        Navigator.pop(context);
+                      },
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
@@ -179,7 +229,6 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () async {
-                        // Basic validation
                         if ((_selectedCategoryForDialog == null) ||
                             amountController.text.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -209,24 +258,30 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                             context.read<CategoryProvider>();
                         final iconKey = categoryProvider
                             .getIconForCategory(_selectedCategoryForDialog!);
+                        final budgetProvider = context.read<BudgetProvider>();
 
-                        // Await the provider call and show feedback on failure
-                        final success =
-                            await context.read<BudgetProvider>().addBudget(
-                                  _selectedCategoryForDialog!,
-                                  amount,
-                                  iconKey,
-                                );
+                        bool success;
+                        if (isEditing && _editingBudgetId != null) {
+                          success = await budgetProvider.updateBudget(
+                            _editingBudgetId!,
+                            _selectedCategoryForDialog!,
+                            amount,
+                            iconKey,
+                          );
+                        } else {
+                          success = await budgetProvider.addBudget(
+                            _selectedCategoryForDialog!,
+                            amount,
+                            iconKey,
+                          );
+                        }
 
                         if (success) {
-                          // clear dialog state
                           _amountController.clear();
                           _selectedCategoryForDialog = null;
-                          if (context.mounted) Navigator.pop(context);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Failed to add budget')));
+                          _editingBudgetId = null;
+
+                          Navigator.pop(context);
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -240,7 +295,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                             Theme.of(context).primaryColor.withOpacity(0.4),
                       ),
                       child: Text(
-                        'Add Budget',
+                        isEditing ? 'Update Budget' : 'Add Budget',
                         style: GoogleFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -260,233 +315,209 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
 
   Widget _buildBudgetProgress(Budget budget) {
     final code = context.read<BalanceProvider>().currencyCode;
-    final symbol = NumberFormat.simpleCurrency(name: code).currencySymbol;
     final screenWidth = MediaQuery.of(context).size.width;
+    final progress = _calculateProgress(budget);
 
-    return Container(
-      padding: EdgeInsets.all(screenWidth / 40),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            budget.color(context).withValues(alpha: 0.15),
-            budget.color(context).withValues(alpha: 0.25),
+    return GestureDetector(
+      onLongPress: () => _showBudgetDialog(budget: budget),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: screenWidth / 40),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              budget.color(context).withValues(alpha: 0.15),
+              budget.color(context).withValues(alpha: 0.25),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: budget.color(context).withValues(alpha: 0.3),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: budget.color(context).withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: budget.color(context).withValues(alpha: 0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: budget.color(context).withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                padding: EdgeInsets.all(
-                  screenWidth / 40,
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      budget.color(context).withValues(alpha: 0.7),
-                      budget.color(context),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: budget.color(context).withValues(alpha: 0.3),
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
-                    ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _buildGradientIconContainer(
+                  budget.icon,
+                  [
+                    budget.color(context).withValues(alpha: 0.7),
+                    budget.color(context),
                   ],
                 ),
-                child: Icon(
-                  budget.icon,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      budget.category,
-                      style: GoogleFonts.outfit(
-                        fontSize: screenWidth / 24,
-                        fontWeight: FontWeight.w600,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        budget.category,
+                        style: GoogleFonts.outfit(
+                          fontSize: screenWidth / 24,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            margin: const EdgeInsets.only(right: 6, top: 6),
+                            decoration: BoxDecoration(
+                              color: budget.color(context),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: budget
+                                      .color(context)
+                                      .withValues(alpha: 0.3),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            budget.statusText,
+                            style: GoogleFonts.outfit(
+                              fontSize: screenWidth / 30,
+                              color: budget.color(context),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
                     Row(
+                      spacing: 5,
                       children: [
                         Container(
-                          width: 8,
-                          height: 8,
-                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: budget.color(context),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: budget
-                                    .color(context)
-                                    .withValues(alpha: 0.3),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+                            color:
+                                budget.color(context).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${(progress * 100).toStringAsFixed(0)}%',
+                            style: GoogleFonts.outfit(
+                              fontSize: screenWidth / 28,
+                              fontWeight: FontWeight.bold,
+                              color: budget.color(context),
+                            ),
                           ),
                         ),
                         Text(
-                          budget.statusText,
+                          _formatCurrency(budget.spent, code),
                           style: GoogleFonts.outfit(
-                            fontSize: screenWidth / 30,
+                            fontSize: screenWidth / 25,
+                            fontWeight: FontWeight.w600,
                             color: budget.color(context),
-                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
+                    Text(
+                      'of ${_formatCurrency(budget.amount, code)}',
+                      style: GoogleFonts.outfit(
+                        fontSize: screenWidth / 30,
+                        color: budgetTextLight(context),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '$symbol${budget.spent.toStringAsFixed(0)}',
-                    style: GoogleFonts.outfit(
-                      fontSize: screenWidth / 25,
-                      fontWeight: FontWeight.w600,
-                      color: budget.color(context),
-                    ),
-                  ),
-                  Text(
-                    'of $symbol${budget.amount.toStringAsFixed(0)}',
-                    style: GoogleFonts.outfit(
-                      fontSize: screenWidth / 30,
-                      color: budgetTextLight(context),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
+            const SizedBox(height: 10),
+            _buildProgressBar(budget, progress),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgressBar(Budget budget, double progress) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Stack(
+        children: [
+          Container(
+            height: _BudgetCardConstants.progressBarHeight,
+            decoration: BoxDecoration(
+              color: budget.color(context).withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
-          const SizedBox(height: 8),
-          Stack(
-            children: [
-              Container(
-                height: 8,
-                decoration: BoxDecoration(
-                  color: budget.color(context).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
+          FractionallySizedBox(
+            widthFactor: progress.clamp(0.0, 1.0),
+            child: Container(
+              height: _BudgetCardConstants.progressBarHeight,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    budget.color(context).withValues(alpha: 0.7),
+                    budget.color(context),
+                  ],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
                 ),
               ),
-              Builder(
-                builder: (context) {
-                  final rawProgress = budget.progress;
-
-                  final safeProgressOfRaw =
-                      (rawProgress.isFinite) ? rawProgress : 0.0;
-                  final safeProgress = math.max(0.0, safeProgressOfRaw);
-
-                  debugPrint(
-                      '[BudgetOverviewCard] budget=${budget.id} progress: raw=$rawProgress safe=$safeProgress');
-
-                  return FractionallySizedBox(
-                    widthFactor: budget.progress,
-                    child: Container(
-                      height: 10,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            budget.color(context).withValues(alpha: 0.7),
-                            budget.color(context),
-                          ],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: budget.color(context).withValues(alpha: 0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-              Builder(
-                builder: (context) {
-                  final rawProgress = budget.progress;
-                  final safeProgressOfRaw =
-                      (rawProgress.isFinite) ? rawProgress : 0.0;
-                  final safeProgress = math.max(0.0, safeProgressOfRaw);
-                  if (safeProgress >= 1.0) {
-                    return Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          gradient: LinearGradient(
-                            colors: [
-                              budget.color(context).withValues(alpha: 0.7),
-                              budget.color(context),
-                            ],
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.warning_rounded,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                    );
-                  } else {
-                    return const SizedBox.shrink();
-                  }
-                },
-              )
-            ],
+            ),
           ),
+          if (progress >= 1.0)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.warning_rounded,
+                    color: Colors.white,
+                    size: 14,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
   Widget _buildGradientIconContainer(
-      BuildContext context, IconData icon, List<Color> gradientColors) {
+      IconData icon, List<Color> gradientColors) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(_BudgetCardConstants.iconContainerPadding),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: gradientColors,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(
+            _BudgetCardConstants.iconContainerBorderRadius),
         boxShadow: [
           BoxShadow(
             color: gradientColors[0].withOpacity(0.3),
@@ -509,7 +540,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
       children: List.generate(
         budgets.length,
         (index) => AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
+          duration: _BudgetCardConstants.animationDuration,
           margin: const EdgeInsets.symmetric(horizontal: 4),
           width: currentIndex == index ? 24 : 8,
           height: 8,
@@ -533,6 +564,100 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
     );
   }
 
+  Widget _buildBudgetSummary(List<Budget> budgets) {
+    final code = context.read<BalanceProvider>().currencyCode;
+    final totalBudgeted = budgets.fold<double>(0, (sum, b) => sum + b.amount);
+    final totalSpent = budgets.fold<double>(0, (sum, b) => sum + b.spent);
+    final remaining = totalBudgeted - totalSpent;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(context).primaryColor.withOpacity(0.1),
+            Theme.of(context).primaryColor.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).primaryColor.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildSummaryItem(
+            label: 'Budgeted',
+            value: _formatCurrency(totalBudgeted, code),
+            icon: Icons.account_balance_wallet,
+          ),
+          Container(
+            width: 1,
+            height: 40,
+            color: Theme.of(context).primaryColor.withOpacity(0.2),
+          ),
+          _buildSummaryItem(
+            label: 'Spent',
+            value: _formatCurrency(totalSpent, code),
+            icon: Icons.trending_down,
+          ),
+          Container(
+            width: 1,
+            height: 40,
+            color: Theme.of(context).primaryColor.withOpacity(0.2),
+          ),
+          _buildSummaryItem(
+            label: 'Remaining',
+            value: _formatCurrency(remaining, code),
+            icon: Icons.trending_up,
+            isPositive: remaining >= 0,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryItem({
+    required String label,
+    required String value,
+    required IconData icon,
+    bool isPositive = true,
+  }) {
+    return Expanded(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: isPositive ? Colors.green : Colors.red,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: GoogleFonts.outfit(
+              fontSize: 12,
+              color: budgetTextLight(context),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: primaryColor(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<BudgetProvider>(
@@ -541,104 +666,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
         final screenWidth = MediaQuery.of(context).size.width;
 
         if (budgets.isEmpty) {
-          return Card(
-            elevation: 12,
-            shadowColor: shadowColor(context).withOpacity(0.3),
-            color: boxColor(context),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    boxColor(context),
-                    boxColor(context).withOpacity(0.95),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.account_balance_wallet_outlined,
-                      size: 32,
-                      color: Theme.of(context).primaryColor,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    "No Budgets Yet",
-                    style: GoogleFonts.outfit(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: cardTextColor(context),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    "Start tracking your expenses by adding a budget category.",
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      color: cardTextColor(context),
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      _amountController.clear();
-                      _selectedCategoryForDialog = null;
-                      showDialog(
-                        context: context,
-                        builder: (context) => Dialog(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(28),
-                          ),
-                          child: _buildAddBudgetDialog(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(
-                      Icons.add,
-                      color: Colors.white,
-                    ),
-                    label: Text(
-                      'Add Budget',
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 28,
-                        vertical: 14,
-                      ),
-                      backgroundColor: Theme.of(context).primaryColor,
-                      foregroundColor: Colors.white,
-                      elevation: 4,
-                      shadowColor:
-                          Theme.of(context).primaryColor.withOpacity(0.4),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
+          return _buildEmptyState();
         }
 
         return ScaleTransition(
@@ -655,10 +683,11 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
               shadowColor: shadowColor(context).withOpacity(0.3),
               color: boxColor(context),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(
+                    _BudgetCardConstants.cardBorderRadius),
               ),
               child: Container(
-                padding: const EdgeInsets.all(28),
+                padding: const EdgeInsets.all(_BudgetCardConstants.cardPadding),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -668,205 +697,29 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                       boxColor(context).withOpacity(0.95),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(
+                      _BudgetCardConstants.cardBorderRadius),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            _buildGradientIconContainer(
-                              context,
-                              Icons.attach_money,
-                              [
-                                Colors.deepPurple.shade700,
-                                Colors.deepPurple.shade900
-                              ],
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              "All Budgets",
-                              style: GoogleFonts.outfit(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: primaryColor(context),
-                              ),
-                            ),
-                          ],
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            _amountController.clear();
-                            _selectedCategoryForDialog = null;
-                            showDialog(
-                              context: context,
-                              builder: (context) => Dialog(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(28),
-                                ),
-                                child: _buildAddBudgetDialog(),
-                              ),
-                            );
-                          },
-                          icon: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Theme.of(context)
-                                      .primaryColor
-                                      .withOpacity(0.8),
-                                  Theme.of(context).primaryColor,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Theme.of(context)
-                                      .primaryColor
-                                      .withOpacity(0.3),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.add,
-                              color: inversePrimaryColor(context),
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 28),
+                    _buildCardHeader(budgetProvider),
+                    const SizedBox(height: 24),
+                    if (budgetProvider.showAllBudgets) ...[
+                      _buildBudgetSummary(budgets),
+                      const SizedBox(height: 20),
+                    ],
                     AnimatedCrossFade(
-                      duration: const Duration(milliseconds: 300),
+                      duration: _BudgetCardConstants.animationDuration,
                       crossFadeState: budgetProvider.showAllBudgets
                           ? CrossFadeState.showSecond
                           : CrossFadeState.showFirst,
-                      firstChild: Column(
-                        children: [
-                          SizedBox(
-                            height: screenWidth / 4.5,
-                            child: PageView.builder(
-                              controller: _pageController,
-                              itemCount: budgets.length,
-                              onPageChanged: (index) {
-                                budgetProvider.setCurrentBudgetIndex(index);
-                              },
-                              itemBuilder: (context, index) {
-                                return Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 4),
-                                  child: _buildBudgetProgress(budgets[index]),
-                                );
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          _buildPageIndicator(
-                              budgets, budgetProvider.currentBudgetIndex),
-                        ],
-                      ),
+                      firstChild: _buildPageViewSection(
+                          budgets, screenWidth, budgetProvider),
                       secondChild:
-                          LayoutBuilder(builder: (context, constraints) {
-                        // Choose itemHeight based on your item layout; 120 is just an example.
-                        final estimatedItemHeight = 120.0;
-                        // Use available constraints.maxHeight if finite, else use a fraction of screen
-                        final maxAvailableHeight =
-                            constraints.maxHeight.isFinite
-                                ? constraints.maxHeight
-                                : MediaQuery.of(context).size.height * 0.6;
-
-                        // Cap the list height to either all items height or a sensible fraction of screen
-                        final computedHeight = math.min(
-                          budgets.length * estimatedItemHeight,
-                          maxAvailableHeight,
-                        );
-
-                        return ConstrainedBox(
-                          constraints: BoxConstraints(
-                            // Prevent the ListView from growing beyond computedHeight
-                            maxHeight: computedHeight,
-                          ),
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: budgets.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 16),
-                            itemBuilder: (context, index) {
-                              return Dismissible(
-                                key: Key(budgets[index].id),
-                                direction: DismissDirection.endToStart,
-                                background: Container(
-                                  padding: const EdgeInsets.only(right: 20),
-                                  decoration: BoxDecoration(
-                                    color: purpleColors(context),
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
-                                  child: const Align(
-                                    alignment: Alignment.centerRight,
-                                    child: Icon(
-                                      Icons.delete_outline,
-                                      color: Colors.white,
-                                      size: 28,
-                                    ),
-                                  ),
-                                ),
-                                onDismissed: (direction) {
-                                  budgetProvider
-                                      .removeBudget(budgets[index].id);
-                                },
-                                child: _buildBudgetProgress(budgets[index]),
-                              );
-                            },
-                          ),
-                        );
-                      }),
+                          _buildListViewSection(budgets, budgetProvider),
                     ),
-                    if (!budgetProvider.showAllBudgets) ...[
-                      const SizedBox(height: 20),
-                      Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color:
-                                Theme.of(context).primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.touch_app,
-                                size: 16,
-                                color: primaryColor(context),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Tap to view all budgets',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: primaryColor(context),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -875,5 +728,265 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
         );
       },
     );
+  }
+
+  Widget _buildEmptyState() {
+    return Card(
+      elevation: 12,
+      shadowColor: shadowColor(context).withOpacity(0.3),
+      color: boxColor(context),
+      shape: RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.circular(_BudgetCardConstants.cardBorderRadius),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(_BudgetCardConstants.cardPadding),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              boxColor(context),
+              boxColor(context).withOpacity(0.95),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.account_balance_wallet_outlined,
+                size: 32,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              "No Budgets Yet",
+              style: GoogleFonts.outfit(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: cardTextColor(context),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "Start tracking your expenses by adding a budget category.",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                color: cardTextColor(context),
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 28),
+            ElevatedButton.icon(
+              onPressed: () => _showBudgetDialog(),
+              icon: const Icon(
+                Icons.add,
+                color: Colors.white,
+              ),
+              label: Text(
+                'Add Budget',
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 14,
+                ),
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+                elevation: 4,
+                shadowColor: Theme.of(context).primaryColor.withOpacity(0.4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardHeader(BudgetProvider budgetProvider) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            _buildGradientIconContainer(
+              Icons.attach_money,
+              [Colors.deepPurple.shade700, Colors.deepPurple.shade900],
+            ),
+            const SizedBox(width: 16),
+            Text(
+              "All Budgets",
+              style: GoogleFonts.outfit(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: primaryColor(context),
+              ),
+            ),
+          ],
+        ),
+        IconButton(
+          onPressed: () => _showBudgetDialog(),
+          icon: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).primaryColor.withOpacity(0.8),
+                  Theme.of(context).primaryColor,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).primaryColor.withOpacity(0.3),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.add,
+              color: inversePrimaryColor(context),
+              size: 20,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPageViewSection(
+      List<Budget> budgets, double screenWidth, BudgetProvider budgetProvider) {
+    return Column(
+      children: [
+        SizedBox(
+          height: screenWidth / _BudgetCardConstants.pageViewHeight,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: budgets.length,
+            onPageChanged: (index) {
+              budgetProvider.setCurrentBudgetIndex(index);
+            },
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: _buildBudgetProgress(budgets[index]),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 20),
+        _buildPageIndicator(budgets, budgetProvider.currentBudgetIndex),
+        const SizedBox(height: 20),
+        Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.touch_app,
+                  size: 16,
+                  color: primaryColor(context),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Tap to view all',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: primaryColor(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildListViewSection(
+      List<Budget> budgets, BudgetProvider budgetProvider) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final computedHeight = math.min(
+        budgets.length * _BudgetCardConstants.estimatedItemHeight,
+        constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : MediaQuery.of(context).size.height * 0.6,
+      );
+
+      return ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: computedHeight),
+        child: ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: budgets.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            return Slidable(
+              closeOnScroll: true,
+              key: Key(budgets[index].id),
+              endActionPane: ActionPane(
+                motion: const DrawerMotion(),
+                extentRatio: 0.4,
+                children: [
+                  CustomSlidableAction(
+                    onPressed: (_) {
+                      budgetProvider.removeBudget(budgets[index].id);
+                    },
+                    backgroundColor: boxColor(context),
+                    child: Icon(
+                      Icons.delete_outlined,
+                      color: primaryColor(context),
+                    ),
+                  ),
+                  CustomSlidableAction(
+                    onPressed: (_) {
+                      _showBudgetDialog(budget: budgets[index]);
+                    },
+                    backgroundColor: boxColor(context),
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(24),
+                      bottomRight: Radius.circular(24),
+                    ),
+                    child: Icon(
+                      Icons.edit_note_rounded,
+                      color: primaryColor(context),
+                    ),
+                  ),
+                ],
+              ),
+              child: _buildBudgetProgress(budgets[index]),
+            );
+          },
+        ),
+      );
+    });
   }
 }

@@ -8,6 +8,7 @@ import 'package:wallone/models/icon_map_model.dart';
 import 'package:wallone/models/investment_model.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/investment_provider.dart';
+import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/utils/constants.dart';
 
 class Budget {
@@ -16,6 +17,7 @@ class Budget {
   double spent;
   final String iconKey;
   final String id;
+  final DateTime createdAt;
 
   Budget({
     required this.category,
@@ -23,7 +25,9 @@ class Budget {
     required this.spent,
     required this.iconKey,
     String? id,
-  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
+    DateTime? createdAt,
+  })  : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        createdAt = createdAt ?? DateTime.now();
 
   IconData get icon => iconMap[iconKey] ?? Icons.help_outline;
 
@@ -55,8 +59,9 @@ class Budget {
       'id': id,
       'category': category,
       'amount': amount,
-      'spent': spent,
       'iconKey': iconKey,
+      'createdAt': createdAt.toIso8601String(),
+      // Note: We don't save 'spent' to Firestore anymore - it's calculated from transactions
     };
   }
 
@@ -65,8 +70,11 @@ class Budget {
       id: json['id'] as String?,
       category: json['category'] as String,
       amount: (json['amount'] as num).toDouble(),
-      spent: (json['spent'] as num).toDouble(),
+      spent: 0.0, // Always start at 0, will be calculated from transactions
       iconKey: json['iconKey'] as String,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
     );
   }
 }
@@ -78,6 +86,7 @@ class BudgetProvider with ChangeNotifier {
 
   final BalanceProvider _balanceProvider;
   final InvestmentProvider _investmentProvider;
+  final ListProvider _listProvider;
 
   List<Budget> _budgets = [];
   bool _showAllBudgets = false;
@@ -90,8 +99,17 @@ class BudgetProvider with ChangeNotifier {
 
   // Listen to investment provider changes
   VoidCallback? _investmentListener;
+  VoidCallback? _listProviderListener;
 
-  BudgetProvider(this._balanceProvider, this._investmentProvider) {
+  // Debouncing timer for sync
+  Timer? _syncDebounceTimer;
+  bool _isSyncing = false;
+
+  BudgetProvider(
+    this._balanceProvider,
+    this._investmentProvider,
+    this._listProvider,
+  ) {
     _init();
   }
 
@@ -117,9 +135,14 @@ class BudgetProvider with ChangeNotifier {
 
     // subscribe to investment provider changes to keep spent in sync
     _investmentListener = () {
-      _syncWithBalanceProvider();
+      _debouncedSync();
     };
     _investmentProvider.addListener(_investmentListener!);
+
+    _listProviderListener = () {
+      _debouncedSync();
+    };
+    _listProvider.addListener(_listProviderListener!);
   }
 
   // -------------------------
@@ -136,6 +159,8 @@ class BudgetProvider with ChangeNotifier {
       final col = _fs.collection('users').doc(uid).collection('budgets');
       // Real-time updates of budgets collection
       _budgetsSub = col.snapshots().listen((snap) {
+        _log('Received ${snap.docs.length} budgets from Firestore');
+
         _budgets = snap.docs.map((d) {
           final data = d.data();
           try {
@@ -143,22 +168,26 @@ class BudgetProvider with ChangeNotifier {
               'id': d.id,
               'category': data['category'],
               'amount': data['amount'],
-              'spent': data['spent'] ?? 0.0,
               'iconKey': data['iconKey'] ?? 'others',
+              'createdAt': data['createdAt'],
             });
           } catch (e) {
+            _log('Error parsing budget ${d.id}: $e');
             // Fallback: minimal budget
             return Budget(
                 category: data['category'] ?? 'Misc',
                 amount: (data['amount'] ?? 0).toDouble(),
-                spent: (data['spent'] ?? 0).toDouble(),
+                spent: 0.0,
                 iconKey: data['iconKey'] ?? 'others',
-                id: d.id);
+                id: d.id,
+                createdAt: data['createdAt'] != null
+                    ? DateTime.parse(data['createdAt'])
+                    : DateTime.now());
           }
         }).toList();
 
-        // After loading budgets from Firestore, recalc spent from transactions
-        _syncWithBalanceProvider(notify: false);
+        // Immediately recalculate spent from transactions
+        _syncSpentFromTransactions();
         notifyListeners();
       }, onError: (e, st) {
         _logError('Budgets snapshot error', e, st);
@@ -203,68 +232,73 @@ class BudgetProvider with ChangeNotifier {
   }
 
   // -------------------------
-  // Sync logic - compute spent from transactions - FIXED
+  // Sync logic - IMPROVED
   // -------------------------
-  /// Recomputes `spent` for each budget by scanning transactions from the investmentProvider's listProvider.
-  /// If notify==true, calls notifyListeners() after recomputing.
-  void _syncWithBalanceProvider({bool notify = true}) {
-    try {
-      // FIXED: Check if listProvider exists before accessing
-      if (_investmentProvider.listProvider == null) {
-        _log('listProvider is null - skipping sync');
-        return;
-      }
 
-      final listProv = _investmentProvider.listProvider!;
-      final transactions = listProv.transactions;
+  /// Debounced sync to avoid multiple rapid calls
+  void _debouncedSync() {
+    _syncDebounceTimer?.cancel();
+    _syncDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      _syncSpentFromTransactions();
+      notifyListeners();
+    });
+  }
+
+  /// Immediately sync spent from transactions (synchronous calculation)
+  void _syncSpentFromTransactions() {
+    if (_isSyncing) {
+      _log('Already syncing, skipping...');
+      return;
+    }
+
+    try {
+      _isSyncing = true;
+      final transactions = _listProvider.transactions;
       final today = DateTime.now();
       final firstDayOfMonth = DateTime(today.year, today.month, 1);
 
-      // reset spent
+      _log('Syncing budgets with ${transactions.length} transactions');
+
+      // Reset spent for all budgets
       for (var b in _budgets) {
         b.spent = 0.0;
       }
 
+      // Calculate spent from transactions
       for (var tx in transactions) {
         if (tx.isIncome) continue;
-        // transaction.date is expected to be ISO string; adapt if different
+
         DateTime? txDate;
         try {
           txDate = DateTime.parse(tx.date);
-        } catch (_) {
+        } catch (e) {
+          _log('Failed to parse transaction date: ${tx.date}');
           continue;
         }
+
+        // Only count transactions from current month
         if (txDate.isBefore(firstDayOfMonth)) continue;
 
         final budget = getBudgetByCategory(tx.category);
         if (budget != null) {
-          budget.spent += tx.amount;
+          // Only count transactions that occurred AFTER the budget was created
+          if (txDate.isAfter(budget.createdAt) ||
+              txDate.isAtSameMomentAs(budget.createdAt)) {
+            budget.spent += tx.amount;
+            _log(
+                'Added ${tx.amount} to ${budget.category} (total: ${budget.spent})');
+          }
         }
       }
 
-      // persist spent changes back to Firestore (optional)
-      _persistSpentForAllBudgets().catchError((e, st) {
-        _logError('Failed to persist spent after sync', e, st);
-      });
-
-      if (notify) notifyListeners();
-    } catch (e, st) {
-      _logError('Failed to sync with balanceProvider', e, st);
-    }
-  }
-
-  Future<void> _persistSpentForAllBudgets() async {
-    try {
-      final col = _budgetsCollection();
-      if (col == null) return;
-      final batch = _fs.batch();
-      for (final budget in _budgets) {
-        final docRef = col.doc(budget.id);
-        batch.set(docRef, {'spent': budget.spent}, SetOptions(merge: true));
+      _log('Sync complete. Budget totals:');
+      for (var b in _budgets) {
+        _log('  ${b.category}: ${b.spent} / ${b.amount}');
       }
-      await batch.commit();
     } catch (e, st) {
-      _logError('Error persisting spent values', e, st);
+      _logError('Failed to sync spent from transactions', e, st);
+    } finally {
+      _isSyncing = false;
     }
   }
 
@@ -279,6 +313,13 @@ class BudgetProvider with ChangeNotifier {
         return false;
       }
 
+      // Check if budget already exists for this category
+      final existing = getBudgetByCategory(category);
+      if (existing != null) {
+        _log('Budget already exists for category $category');
+        return false;
+      }
+
       final budget = Budget(
         category: category,
         amount: amount,
@@ -286,27 +327,62 @@ class BudgetProvider with ChangeNotifier {
         iconKey: iconKey,
       );
 
-      await col.doc(budget.id).set(budget.toJson());
-      // local cache will update from snapshot listener
-      _log('Added budget ${budget.id}');
+      final jsonData = budget.toJson();
+      _log('Saving budget to Firebase: $jsonData');
+
+      await col.doc(budget.id).set(jsonData);
+      // Local cache will update from snapshot listener
+      // Then _syncSpentFromTransactions will be called automatically
+      _log('✅ Successfully added budget ${budget.id} to Firestore');
       return true;
     } catch (e, st) {
-      _logError('Failed to add budget', e, st);
+      _logError('❌ Failed to add budget', e, st);
       return false;
     }
   }
 
-  /// Updates a budget's spent (client-side) and persists
+  Future<bool> updateBudget(
+      String budgetId, String category, double amount, String iconKey) async {
+    try {
+      final col = _budgetsCollection();
+      if (col == null) {
+        _log('User not signed in - cannot update budget');
+        return false;
+      }
+
+      final budgetIndex = _budgets.indexWhere((b) => b.id == budgetId);
+      if (budgetIndex == -1) {
+        _log('Budget not found');
+        return false;
+      }
+
+      final budget = _budgets[budgetIndex];
+      final updatedBudget = Budget(
+        category: category,
+        amount: amount,
+        spent: budget.spent, // Keep current spent value
+        iconKey: iconKey,
+        id: budgetId,
+        createdAt: budget.createdAt, // Preserve creation date
+      );
+
+      await col.doc(budgetId).set(updatedBudget.toJson());
+      _log('✅ Updated budget $budgetId');
+      return true;
+    } catch (e, st) {
+      _logError('Failed to update budget', e, st);
+      return false;
+    }
+  }
+
+  /// Updates a budget's spent (not recommended - spent should be calculated from transactions)
+  @deprecated
   Future<void> updateBudgetSpent(String id, double spent) async {
     try {
       final idx = _budgets.indexWhere((b) => b.id == id);
       if (idx != -1) {
         _budgets[idx].spent = spent;
         notifyListeners();
-        final col = _budgetsCollection();
-        if (col != null) {
-          await col.doc(id).set({'spent': spent}, SetOptions(merge: true));
-        }
       }
     } catch (e, st) {
       _logError('Failed to update budget spent', e, st);
@@ -317,8 +393,11 @@ class BudgetProvider with ChangeNotifier {
     try {
       final col = _budgetsCollection();
       if (col == null) return;
-      await col.doc(id).delete().catchError((_) {});
-      // local cache will update via listener
+
+      _log('Removing budget $id');
+      await col.doc(id).delete();
+      // Local cache will update via listener
+      _log('✅ Successfully removed budget $id');
     } catch (e, st) {
       _logError('Failed to remove budget', e, st);
     }
@@ -335,17 +414,19 @@ class BudgetProvider with ChangeNotifier {
       }
 
       if (existing != null) {
+        // Update existing budget
         final updated = Budget(
           category: category,
           amount: amount,
           spent: existing.spent,
           iconKey: iconKey,
           id: existing.id,
+          createdAt: existing.createdAt, // Preserve creation date
         );
-        await col
-            .doc(updated.id)
-            .set(updated.toJson(), SetOptions(merge: true));
+        await col.doc(updated.id).set(updated.toJson());
+        _log('✅ Updated existing budget for $category');
       } else {
+        // Create new budget
         final newBudget = Budget(
           category: category,
           amount: amount,
@@ -353,8 +434,9 @@ class BudgetProvider with ChangeNotifier {
           iconKey: iconKey,
         );
         await col.doc(newBudget.id).set(newBudget.toJson());
+        _log('✅ Created new budget for $category');
       }
-      // local cache will update from snapshot
+      // Local cache will update from snapshot
     } catch (e, st) {
       _logError('Failed to createOrUpdateBudget', e, st);
     }
@@ -470,6 +552,15 @@ class BudgetProvider with ChangeNotifier {
   }
 
   // -------------------------
+  // Manual refresh (useful for debugging)
+  // -------------------------
+  void forceRefresh() {
+    _log('Force refresh requested');
+    _syncSpentFromTransactions();
+    notifyListeners();
+  }
+
+  // -------------------------
   // Cleanup & verification
   // -------------------------
   Future<void> clearAllBudgetsFromFirestore() async {
@@ -494,10 +585,16 @@ class BudgetProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    _syncDebounceTimer?.cancel();
     _budgetsSub?.cancel();
+    _budgetsSub = null;
     _authSub?.cancel();
+    _authSub = null;
     if (_investmentListener != null) {
       _investmentProvider.removeListener(_investmentListener!);
+    }
+    if (_listProviderListener != null) {
+      _listProvider.removeListener(_listProviderListener!);
     }
     super.dispose();
   }

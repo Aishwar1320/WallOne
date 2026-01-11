@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:wallone/models/icon_map_model.dart';
-import 'dart:convert';
 
 /// Category model using icon name instead of IconData
 class Category {
@@ -33,13 +32,10 @@ class Category {
 
 class CategoryProvider with ChangeNotifier {
   List<Category> _categories = [];
-  static const String _defaultCategories = 'defaultCategories';
 
   CategoryProvider() {
     _loadCategories();
   }
-
-  List<Category> get categories => _categories;
 
   Future<void> _loadCategories() async {
     try {
@@ -90,6 +86,8 @@ class CategoryProvider with ChangeNotifier {
     ];
     _saveCategories();
   }
+
+  List<Category> get categories => _categories;
 
   Future<void> _saveCategories() async {
     try {
@@ -150,5 +148,10 @@ class CategoryProvider with ChangeNotifier {
       ),
     );
     return category.iconName;
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 }

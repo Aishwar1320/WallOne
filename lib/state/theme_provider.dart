@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 
 class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
@@ -11,7 +12,11 @@ class ThemeProvider extends ChangeNotifier {
     _loadThemeMode(); // Load theme when provider is initialized
   }
 
-  void _loadThemeMode() async {
+  void _loadThemeMode() {
+    _loadThemeModeAsync();
+  }
+
+  Future<void> _loadThemeModeAsync() async {
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) {
@@ -37,13 +42,18 @@ class ThemeProvider extends ChangeNotifier {
         _themeMode = ThemeMode.system;
       }
     } catch (e) {
+      debugPrint('Error loading theme: $e');
       _themeMode = ThemeMode.system;
     }
 
     notifyListeners();
   }
 
-  void setThemeMode(ThemeMode mode) async {
+  void setThemeMode(ThemeMode mode) {
+    _setThemeModeAsync(mode);
+  }
+
+  Future<void> _setThemeModeAsync(ThemeMode mode) async {
     _themeMode = mode;
 
     try {
@@ -66,9 +76,14 @@ class ThemeProvider extends ChangeNotifier {
           .set({'themeMode': themeString}, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Error saving theme: $e');
+    } finally {
+      notifyListeners();
     }
+  }
 
-    notifyListeners();
+  @override
+  void dispose() {
+    super.dispose();
   }
 }
 
@@ -79,14 +94,19 @@ class ThemeSwitcher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final systemBrightness = MediaQuery.of(context).platformBrightness;
+    return Consumer<ThemeProvider>(
+      builder: (context, provider, _) {
+        final systemBrightness = MediaQuery.of(context).platformBrightness;
+        final isDark = provider.themeMode == ThemeMode.dark ||
+            (provider.themeMode == ThemeMode.system &&
+                systemBrightness == Brightness.dark);
 
-    return Switch(
-      value: themeProvider.themeMode == ThemeMode.dark ||
-          (themeProvider.themeMode == ThemeMode.system &&
-              systemBrightness == Brightness.dark),
-      onChanged: (value) {
-        themeProvider.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
+        return Switch(
+          value: isDark,
+          onChanged: (value) {
+            provider.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
+          },
+        );
       },
     );
   }

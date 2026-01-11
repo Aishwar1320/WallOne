@@ -302,6 +302,8 @@ class InsightCard extends StatelessWidget {
         return Icons.trending_up;
       case InsightType.expense:
         return Icons.money_off;
+      case InsightType.income:
+        return Icons.attach_money;
       case InsightType.alert:
         return Icons.warning;
       case InsightType.general:

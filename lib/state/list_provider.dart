@@ -1006,9 +1006,12 @@ class ListProvider with ChangeNotifier {
   }
 
   @override
+  @override
   void dispose() {
     _txSub?.cancel();
+    _txSub = null;
     _authSub?.cancel();
+    _authSub = null;
     super.dispose();
   }
 }
