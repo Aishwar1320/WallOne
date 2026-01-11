@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
-        android:label="wallone"
+        android:label="Wallone"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
         android:enableOnBackInvokedCallback="true">
