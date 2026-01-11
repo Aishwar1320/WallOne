@@ -113,8 +113,8 @@ class AIAdvisorProvider with ChangeNotifier {
       _log('AI advisor initialized successfully');
       _safeNotify();
 
-      // Run initial analysis if enabled
-      if (_isAIEnabled) {
+      // Run initial analysis if enabled AND user is premium
+      if (_isAIEnabled && await _isPremiumUser()) {
         await refreshInsights();
       }
     } catch (e, stackTrace) {
@@ -124,8 +124,29 @@ class AIAdvisorProvider with ChangeNotifier {
     }
   }
 
+  /// Check if current user is premium
+  Future<bool> _isPremiumUser() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return false;
+
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      return doc.data()?['isPremium'] ?? false;
+    } catch (e) {
+      _logError('Error checking premium status', e, null);
+      return false;
+    }
+  }
+
   /// Generate fresh insights from AI with smart filtering
   Future<void> refreshInsights({bool forceRefresh = false}) async {
+    // Check premium status first
+    if (!await _isPremiumUser()) {
+      _log('AI insights refresh blocked - user is not premium');
+      return;
+    }
+
     if (_advisor == null || !_isAIEnabled) {
       _log('AI advisor not available or disabled');
       return;
@@ -165,6 +186,12 @@ class AIAdvisorProvider with ChangeNotifier {
     String? customCategory,
     double? customAmount,
   }) async {
+    // Check premium status first
+    if (!await _isPremiumUser()) {
+      _log('Insight execution blocked - user is not premium');
+      return false;
+    }
+
     if (_advisor == null) {
       _log('AI advisor not available');
       return false;
@@ -232,24 +259,48 @@ class AIAdvisorProvider with ChangeNotifier {
 
   void reset() {
     _isAIEnabled = false;
+    _autoBudgetOptimization = false;
+    _autoInvestmentSuggestions = false;
     notifyListeners();
   }
 
   Future<void> loadUserSettings(bool isPremium) async {
     if (!isPremium) {
-      _isAIEnabled = false; // force OFF for free users
+      // Force OFF for free users and disable all AI features
+      _isAIEnabled = false;
+      _autoBudgetOptimization = false;
+      _autoInvestmentSuggestions = false;
+      _autoExpenseCategorization = false;
+      await _saveSettings();
       notifyListeners();
       return;
     }
 
     // load settings normally for premium user
-    final doc = await FirebaseFirestore.instance
-        .collection('ai_settings')
-        .doc(FirebaseAuth.instance.currentUser!.uid)
-        .get();
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
 
-    _isAIEnabled = doc.data()?['isAIEnabled'] ?? false;
-    notifyListeners();
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('aiAdvisor')
+          .doc('settings')
+          .get();
+
+      if (doc.exists) {
+        final settings = doc.data();
+        _isAIEnabled = settings?['isAIEnabled'] ?? false;
+        _autoBudgetOptimization = settings?['autoBudgetOptimization'] ?? false;
+        _autoInvestmentSuggestions =
+            settings?['autoInvestmentSuggestions'] ?? false;
+        _autoExpenseCategorization =
+            settings?['autoExpenseCategorization'] ?? true;
+      }
+      notifyListeners();
+    } catch (e, st) {
+      _logError('Error loading user settings', e, st);
+    }
   }
 
   /// Get insight execution preview (what will happen when executed)
@@ -302,6 +353,12 @@ class AIAdvisorProvider with ChangeNotifier {
 
   /// Auto-optimize budgets using AI recommendations
   Future<bool> optimizeBudgetsAutomatically() async {
+    // Check premium status first
+    if (!await _isPremiumUser()) {
+      _log('Budget optimization blocked - user is not premium');
+      return false;
+    }
+
     if (_advisor == null || !_autoBudgetOptimization) {
       return false;
     }
@@ -329,6 +386,11 @@ class AIAdvisorProvider with ChangeNotifier {
       return 'Others';
     }
 
+    // Check premium status
+    if (!await _isPremiumUser()) {
+      return 'Others';
+    }
+
     try {
       return await _advisor!.suggestCategory(description, amount);
     } catch (e, stackTrace) {
@@ -339,6 +401,11 @@ class AIAdvisorProvider with ChangeNotifier {
 
   /// Get spending recommendations
   Future<Map<String, dynamic>> getSpendingRecommendations() async {
+    // Check premium status first
+    if (!await _isPremiumUser()) {
+      return {};
+    }
+
     if (_advisor == null) {
       return {};
     }
@@ -367,54 +434,87 @@ class AIAdvisorProvider with ChangeNotifier {
       return;
     }
 
+    // Check premium status
+    if (!await _isPremiumUser()) {
+      return;
+    }
+
     await refreshInsights();
     Future.microtask(() {
       _safeNotify();
     });
   }
 
-  void setAIEnabled(bool enabled) {
-    // this prevents free users from enabling AI internally
+  Future<void> setAIEnabled(bool enabled) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid != null) {
-      FirebaseFirestore.instance.collection('users').doc(uid).get().then((doc) {
-        final isPremium = doc.data()?['isPremium'] ?? false;
-        if (!isPremium) return; // block changes for free users
+    if (uid == null) return;
 
-        _isAIEnabled = enabled;
-        _saveSettings();
-        _safeNotify();
-      });
+    try {
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final isPremium = doc.data()?['isPremium'] ?? false;
+
+      if (!isPremium && enabled) {
+        // Block non-premium users from enabling AI
+        _log('AI enable blocked - user is not premium');
+        return;
+      }
+
+      _isAIEnabled = enabled;
+      await _saveSettings();
+      _safeNotify();
+    } catch (e, st) {
+      _logError('Error setting AI enabled state', e, st);
     }
   }
 
-  void setAutoBudgetOptimization(bool enabled) {
+  Future<void> setAutoBudgetOptimization(bool enabled) async {
+    if (!await _isPremiumUser() && enabled) {
+      _log('Auto budget optimization blocked - user is not premium');
+      return;
+    }
+
     _autoBudgetOptimization = enabled;
-    _saveSettings();
+    await _saveSettings();
     _safeNotify();
   }
 
-  void setAutoInvestmentSuggestions(bool enabled) {
+  Future<void> setAutoInvestmentSuggestions(bool enabled) async {
+    if (!await _isPremiumUser() && enabled) {
+      _log('Auto investment suggestions blocked - user is not premium');
+      return;
+    }
+
     _autoInvestmentSuggestions = enabled;
-    _saveSettings();
+    await _saveSettings();
     _safeNotify();
   }
 
-  void setAutoExpenseCategorization(bool enabled) {
+  Future<void> setAutoExpenseCategorization(bool enabled) async {
+    if (!await _isPremiumUser() && enabled) {
+      _log('Auto expense categorization blocked - user is not premium');
+      return;
+    }
+
     _autoExpenseCategorization = enabled;
-    _saveSettings();
+    await _saveSettings();
     _safeNotify();
   }
 
-  void setSmartNotifications(bool enabled) {
+  Future<void> setSmartNotifications(bool enabled) async {
+    if (!await _isPremiumUser() && enabled) {
+      _log('Smart notifications blocked - user is not premium');
+      return;
+    }
+
     _smartNotifications = enabled;
-    _saveSettings();
+    await _saveSettings();
     _safeNotify();
   }
 
-  void setAnalysisFrequency(int hours) {
+  Future<void> setAnalysisFrequency(int hours) async {
     _analysisFrequencyHours = hours;
-    _saveSettings();
+    await _saveSettings();
     _safeNotify();
   }
 
@@ -534,28 +634,15 @@ class AIAdvisorProvider with ChangeNotifier {
 
   /// Run comprehensive AI analysis and automation
   Future<void> runFullAnalysis() async {
-    if (_advisor == null || !_isAIEnabled) {
-      _log('AI advisor not available or disabled');
+    // Check premium status first
+    final isPremium = await _isPremiumUser();
+    if (!isPremium) {
+      _log('Full analysis blocked — user is not Premium');
       return;
     }
 
-    // enforce premium feature: require current user to be signed-in and flagged premium
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
-      _log('Full analysis requires sign-in with a Premium account');
-      return;
-    }
-    try {
-      final doc =
-          await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      final isPremium = doc.data()?['isPremium'];
-      if (isPremium != true) {
-        _log('Full analysis blocked — user is not Premium');
-        return;
-      }
-    } catch (_) {
-      // on error conservatively block
-      _log('Could not verify premium status — blocking full analysis');
+    if (_advisor == null || !_isAIEnabled) {
+      _log('AI advisor not available or disabled');
       return;
     }
 
@@ -601,6 +688,11 @@ class AIAdvisorProvider with ChangeNotifier {
         return;
       }
 
+      // Check premium status
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final isPremium = userDoc.data()?['isPremium'] ?? false;
+
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
@@ -610,20 +702,33 @@ class AIAdvisorProvider with ChangeNotifier {
 
       if (doc.exists) {
         final settings = doc.data();
-        _isAIEnabled = settings?['isAIEnabled'] ?? true;
-        _autoBudgetOptimization = settings?['autoBudgetOptimization'] ?? false;
-        _autoInvestmentSuggestions =
-            settings?['autoInvestmentSuggestions'] ?? false;
-        _autoExpenseCategorization =
-            settings?['autoExpenseCategorization'] ?? true;
-        _smartNotifications = settings?['smartNotifications'] ?? true;
+
+        // Only load AI settings if user is premium
+        if (isPremium) {
+          _isAIEnabled = settings?['isAIEnabled'] ?? false;
+          _autoBudgetOptimization =
+              settings?['autoBudgetOptimization'] ?? false;
+          _autoInvestmentSuggestions =
+              settings?['autoInvestmentSuggestions'] ?? false;
+          _autoExpenseCategorization =
+              settings?['autoExpenseCategorization'] ?? true;
+          _smartNotifications = settings?['smartNotifications'] ?? true;
+        } else {
+          // Force everything off for non-premium users
+          _isAIEnabled = false;
+          _autoBudgetOptimization = false;
+          _autoInvestmentSuggestions = false;
+          _autoExpenseCategorization = false;
+          _smartNotifications = false;
+        }
+
         _analysisFrequencyHours = settings?['analysisFrequencyHours'] ?? 24;
 
         if (settings?['lastAnalysis'] != null) {
           _lastAnalysis = (settings?['lastAnalysis'] as Timestamp?)?.toDate();
         }
 
-        _log('Settings loaded from Firestore');
+        _log('Settings loaded from Firestore (isPremium: $isPremium)');
       }
     } catch (e, stackTrace) {
       _logError('Failed to load settings', e, stackTrace);

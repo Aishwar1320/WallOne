@@ -141,6 +141,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   bool? _hasSeenOnboarding;
+  StreamSubscription<User?>? _authSubscription;
 
   @override
   void initState() {
@@ -157,11 +158,49 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     // Add observer for app lifecycle
     WidgetsBinding.instance.addObserver(this);
 
+    // Listen to auth state changes to properly manage AI settings
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (mounted) {
+        _handleAuthStateChange(user);
+      }
+    });
+
     // Defer AI initialization until after the first frame to avoid
     // notifying providers during the widget build phase.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeAI();
     });
+  }
+
+  Future<void> _handleAuthStateChange(User? user) async {
+    try {
+      final aiProvider = context.read<AIAdvisorProvider>();
+      final userProfileProvider = context.read<UserProfileProvider>();
+
+      if (user == null) {
+        // User logged out - reset AI settings
+        if (kDebugMode) debugPrint('[MyApp] User logged out - resetting AI');
+        aiProvider.reset();
+      } else {
+        // User logged in - load their settings based on premium status
+        if (kDebugMode) {
+          debugPrint('[MyApp] User logged in - loading AI settings');
+        }
+
+        // Wait for user profile to load premium status
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        final isPremium = userProfileProvider.isPremium;
+        if (kDebugMode) debugPrint('[MyApp] User premium status: $isPremium');
+
+        await aiProvider.loadUserSettings(isPremium);
+      }
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('[MyApp] Error handling auth state change: $e');
+        debugPrint('[MyApp] Stack trace: $st');
+      }
+    }
   }
 
   Future<void> _loadHasSeenOnboarding() async {
@@ -216,6 +255,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       final budgetProvider = context.read<BudgetProvider>();
       final listProvider = context.read<ListProvider>();
       final categoryProvider = context.read<CategoryProvider>();
+      final userProfileProvider = context.read<UserProfileProvider>();
 
       // Initialize the rule-based advisor (no API key required)
       await aiProvider.initializeAdvisor(
@@ -226,6 +266,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         categoryProvider: categoryProvider,
       );
 
+      // Load AI settings based on premium status
+      final isPremium = userProfileProvider.isPremium;
+      if (kDebugMode) {
+        debugPrint('[MyApp] Loading AI settings for premium: $isPremium');
+      }
+      await aiProvider.loadUserSettings(isPremium);
+
       if (kDebugMode) {
         debugPrint('[MyApp] AI advisor initialized successfully');
       }
@@ -235,6 +282,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         debugPrint('[MyApp] Stack trace: $st');
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   @override
