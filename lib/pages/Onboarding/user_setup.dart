@@ -9,6 +9,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:wallone/common_widgets/ads/intertitial_ad_widget.dart';
 import 'package:wallone/utils/ad_manager.dart';
 import 'package:wallone/utils/constants.dart';
 import 'package:wallone/utils/layout.dart';
@@ -31,7 +32,6 @@ class _UserSetupPageState extends State<UserSetupPage> {
   bool _isSignIn = true;
   bool _showProfileSetup = false;
   InterstitialAd? _interstitialAd;
-  bool _isInterstitialReady = false;
 
   @override
   void initState() {
@@ -46,11 +46,9 @@ class _UserSetupPageState extends State<UserSetupPage> {
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
           _interstitialAd = ad;
-          _isInterstitialReady = true;
         },
         onAdFailedToLoad: (error) {
           _interstitialAd = null;
-          _isInterstitialReady = false;
         },
       ),
     );
@@ -59,27 +57,22 @@ class _UserSetupPageState extends State<UserSetupPage> {
   void _showAdAndGoHome() {
     final isPremium = context.read<UserProfileProvider>().isPremium;
 
+    // Skip ads for premium users
     if (isPremium) {
       _goToHome();
       return;
     }
 
-    if (_isInterstitialReady && _interstitialAd != null) {
-      _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
-        onAdDismissedFullScreenContent: (ad) {
-          ad.dispose();
-          _goToHome();
-        },
-        onAdFailedToShowFullScreenContent: (ad, error) {
-          ad.dispose();
-          _goToHome();
-        },
+    // ✅ Use the centralized manager instead of local state
+    if (InterstitialAdManager.isAvailable) {
+      InterstitialAdManager.show();
+      // Set callback to navigate after ad
+      _interstitialAd?.fullScreenContentCallback = FullScreenContentCallback(
+        onAdDismissedFullScreenContent: (ad) => _goToHome(),
+        onAdFailedToShowFullScreenContent: (ad, error) => _goToHome(),
       );
-
-      _interstitialAd!.show();
-      _interstitialAd = null;
-      _isInterstitialReady = false;
     } else {
+      // No ad available, go directly home
       _goToHome();
     }
   }

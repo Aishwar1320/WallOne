@@ -100,7 +100,12 @@ class _AddTransactionsPageState extends State<AddTransactionsPage>
 
     final shouldShowAd = await _shouldShowTransactionAd();
 
-    if (!shouldShowAd || !_isInterstitialReady || _interstitialAd == null) {
+    if (!shouldShowAd) {
+      Navigator.pop(context);
+      return;
+    }
+
+    if (!_isInterstitialReady || _interstitialAd == null) {
       Navigator.pop(context);
       return;
     }
@@ -108,15 +113,15 @@ class _AddTransactionsPageState extends State<AddTransactionsPage>
     _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
-        Navigator.pop(context);
+        if (mounted) Navigator.pop(context);
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
         ad.dispose();
-        Navigator.pop(context);
+        if (mounted) Navigator.pop(context);
       },
     );
 
-    _interstitialAd!.show();
+    await _interstitialAd!.show();
     _interstitialAd = null;
     _isInterstitialReady = false;
   }

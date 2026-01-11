@@ -13,6 +13,7 @@ class BannerAdWidget extends StatefulWidget {
 class _BannerAdWidgetState extends State<BannerAdWidget> {
   BannerAd? _bannerAd;
   bool _isLoaded = false;
+  bool _hasFailed = false;
 
   double get _height => widget.size.height.toDouble();
   double get _width => widget.size.width.toDouble();
@@ -29,10 +30,19 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
       listener: BannerAdListener(
         onAdLoaded: (_) {
           if (!mounted) return;
-          setState(() => _isLoaded = true);
+          setState(() {
+            _isLoaded = true;
+            _hasFailed = false;
+          });
         },
         onAdFailedToLoad: (ad, error) {
           ad.dispose();
+          if (!mounted) return;
+
+          setState(() {
+            _isLoaded = false;
+            _hasFailed = true;
+          });
         },
       ),
     )..load();
@@ -46,12 +56,14 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
 
   @override
   Widget build(BuildContext context) {
+    if (_hasFailed || !_isLoaded) {
+      return const SizedBox.shrink();
+    }
+
     return SizedBox(
       width: _width,
-      height: _height, // 🔥 FIXED HEIGHT FROM FIRST BUILD
-      child: _isLoaded && _bannerAd != null
-          ? AdWidget(ad: _bannerAd!)
-          : const SizedBox(), // empty placeholder, NOT shrink
+      height: _height,
+      child: AdWidget(ad: _bannerAd!),
     );
   }
 }
