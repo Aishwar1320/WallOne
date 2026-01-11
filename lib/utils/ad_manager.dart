@@ -6,7 +6,7 @@ class AdManager {
   /// 🔹 BANNER AD UNIT ID
   static String get bannerAdUnitId {
     if (Platform.isAndroid) {
-      return !kDebugMode
+      return kDebugMode
           ? 'ca-app-pub-3940256099942544/6300978111' // Android test banner
           : 'ca-app-pub-8730855146025022/1841647319';
     } else if (Platform.isIOS) {
@@ -21,7 +21,7 @@ class AdManager {
   /// 🔹 INTERSTITIAL AD UNIT ID
   static String get interstitialAdUnitId {
     if (Platform.isAndroid) {
-      return !kDebugMode
+      return kDebugMode
           ? 'ca-app-pub-3940256099942544/1033173712' // Android test interstitial
           : 'ca-app-pub-8730855146025022/3645683577';
     } else if (Platform.isIOS) {
