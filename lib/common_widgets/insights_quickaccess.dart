@@ -53,7 +53,7 @@ class MinimalInsightDisplay extends StatelessWidget {
 
         return Card(
           color: boxColor(context),
-          elevation: 6,
+          elevation: 3,
           shadowColor: shadowColor(context),
           child: InkWell(
             onTap: onTap,

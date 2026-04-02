@@ -20,9 +20,19 @@ import 'package:wallone/state/theme_provider.dart';
 import 'package:wallone/state/transaction_type_provider.dart';
 import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/layout.dart';
+import 'package:wallone/utils/services/purchase_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase FIRST
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  if (kDebugMode) {
+    debugPrint('[main] Firebase initialized successfully');
+  }
 
   // Initialize Google Mobile Ads SDK
   try {
@@ -32,13 +42,18 @@ Future<void> main() async {
     if (kDebugMode) debugPrint('[main] MobileAds initialization error: $e');
   }
 
-  // Initialize Firebase FIRST
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  if (kDebugMode) {
-    debugPrint('[main] Firebase initialized successfully');
+  // Initialize In-App Purchase Service
+  try {
+    if (kDebugMode) {
+      debugPrint('[main] Initializing In-App Purchase service...');
+    }
+    await PurchaseService().initialize();
+    if (kDebugMode) debugPrint('[main] In-App Purchase service initialized');
+  } catch (e, st) {
+    if (kDebugMode) {
+      debugPrint('[main] In-App Purchase initialization error: $e');
+      debugPrint('[main] Stack trace: $st');
+    }
   }
 
   // Create providers in the correct order
@@ -124,6 +139,8 @@ Future<void> main() async {
           ChangeNotifierProvider(create: (_) => CategoryProvider()),
           ChangeNotifierProvider<AIAdvisorProvider>.value(
               value: aiAdvisorProvider),
+
+          // UserProfileProvider now handles purchase service internally
           ChangeNotifierProvider(create: (_) => UserProfileProvider()),
         ],
         child: const MyApp(),
@@ -142,6 +159,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   bool? _hasSeenOnboarding;
   StreamSubscription<User?>? _authSubscription;
+  bool _aiInitialized = false;
 
   @override
   void initState() {
@@ -175,25 +193,24 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   Future<void> _handleAuthStateChange(User? user) async {
     try {
       final aiProvider = context.read<AIAdvisorProvider>();
-      final userProfileProvider = context.read<UserProfileProvider>();
 
       if (user == null) {
         // User logged out - reset AI settings
         if (kDebugMode) debugPrint('[MyApp] User logged out - resetting AI');
         aiProvider.reset();
+        _aiInitialized = false;
       } else {
-        // User logged in - load their settings based on premium status
+        // User logged in - reinitialize AI if needed
         if (kDebugMode) {
-          debugPrint('[MyApp] User logged in - loading AI settings');
+          debugPrint('[MyApp] User logged in - reinitializing AI');
         }
 
-        // Wait for user profile to load premium status
-        await Future.delayed(const Duration(milliseconds: 500));
+        // Short delay to ensure auth is fully settled
+        await Future.delayed(const Duration(milliseconds: 300));
 
-        final isPremium = userProfileProvider.isPremium;
-        if (kDebugMode) debugPrint('[MyApp] User premium status: $isPremium');
-
-        await aiProvider.loadUserSettings(isPremium);
+        if (mounted && !_aiInitialized) {
+          await _initializeAI();
+        }
       }
     } catch (e, st) {
       if (kDebugMode) {
@@ -255,7 +272,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       final budgetProvider = context.read<BudgetProvider>();
       final listProvider = context.read<ListProvider>();
       final categoryProvider = context.read<CategoryProvider>();
-      final userProfileProvider = context.read<UserProfileProvider>();
 
       // Initialize the rule-based advisor (no API key required)
       await aiProvider.initializeAdvisor(
@@ -266,15 +282,43 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         categoryProvider: categoryProvider,
       );
 
-      // Load AI settings based on premium status
-      final isPremium = userProfileProvider.isPremium;
-      if (kDebugMode) {
-        debugPrint('[MyApp] Loading AI settings for premium: $isPremium');
-      }
-      await aiProvider.loadUserSettings(isPremium);
+      // ✅ CRITICAL FIX: Wait for UserProfileProvider to load premium status
+      final userProfileProvider = context.read<UserProfileProvider>();
 
-      if (kDebugMode) {
-        debugPrint('[MyApp] AI advisor initialized successfully');
+      // Check if user is logged in
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        if (kDebugMode) {
+          debugPrint('[MyApp] Waiting for UserProfileProvider to load...');
+        }
+
+        // Give UserProfileProvider time to load from Firestore
+        // We'll check its premium status directly from Firestore to be safe
+        final uid = user.uid;
+        final userDoc =
+            await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+        final isPremium = userDoc.data()?['isPremium'] ?? false;
+
+        if (kDebugMode) {
+          debugPrint('[MyApp] User premium status from Firestore: $isPremium');
+          debugPrint(
+              '[MyApp] UserProfileProvider isPremium: ${userProfileProvider.isPremium}');
+        }
+
+        // Load AI settings based on actual premium status
+        await aiProvider.loadUserSettings(isPremium);
+
+        _aiInitialized = true;
+
+        if (kDebugMode) {
+          debugPrint('[MyApp] AI advisor initialized successfully');
+          debugPrint('[MyApp] AI enabled: ${aiProvider.isAIEnabled}');
+        }
+      } else {
+        if (kDebugMode) {
+          debugPrint('[MyApp] No user logged in, skipping AI settings load');
+        }
       }
     } catch (e, st) {
       if (kDebugMode) {

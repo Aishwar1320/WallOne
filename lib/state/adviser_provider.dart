@@ -221,9 +221,20 @@ class AIAdvisorProvider with ChangeNotifier {
           );
         }
 
-        // Trigger refresh to get new insights after execution
-        await refreshInsights(forceRefresh: true);
+        // ✅ Cache the updated insights
+        await _cacheInsights();
+
+        // ✅ Notify listeners FIRST so UI updates immediately
         _safeNotify();
+
+        // ✅ Then refresh in background with a delay to allow provider sync
+        Future.delayed(const Duration(milliseconds: 800), () async {
+          try {
+            await refreshInsights(forceRefresh: true);
+          } catch (e) {
+            _logError('Background refresh failed', e, null);
+          }
+        });
       } else {
         _log('Failed to execute insight: $insightId');
       }
@@ -261,7 +272,9 @@ class AIAdvisorProvider with ChangeNotifier {
     _isAIEnabled = false;
     _autoBudgetOptimization = false;
     _autoInvestmentSuggestions = false;
-    notifyListeners();
+    _autoExpenseCategorization = false; // ✅ Added
+    _smartNotifications = false; // ✅ Added
+    _safeNotify(); // ✅ Changed from notifyListeners()
   }
 
   Future<void> loadUserSettings(bool isPremium) async {
@@ -271,8 +284,9 @@ class AIAdvisorProvider with ChangeNotifier {
       _autoBudgetOptimization = false;
       _autoInvestmentSuggestions = false;
       _autoExpenseCategorization = false;
+      _smartNotifications = false;
       await _saveSettings();
-      notifyListeners();
+      _safeNotify();
       return;
     }
 
@@ -296,10 +310,34 @@ class AIAdvisorProvider with ChangeNotifier {
             settings?['autoInvestmentSuggestions'] ?? false;
         _autoExpenseCategorization =
             settings?['autoExpenseCategorization'] ?? true;
+        _smartNotifications = settings?['smartNotifications'] ?? true;
+        _analysisFrequencyHours = settings?['analysisFrequencyHours'] ?? 24;
+
+        if (settings?['lastAnalysis'] != null) {
+          _lastAnalysis = (settings?['lastAnalysis'] as Timestamp?)?.toDate();
+        }
+
+        _log('User settings loaded successfully (isPremium: true)');
+      } else {
+        // First time premium user - settings don't exist yet
+        // Keep defaults but ensure AI is disabled until user explicitly enables
+        _log('No existing settings found for premium user - using defaults');
       }
-      notifyListeners();
+      _safeNotify();
     } catch (e, st) {
       _logError('Error loading user settings', e, st);
+    }
+  }
+
+  Future<void> onPremiumStatusChanged(bool isPremium) async {
+    _log('Premium status changed to: $isPremium');
+
+    // Reload settings based on new premium status
+    await loadUserSettings(isPremium);
+
+    // If user became premium and AI is enabled, refresh insights
+    if (isPremium && _isAIEnabled && _advisor != null) {
+      await refreshInsights(forceRefresh: true);
     }
   }
 
@@ -680,6 +718,8 @@ class AIAdvisorProvider with ChangeNotifier {
   }
 
   /// Load settings from Firestore
+  /// Load settings from Firestore (called during init)
+  /// NOTE: This should be followed by loadUserSettings() which handles premium logic
   Future<void> _loadSettings() async {
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -687,11 +727,6 @@ class AIAdvisorProvider with ChangeNotifier {
         _log('No user logged in, skipping settings load');
         return;
       }
-
-      // Check premium status
-      final userDoc =
-          await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      final isPremium = userDoc.data()?['isPremium'] ?? false;
 
       final doc = await FirebaseFirestore.instance
           .collection('users')
@@ -703,32 +738,21 @@ class AIAdvisorProvider with ChangeNotifier {
       if (doc.exists) {
         final settings = doc.data();
 
-        // Only load AI settings if user is premium
-        if (isPremium) {
-          _isAIEnabled = settings?['isAIEnabled'] ?? false;
-          _autoBudgetOptimization =
-              settings?['autoBudgetOptimization'] ?? false;
-          _autoInvestmentSuggestions =
-              settings?['autoInvestmentSuggestions'] ?? false;
-          _autoExpenseCategorization =
-              settings?['autoExpenseCategorization'] ?? true;
-          _smartNotifications = settings?['smartNotifications'] ?? true;
-        } else {
-          // Force everything off for non-premium users
-          _isAIEnabled = false;
-          _autoBudgetOptimization = false;
-          _autoInvestmentSuggestions = false;
-          _autoExpenseCategorization = false;
-          _smartNotifications = false;
-        }
-
+        // Load all settings (premium check happens in loadUserSettings)
+        _isAIEnabled = settings?['isAIEnabled'] ?? false;
+        _autoBudgetOptimization = settings?['autoBudgetOptimization'] ?? false;
+        _autoInvestmentSuggestions =
+            settings?['autoInvestmentSuggestions'] ?? false;
+        _autoExpenseCategorization =
+            settings?['autoExpenseCategorization'] ?? true;
+        _smartNotifications = settings?['smartNotifications'] ?? true;
         _analysisFrequencyHours = settings?['analysisFrequencyHours'] ?? 24;
 
         if (settings?['lastAnalysis'] != null) {
           _lastAnalysis = (settings?['lastAnalysis'] as Timestamp?)?.toDate();
         }
 
-        _log('Settings loaded from Firestore (isPremium: $isPremium)');
+        _log('Settings loaded from Firestore during init');
       }
     } catch (e, stackTrace) {
       _logError('Failed to load settings', e, stackTrace);

@@ -70,7 +70,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                       padding: EdgeInsets.symmetric(horizontal: 16),
                       child: BannerAdWidget(),
                     ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 35),
                   _buildSectionWithInfoButton(
                     "WallOne AI",
                     context,
@@ -95,27 +95,13 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Container(
-              width: 4,
-              height: 24,
-              decoration: BoxDecoration(
-                color: primaryColor(context),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              title,
-              style: GoogleFonts.outfit(
-                fontSize: screenWidth / 20,
-                fontWeight: FontWeight.bold,
-                color: primaryColor(context),
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
+        Text(
+          title,
+          style: GoogleFonts.outfit(
+            fontSize: screenWidth / 23,
+            color: primaryColor(context),
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
@@ -127,38 +113,24 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Container(
-              width: 4,
-              height: 24,
-              decoration: BoxDecoration(
-                color: primaryColor(context),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              title,
-              style: GoogleFonts.outfit(
-                fontSize: screenWidth / 20,
-                fontWeight: FontWeight.bold,
-                color: primaryColor(context),
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
+        Text(
+          title,
+          style: GoogleFonts.outfit(
+            fontSize: screenWidth / 23,
+            fontWeight: FontWeight.w500,
+            color: primaryColor(context),
+          ),
         ),
-        IconButton(
-          onPressed: onInfoPressed,
-          icon: Container(
-            padding: const EdgeInsets.all(8),
+        GestureDetector(
+          onTap: onInfoPressed,
+          child: Container(
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: primaryColor(context).withOpacity(0.1),
+              color: boxColor(context),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: shadowColor(context).withOpacity(0.1),
+                  color: shadowColor(context),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -230,311 +202,287 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     // Define tolerance for matching values to ticks
     final double tolerance = majorTick / 10;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            boxColor(context),
-            boxColor(context).withOpacity(0.9),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header section
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: primaryColor(context).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.bar_chart,
+                    color: primaryColor(context),
+                    size: screenWidth / 25,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Income vs Expenses',
+                  style: GoogleFonts.outfit(
+                    fontSize: screenWidth / 25,
+                    fontWeight: FontWeight.bold,
+                    color: cardTextColor(context),
+                  ),
+                ),
+              ],
+            ),
+
+            //
+            const SizedBox(width: 5),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: primaryColor(context).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '$monthName $year',
+                style: GoogleFonts.outfit(
+                  fontSize: screenWidth / 44,
+                  fontWeight: FontWeight.w500,
+                  color: primaryColor(context),
+                ),
+              ),
+            ),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor(context).withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header section
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: primaryColor(context).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.bar_chart,
-                      color: primaryColor(context),
-                      size: screenWidth / 25,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Income vs Expenses',
-                    style: GoogleFonts.outfit(
-                      fontSize: screenWidth / 25,
-                      fontWeight: FontWeight.bold,
-                      color: cardTextColor(context),
-                    ),
-                  ),
-                ],
+        const SizedBox(height: 24),
+        // Chart section
+        SizedBox(
+          height: 220,
+          width: double.infinity,
+          child: BarChart(
+            BarChartData(
+              alignment: BarChartAlignment.spaceAround,
+              minY: bottomY,
+              maxY: topY,
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: majorTick,
+                getDrawingHorizontalLine: (value) {
+                  // Only draw grid lines at our tick values
+                  if (tickValues
+                      .any((tick) => (value - tick).abs() < tolerance)) {
+                    return FlLine(
+                      color: Colors.grey.withOpacity(0.1),
+                      strokeWidth: 1,
+                    );
+                  }
+                  return const FlLine(color: Colors.transparent);
+                },
               ),
-
-              //
-              const SizedBox(width: 5),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: primaryColor(context).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+              titlesData: FlTitlesData(
+                show: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
                 ),
-                child: Text(
-                  '$monthName $year',
-                  style: GoogleFonts.outfit(
-                    fontSize: screenWidth / 44,
-                    fontWeight: FontWeight.w500,
-                    color: primaryColor(context),
-                  ),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          // Chart section
-          SizedBox(
-            height: 220,
-            width: double.infinity,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                minY: bottomY,
-                maxY: topY,
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: majorTick,
-                  getDrawingHorizontalLine: (value) {
-                    // Only draw grid lines at our tick values
-                    if (tickValues
-                        .any((tick) => (value - tick).abs() < tolerance)) {
-                      return FlLine(
-                        color: Colors.grey.withOpacity(0.1),
-                        strokeWidth: 1,
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) {
+                      String text = value == 0 ? 'Income' : 'Expenses';
+                      return Padding(
+                        padding: const EdgeInsets.only(
+                          top: 6.0,
+                        ),
+                        child: Text(
+                          text,
+                          style: GoogleFonts.outfit(
+                            color: textColor.withOpacity(0.7),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
                       );
-                    }
-                    return const FlLine(color: Colors.transparent);
-                  },
+                    },
+                  ),
                 ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        String text = value == 0 ? 'Income' : 'Expenses';
-                        return Padding(
-                          padding: const EdgeInsets.only(
-                            top: 6.0,
-                          ),
-                          child: Text(
-                            text,
-                            style: GoogleFonts.outfit(
-                              color: textColor.withOpacity(0.7),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 50,
-                      interval: majorTick /
-                          2, // Show labels at half the major tick interval for more density
-                      getTitlesWidget: (value, meta) {
-                        // Check if this value is one of our designated tick values
-                        bool isRegularTick = tickValues
-                            .any((tick) => (value - tick).abs() < tolerance);
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 50,
+                    interval: majorTick /
+                        2, // Show labels at half the major tick interval for more density
+                    getTitlesWidget: (value, meta) {
+                      // Check if this value is one of our designated tick values
+                      bool isRegularTick = tickValues
+                          .any((tick) => (value - tick).abs() < tolerance);
 
-                        // Also show income and expense values if they don't match a tick
-                        bool isIncomeValue = (value - income).abs() < tolerance;
-                        bool isExpenseValue =
-                            (value - expenses).abs() < tolerance;
+                      // Also show income and expense values if they don't match a tick
+                      bool isIncomeValue = (value - income).abs() < tolerance;
+                      bool isExpenseValue =
+                          (value - expenses).abs() < tolerance;
 
-                        if (!isRegularTick &&
-                            !isIncomeValue &&
-                            !isExpenseValue) {
-                          return const SizedBox.shrink();
-                        }
+                      if (!isRegularTick && !isIncomeValue && !isExpenseValue) {
+                        return const SizedBox.shrink();
+                      }
 
-                        // Customize label style
-                        TextStyle labelStyle = GoogleFonts.outfit(
-                          color: textColor.withOpacity(0.7),
+                      // Customize label style
+                      TextStyle labelStyle = GoogleFonts.outfit(
+                        color: textColor.withOpacity(0.7),
+                        fontSize: 11,
+                      );
+
+                      if (isIncomeValue) {
+                        labelStyle = GoogleFonts.outfit(
+                          color: const Color(0xFF37B873),
                           fontSize: 11,
+                          fontWeight: FontWeight.bold,
                         );
-
-                        if (isIncomeValue) {
-                          labelStyle = GoogleFonts.outfit(
-                            color: const Color(0xFF37B873),
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          );
-                        } else if (isExpenseValue) {
-                          labelStyle = GoogleFonts.outfit(
-                            color: const Color(0xFFFF5252),
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          );
-                        }
-
-                        return SideTitleWidget(
-                          meta: meta,
-                          child: Text(
-                            _formatValue(value),
-                            style: labelStyle,
-                          ),
+                      } else if (isExpenseValue) {
+                        labelStyle = GoogleFonts.outfit(
+                          color: const Color(0xFFFF5252),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
                         );
-                      },
-                    ),
+                      }
+
+                      return SideTitleWidget(
+                        meta: meta,
+                        child: Text(
+                          _formatValue(value),
+                          style: labelStyle,
+                        ),
+                      );
+                    },
                   ),
                 ),
-                borderData: FlBorderData(show: false),
-                barGroups: [
-                  BarChartGroupData(
-                    x: 0,
-                    barRods: [
-                      BarChartRodData(
-                        toY: income,
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF55CE86), Color(0xFF37B873)],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                        width: _calculateBarWidth(screenWidth),
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(8),
-                          topRight: Radius.circular(8),
-                        ),
-                        backDrawRodData: BackgroundBarChartRodData(
-                          show: true,
-                          toY: topY,
-                          color: Colors.grey.withOpacity(0.05),
-                        ),
-                      )
-                    ],
-                  ),
-                  BarChartGroupData(
-                    x: 1,
-                    barRods: [
-                      BarChartRodData(
-                        toY: expenses,
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFF7A7A), Color(0xFFFF5252)],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                        width: _calculateBarWidth(screenWidth),
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(8),
-                          topRight: Radius.circular(8),
-                        ),
-                        backDrawRodData: BackgroundBarChartRodData(
-                          show: true,
-                          toY: topY,
-                          color: Colors.grey.withOpacity(0.05),
-                        ),
-                      )
-                    ],
-                  ),
-                ],
-                // Draw the dashed (dotted) lines only for income and expense
-                extraLinesData: ExtraLinesData(
-                  horizontalLines: [
-                    if (income > 0)
-                      HorizontalLine(
-                        y: income,
-                        color: const Color(0xFF37B873),
-                        strokeWidth: 1,
-                        dashArray: [3, 3],
-                        label: HorizontalLineLabel(
-                          show: true,
-                          alignment: Alignment.topRight,
-                          padding: const EdgeInsets.only(right: 8, top: 2),
-                          style: GoogleFonts.outfit(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF37B873),
-                          ),
-                          labelResolver: (line) => _formatValue(income),
-                        ),
+              ),
+              borderData: FlBorderData(show: false),
+              barGroups: [
+                BarChartGroupData(
+                  x: 0,
+                  barRods: [
+                    BarChartRodData(
+                      toY: income,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF55CE86), Color(0xFF37B873)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
                       ),
-                    if (expenses > 0)
-                      HorizontalLine(
-                        y: expenses,
-                        color: const Color(0xFFFF5252),
-                        strokeWidth: 1,
-                        dashArray: [3, 3],
-                        label: HorizontalLineLabel(
-                          show: true,
-                          alignment: Alignment.topRight,
-                          padding: const EdgeInsets.only(right: 8, top: 2),
-                          style: GoogleFonts.outfit(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFFFF5252),
-                          ),
-                          labelResolver: (line) => _formatValue(expenses),
-                        ),
+                      width: _calculateBarWidth(screenWidth),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(8),
+                        topRight: Radius.circular(8),
                       ),
+                      backDrawRodData: BackgroundBarChartRodData(
+                        show: true,
+                        toY: topY,
+                        color: Colors.grey.withOpacity(0.05),
+                      ),
+                    )
                   ],
                 ),
-              ),
-              swapAnimationDuration: Duration.zero,
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Net balance indicator
-          if (income > 0 && expenses > 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Net Balance: ',
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      color: textColor.withOpacity(0.8),
+                BarChartGroupData(
+                  x: 1,
+                  barRods: [
+                    BarChartRodData(
+                      toY: expenses,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFF7A7A), Color(0xFFFF5252)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                      width: _calculateBarWidth(screenWidth),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(8),
+                        topRight: Radius.circular(8),
+                      ),
+                      backDrawRodData: BackgroundBarChartRodData(
+                        show: true,
+                        toY: topY,
+                        color: Colors.grey.withOpacity(0.05),
+                      ),
+                    )
+                  ],
+                ),
+              ],
+              // Draw the dashed (dotted) lines only for income and expense
+              extraLinesData: ExtraLinesData(
+                horizontalLines: [
+                  if (income > 0)
+                    HorizontalLine(
+                      y: income,
+                      color: const Color(0xFF37B873),
+                      strokeWidth: 1,
+                      dashArray: [3, 3],
+                      label: HorizontalLineLabel(
+                        show: true,
+                        alignment: Alignment.topRight,
+                        padding: const EdgeInsets.only(right: 8, top: 2),
+                        style: GoogleFonts.outfit(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF37B873),
+                        ),
+                        labelResolver: (line) => _formatValue(income),
+                      ),
                     ),
-                  ),
-                  Text(
-                    _formatValue(income - expenses),
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: income > expenses
-                          ? const Color(0xFF37B873)
-                          : const Color(0xFFFF5252),
+                  if (expenses > 0)
+                    HorizontalLine(
+                      y: expenses,
+                      color: const Color(0xFFFF5252),
+                      strokeWidth: 1,
+                      dashArray: [3, 3],
+                      label: HorizontalLineLabel(
+                        show: true,
+                        alignment: Alignment.topRight,
+                        padding: const EdgeInsets.only(right: 8, top: 2),
+                        style: GoogleFonts.outfit(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFFFF5252),
+                        ),
+                        labelResolver: (line) => _formatValue(expenses),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
-        ],
-      ),
+            swapAnimationDuration: Duration.zero,
+          ),
+        ),
+        const SizedBox(height: 20),
+        // Net balance indicator
+        if (income > 0 && expenses > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Net Balance: ',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: textColor.withOpacity(0.8),
+                  ),
+                ),
+                Text(
+                  _formatValue(income - expenses),
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: income > expenses
+                        ? const Color(0xFF37B873)
+                        : const Color(0xFFFF5252),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 

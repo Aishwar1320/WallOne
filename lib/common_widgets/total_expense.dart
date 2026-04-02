@@ -7,14 +7,14 @@ import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/utils/constants.dart';
 
 class TotalExpenseBoxWidget extends StatelessWidget {
-  final String label;
+  final String? label;
   final String balanceType; // 'daily', 'weekly', 'monthly', or 'total'
   final bool isExpensesSelected; // Whether expenses or incomes are selected
   final String selectedPeriod; // 'All Transactions' or date key
 
   const TotalExpenseBoxWidget({
     super.key,
-    required this.label,
+    this.label,
     required this.balanceType,
     required this.isExpensesSelected,
     this.selectedPeriod = 'All Transactions',
@@ -25,7 +25,6 @@ class TotalExpenseBoxWidget extends StatelessWidget {
     final balanceProvider = Provider.of<BalanceProvider>(context);
     final listProvider = Provider.of<ListProvider>(context);
     String formattedBalance;
-    final screenWidth = MediaQuery.of(context).size.width;
 
     // Instead of using the raw double value, we now use formatted getters.
     switch (balanceType) {
@@ -61,41 +60,27 @@ class TotalExpenseBoxWidget extends StatelessWidget {
         break;
     }
 
-    return Container(
-      height: screenWidth / 5,
-      decoration: BoxDecoration(
-        color: boxColor(context),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor(context).withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (label != null)
           Text(
-            label,
+            label!,
             style: GoogleFonts.outfit(
-              fontSize: 15,
+              fontSize: 10,
               fontWeight: FontWeight.bold,
               color: purpleColors(context),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            formattedBalance,
-            style: GoogleFonts.outfit(
-              fontSize: 22,
-              color: primaryColor(context),
-              fontWeight: FontWeight.bold,
-            ),
+        Text(
+          formattedBalance,
+          style: GoogleFonts.outfit(
+            fontSize: 12,
+            color: primaryColor(context),
+            fontWeight: FontWeight.bold,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

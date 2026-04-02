@@ -9,63 +9,44 @@ import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'package:provider/provider.dart';
 import 'package:wallone/state/budget_provider.dart';
-import 'package:wallone/common_widgets/dropdown_menu.dart';
-import 'package:wallone/state/category_provider.dart';
-import 'package:wallone/common_widgets/custom_text_field.dart';
+import 'package:wallone/common_widgets/add_budget_dialog.dart';
 
 // Constants for better maintainability
 class _BudgetCardConstants {
-  static const double cardPadding = 28;
-  static const double cardBorderRadius = 28;
   static const double iconContainerPadding = 14;
   static const double iconContainerBorderRadius = 16;
   static const double progressBarHeight = 8;
-  static const double pageViewHeight = 4.5;
   static const double estimatedItemHeight = 130.0;
-  static const Duration animationDuration = Duration(milliseconds: 300);
   static const Duration pageScrollDuration = Duration(milliseconds: 500);
   static const Duration autoScrollInterval = Duration(seconds: 4);
 }
 
 // Main widget class
 class BudgetOverviewCard extends StatefulWidget {
-  const BudgetOverviewCard({super.key});
+  const BudgetOverviewCard({
+    super.key,
+  });
 
   @override
   State<BudgetOverviewCard> createState() => _BudgetOverviewCardState();
 }
 
-class _BudgetOverviewCardState extends State<BudgetOverviewCard>
-    with SingleTickerProviderStateMixin {
+class _BudgetOverviewCardState extends State<BudgetOverviewCard> {
   late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
+
   Timer? _timer;
   final PageController _pageController = PageController();
-  final TextEditingController _amountController = TextEditingController();
-  String? _selectedCategoryForDialog;
-  String? _editingBudgetId;
 
   @override
   void initState() {
     super.initState();
     _startTimer();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: _BudgetCardConstants.animationDuration,
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
-    );
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     _animationController.dispose();
-    _amountController.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -101,225 +82,13 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
     return '$symbol${amount.toStringAsFixed(0)}';
   }
 
-  void _showBudgetDialog({Budget? budget}) {
-    _amountController.clear();
-    _selectedCategoryForDialog = null;
-    _editingBudgetId = budget?.id;
-
-    if (budget != null) {
-      _amountController.text = budget.amount.toString();
-      _selectedCategoryForDialog = budget.category;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.circular(_BudgetCardConstants.cardBorderRadius),
-        ),
-        child: _buildAddBudgetDialog(isEditing: budget != null),
-      ),
-    );
-  }
-
-  Widget _buildAddBudgetDialog({bool isEditing = false}) {
-    final TextEditingController amountController = _amountController;
-
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return Container(
-          padding: const EdgeInsets.all(_BudgetCardConstants.cardPadding),
-          decoration: BoxDecoration(
-            color: boxColor(context),
-            borderRadius:
-                BorderRadius.circular(_BudgetCardConstants.cardBorderRadius),
-            boxShadow: [
-              BoxShadow(
-                color: shadowColor(context).withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.deepPurple.shade700,
-                          Colors.deepPurple.shade900,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      isEditing ? Icons.edit : Icons.add_chart,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    isEditing ? 'Edit Budget' : 'Add New Budget',
-                    style: GoogleFonts.outfit(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 28),
-              Consumer<CategoryProvider>(
-                builder: (context, categoryProvider, child) {
-                  final categories = categoryProvider.categories;
-                  return DropdownMenuDynamicWidget(
-                    boxColor: boxColor(context),
-                    hintText: "Select Category",
-                    onItemSelected: (value) {
-                      setState(() {
-                        _selectedCategoryForDialog = value;
-                      });
-                    },
-                    items: categories.map((c) => c.name).toList(),
-                    value: _selectedCategoryForDialog,
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-              CustomTextField(
-                controller: amountController,
-                labelText: 'Budget Amount',
-                prefixIcon: Icons.attach_money,
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 28),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () {
-                        _editingBudgetId = null;
-                        Navigator.pop(context);
-                      },
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: Text(
-                        'Cancel',
-                        style: GoogleFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        if ((_selectedCategoryForDialog == null) ||
-                            amountController.text.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                              content: Text(
-                                  'Please select a category and enter an amount')));
-                          return;
-                        }
-
-                        final amount = double.tryParse(amountController.text);
-                        if (amount == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content:
-                                      Text('Enter a valid numeric amount')));
-                          return;
-                        }
-
-                        if (amount <= 0) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text(
-                                      'Amount must be greater than zero')));
-                          return;
-                        }
-
-                        final categoryProvider =
-                            context.read<CategoryProvider>();
-                        final iconKey = categoryProvider
-                            .getIconForCategory(_selectedCategoryForDialog!);
-                        final budgetProvider = context.read<BudgetProvider>();
-
-                        bool success;
-                        if (isEditing && _editingBudgetId != null) {
-                          success = await budgetProvider.updateBudget(
-                            _editingBudgetId!,
-                            _selectedCategoryForDialog!,
-                            amount,
-                            iconKey,
-                          );
-                        } else {
-                          success = await budgetProvider.addBudget(
-                            _selectedCategoryForDialog!,
-                            amount,
-                            iconKey,
-                          );
-                        }
-
-                        if (success) {
-                          _amountController.clear();
-                          _selectedCategoryForDialog = null;
-                          _editingBudgetId = null;
-
-                          Navigator.pop(context);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Theme.of(context).primaryColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: 4,
-                        shadowColor:
-                            Theme.of(context).primaryColor.withOpacity(0.4),
-                      ),
-                      child: Text(
-                        isEditing ? 'Update Budget' : 'Add Budget',
-                        style: GoogleFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildBudgetProgress(Budget budget) {
     final code = context.read<BalanceProvider>().currencyCode;
     final screenWidth = MediaQuery.of(context).size.width;
     final progress = _calculateProgress(budget);
 
     return GestureDetector(
-      onLongPress: () => _showBudgetDialog(budget: budget),
+      onLongPress: () => showAddBudgetDialog(context, budget: budget),
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: screenWidth / 40),
         decoration: BoxDecoration(
@@ -331,7 +100,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
               budget.color(context).withValues(alpha: 0.25),
             ],
           ),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: budget.color(context).withValues(alpha: 0.3),
             width: 1.5,
@@ -534,36 +303,6 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
     );
   }
 
-  Widget _buildPageIndicator(List<Budget> budgets, int currentIndex) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(
-        budgets.length,
-        (index) => AnimatedContainer(
-          duration: _BudgetCardConstants.animationDuration,
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: currentIndex == index ? 24 : 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: currentIndex == index
-                ? Theme.of(context).primaryColor
-                : budgetBackgroundLight(context),
-            borderRadius: BorderRadius.circular(4),
-            boxShadow: currentIndex == index
-                ? [
-                    BoxShadow(
-                      color: Theme.of(context).primaryColor.withOpacity(0.3),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildBudgetSummary(List<Budget> budgets) {
     final code = context.read<BalanceProvider>().currencyCode;
     final totalBudgeted = budgets.fold<double>(0, (sum, b) => sum + b.amount);
@@ -663,267 +402,86 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
     return Consumer<BudgetProvider>(
       builder: (context, budgetProvider, child) {
         final budgets = budgetProvider.budgets;
-        final screenWidth = MediaQuery.of(context).size.width;
 
         if (budgets.isEmpty) {
           return _buildEmptyState();
         }
 
-        return ScaleTransition(
-          scale: _scaleAnimation,
-          child: GestureDetector(
-            onTapDown: (_) => _animationController.forward(),
-            onTapUp: (_) {
-              _animationController.reverse();
-              budgetProvider.toggleShowAllBudgets();
-            },
-            onTapCancel: () => _animationController.reverse(),
-            child: Card(
-              elevation: 12,
-              shadowColor: shadowColor(context).withOpacity(0.3),
-              color: boxColor(context),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(
-                    _BudgetCardConstants.cardBorderRadius),
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(_BudgetCardConstants.cardPadding),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      boxColor(context),
-                      boxColor(context).withOpacity(0.95),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(
-                      _BudgetCardConstants.cardBorderRadius),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildCardHeader(budgetProvider),
-                    const SizedBox(height: 24),
-                    if (budgetProvider.showAllBudgets) ...[
-                      _buildBudgetSummary(budgets),
-                      const SizedBox(height: 20),
-                    ],
-                    AnimatedCrossFade(
-                      duration: _BudgetCardConstants.animationDuration,
-                      crossFadeState: budgetProvider.showAllBudgets
-                          ? CrossFadeState.showSecond
-                          : CrossFadeState.showFirst,
-                      firstChild: _buildPageViewSection(
-                          budgets, screenWidth, budgetProvider),
-                      secondChild:
-                          _buildListViewSection(budgets, budgetProvider),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildBudgetSummary(budgets),
+            const SizedBox(height: 20),
+            _buildListViewSection(budgets, budgetProvider),
+          ],
         );
       },
     );
   }
 
   Widget _buildEmptyState() {
-    return Card(
-      elevation: 12,
-      shadowColor: shadowColor(context).withOpacity(0.3),
-      color: boxColor(context),
-      shape: RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.circular(_BudgetCardConstants.cardBorderRadius),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(_BudgetCardConstants.cardPadding),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              boxColor(context),
-              boxColor(context).withOpacity(0.95),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.account_balance_wallet_outlined,
-                size: 32,
-                color: Theme.of(context).primaryColor,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              "No Budgets Yet",
-              style: GoogleFonts.outfit(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: cardTextColor(context),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              "Start tracking your expenses by adding a budget category.",
-              textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                color: cardTextColor(context),
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 28),
-            ElevatedButton.icon(
-              onPressed: () => _showBudgetDialog(),
-              icon: const Icon(
-                Icons.add,
-                color: Colors.white,
-              ),
-              label: Text(
-                'Add Budget',
-                style: GoogleFonts.outfit(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 28,
-                  vertical: 14,
-                ),
-                backgroundColor: Theme.of(context).primaryColor,
-                foregroundColor: Colors.white,
-                elevation: 4,
-                shadowColor: Theme.of(context).primaryColor.withOpacity(0.4),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCardHeader(BudgetProvider budgetProvider) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            _buildGradientIconContainer(
-              Icons.attach_money,
-              [Colors.deepPurple.shade700, Colors.deepPurple.shade900],
-            ),
-            const SizedBox(width: 16),
-            Text(
-              "All Budgets",
-              style: GoogleFonts.outfit(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: primaryColor(context),
-              ),
-            ),
-          ],
-        ),
-        IconButton(
-          onPressed: () => _showBudgetDialog(),
-          icon: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Theme.of(context).primaryColor.withOpacity(0.8),
-                  Theme.of(context).primaryColor,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: Theme.of(context).primaryColor.withOpacity(0.3),
-                  blurRadius: 6,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.add,
-              color: inversePrimaryColor(context),
-              size: 20,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPageViewSection(
-      List<Budget> budgets, double screenWidth, BudgetProvider budgetProvider) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          height: screenWidth / _BudgetCardConstants.pageViewHeight,
-          child: PageView.builder(
-            controller: _pageController,
-            itemCount: budgets.length,
-            onPageChanged: (index) {
-              budgetProvider.setCurrentBudgetIndex(index);
-            },
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: _buildBudgetProgress(budgets[index]),
-              );
-            },
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: boxColor(context),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: shadowColor(context),
+            ),
+          ),
+          child: Icon(
+            Icons.account_balance_wallet_outlined,
+            size: 32,
+            color: primaryColor(context),
           ),
         ),
         const SizedBox(height: 20),
-        _buildPageIndicator(budgets, budgetProvider.currentBudgetIndex),
-        const SizedBox(height: 20),
-        Center(
-          child: Container(
+        Text(
+          "No Budgets Yet",
+          style: GoogleFonts.outfit(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: primaryColor(context),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          "Start tracking your expenses by adding a budget category.",
+          textAlign: TextAlign.center,
+          style: GoogleFonts.outfit(
+            fontSize: 16,
+            color: budgetTextLight(context),
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 28),
+        ElevatedButton.icon(
+          onPressed: () => showAddBudgetDialog(context),
+          icon: const Icon(
+            Icons.add,
+            color: Colors.white,
+          ),
+          label: Text(
+            'Add Budget',
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
+              horizontal: 28,
+              vertical: 14,
             ),
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.touch_app,
-                  size: 16,
-                  color: primaryColor(context),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Tap to view all',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: primaryColor(context),
-                  ),
-                ),
-              ],
+            backgroundColor: purpleColors(context),
+            foregroundColor: Colors.white,
+            elevation: 4,
+            shadowColor: shadowColor(context),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
           ),
         ),
@@ -968,12 +526,12 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard>
                   ),
                   CustomSlidableAction(
                     onPressed: (_) {
-                      _showBudgetDialog(budget: budgets[index]);
+                      showAddBudgetDialog(context, budget: budgets[index]);
                     },
                     backgroundColor: boxColor(context),
                     borderRadius: const BorderRadius.only(
-                      topRight: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
+                      topRight: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
                     ),
                     child: Icon(
                       Icons.edit_note_rounded,

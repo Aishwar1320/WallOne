@@ -342,13 +342,11 @@ class _DesignLayoutState extends State<DesignLayout> {
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: const EdgeInsets.all(10.0),
+              padding: const EdgeInsets.all(20.0),
               child: Container(
-                margin:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                 decoration: BoxDecoration(
-                  color: inversePrimaryColor(context),
+                  color: boxColor(context),
                   borderRadius: BorderRadius.circular(25),
                   boxShadow: [
                     BoxShadow(
@@ -364,7 +362,7 @@ class _DesignLayoutState extends State<DesignLayout> {
                       onPressed: () => _onItemTapped(0),
                       icon: Icon(
                         Icons.home_outlined,
-                        size: 30,
+                        size: 28,
                         color:
                             _selectedIndex == 0 ? primaryColor(context) : null,
                       ),
@@ -373,7 +371,7 @@ class _DesignLayoutState extends State<DesignLayout> {
                       onPressed: () => _onItemTapped(1),
                       icon: Icon(
                         Icons.account_balance_wallet_outlined,
-                        size: 27,
+                        size: 26,
                         color:
                             _selectedIndex == 1 ? primaryColor(context) : null,
                       ),
@@ -407,7 +405,7 @@ class _DesignLayoutState extends State<DesignLayout> {
                       onPressed: () => _onItemTapped(3),
                       icon: Icon(
                         Icons.analytics_outlined,
-                        size: 30,
+                        size: 28,
                         color:
                             _selectedIndex == 3 ? primaryColor(context) : null,
                       ),
@@ -417,7 +415,7 @@ class _DesignLayoutState extends State<DesignLayout> {
                       onPressed: () => _onItemTapped(4),
                       icon: Icon(
                         Icons.bolt,
-                        size: 30,
+                        size: 28,
                         color:
                             _selectedIndex == 4 ? primaryColor(context) : null,
                       ),

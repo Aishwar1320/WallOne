@@ -18,16 +18,16 @@ class _DynamicButtonsWidgetState extends State<DynamicButtonsWidget> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     return Container(
-      height: screenWidth / 7,
+      height: screenWidth / 9,
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: boxColor(context),
-        borderRadius: BorderRadius.circular(27),
+        borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
             color: shadowColor(context).withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 3,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -43,14 +43,14 @@ class _DynamicButtonsWidgetState extends State<DynamicButtonsWidget> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
-                height: screenWidth / 7,
+                height: screenWidth / 9,
                 decoration: BoxDecoration(
                   color: isExpensesSelected
                       ? purpleColors(context)
                       : Colors.transparent,
                   borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    topLeft: Radius.circular(20),
+                    bottomLeft: Radius.circular(10),
+                    topLeft: Radius.circular(10),
                   ),
                 ),
                 child: Center(
@@ -84,14 +84,14 @@ class _DynamicButtonsWidgetState extends State<DynamicButtonsWidget> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
-                height: screenWidth / 7,
+                height: screenWidth / 9,
                 decoration: BoxDecoration(
                   color: isExpensesSelected
                       ? Colors.transparent
                       : purpleColors(context),
                   borderRadius: const BorderRadius.only(
-                    bottomRight: Radius.circular(20),
-                    topRight: Radius.circular(20),
+                    bottomRight: Radius.circular(10),
+                    topRight: Radius.circular(10),
                   ),
                 ),
                 child: Center(

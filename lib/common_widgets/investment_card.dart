@@ -1,10 +1,11 @@
-import 'dart:ui';
+﻿import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:wallone/models/investment_model.dart';
+
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/budget_provider.dart';
 import 'package:wallone/state/investment_provider.dart';
@@ -20,6 +21,8 @@ class FixedInvestmentsCard extends StatefulWidget {
 }
 
 class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
+  bool _isSimulating = false;
+
   @override
   Widget build(BuildContext context) {
     final budgetProvider = Provider.of<BudgetProvider>(context);
@@ -27,39 +30,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
     final screenWidth = MediaQuery.of(context).size.width;
 
     if (investments.isEmpty) {
-      return Card(
-        elevation: 16,
-        shadowColor: shadowColor(context).withOpacity(0.4),
-        color: boxColor(context),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(45),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-            child: Container(
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    boxColor(context),
-                    boxColor(context).withOpacity(0.95),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: primaryColor(context).withOpacity(0.05),
-                  width: 1,
-                ),
-              ),
-              child: _buildEmptyInvestmentsMessage(context),
-            ),
-          ),
-        ),
-      );
+      return _buildEmptyInvestmentsMessage(context);
     }
 
     // Calculate total investments amount from actual investments
@@ -110,382 +81,364 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
     final provider = Provider.of<InvestmentProvider>(context);
     final percentageChangeValue = provider.percentageChange;
 
-    return Card(
-      elevation: 16,
-      shadowColor: shadowColor(context).withOpacity(0.4),
-      color: boxColor(context),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(32),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-          child: Container(
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  boxColor(context),
-                  boxColor(context).withOpacity(0.95),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(
-                color: primaryColor(context).withOpacity(0.05),
-                width: 1,
+    return Column(
+      children: [
+        Column(
+          children: [
+            Text(
+              'Total Portfolio Value',
+              style: GoogleFonts.outfit(
+                fontSize: screenWidth / 25,
+                color: cardTextColor(context),
+                fontWeight: FontWeight.w500,
               ),
             ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    _buildGradientIconContainer(
-                      context,
-                      Icons.trending_up_rounded,
-                      [Colors.deepPurple.shade700, Colors.deepPurple.shade900],
+            Text(
+              '$symbol${totalInvestments.toStringAsFixed(2)}',
+              style: GoogleFonts.outfit(
+                fontSize: screenWidth / 15,
+                fontWeight: FontWeight.bold,
+                color: primaryColor(context),
+                letterSpacing: 0.5,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 6,
+              ),
+              decoration: BoxDecoration(
+                color: percentageChangeValue >= 0
+                    ? Colors.green.withOpacity(0.1)
+                    : Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: percentageChangeValue >= 0
+                        ? Colors.green.withOpacity(0.1)
+                        : Colors.red.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    percentageChangeValue >= 0
+                        ? Icons.arrow_upward
+                        : Icons.arrow_downward,
+                    color: percentageChangeValue >= 0
+                        ? Colors.green.shade600
+                        : Colors.red.shade600,
+                    size: screenWidth / 28,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    '${percentageChangeValue.toStringAsFixed(1)} %',
+                    style: GoogleFonts.outfit(
+                      fontSize: screenWidth / 34,
+                      fontWeight: FontWeight.w600,
+                      color: percentageChangeValue >= 0
+                          ? Colors.green.shade600
+                          : Colors.red.shade600,
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Invest & Save',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 20,
-                                  color: cardTextColor(context),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () =>
-                                    _showAddInvestmentDialog(context),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                icon: Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Theme.of(context)
-                                            .primaryColor
-                                            .withOpacity(0.8),
-                                        Theme.of(context).primaryColor,
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    borderRadius: BorderRadius.circular(14),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Theme.of(context)
-                                            .primaryColor
-                                            .withOpacity(0.3),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 3),
-                                      ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // ── Chart ───────────────────────────────────────────────────────
+        _InvestmentChart(
+          screenWidth: screenWidth,
+        ),
+
+        const SizedBox(height: 14),
+
+        // // ── Simulate button ────────────────────────────────────────────
+        // GestureDetector(
+        //   onTap: _isSimulating
+        //       ? null
+        //       : () async {
+        //           setState(() => _isSimulating = true);
+        //           try {
+        //             await context
+        //                 .read<InvestmentProvider>()
+        //                 .simulateInvestmentDeduction();
+        //             if (context.mounted) {
+        //               ScaffoldMessenger.of(context).showSnackBar(
+        //                 SnackBar(
+        //                   content: Row(
+        //                     children: [
+        //                       const Icon(Icons.check_circle_rounded,
+        //                           color: Colors.white, size: 18),
+        //                       const SizedBox(width: 8),
+        //                       Text(
+        //                         'Investment cycle simulated!',
+        //                         style: GoogleFonts.outfit(
+        //                             color: Colors.white,
+        //                             fontWeight: FontWeight.w600),
+        //                       ),
+        //                     ],
+        //                   ),
+        //                   backgroundColor: const Color(0xFF4C1D95),
+        //                   behavior: SnackBarBehavior.floating,
+        //                   shape: RoundedRectangleBorder(
+        //                       borderRadius: BorderRadius.circular(12)),
+        //                   duration: const Duration(seconds: 2),
+        //                 ),
+        //               );
+        //             }
+        //           } finally {
+        //             if (mounted) setState(() => _isSimulating = false);
+        //           }
+        //         },
+        //   child: AnimatedContainer(
+        //     duration: const Duration(milliseconds: 200),
+        //     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        //     decoration: BoxDecoration(
+        //       gradient: _isSimulating
+        //           ? null
+        //           : const LinearGradient(
+        //               colors: [Color(0xFF4C1D95), Color(0xFF7C3AED)],
+        //               begin: Alignment.centerLeft,
+        //               end: Alignment.centerRight,
+        //             ),
+        //       color: _isSimulating
+        //           ? const Color(0xFF4C1D95).withOpacity(0.4)
+        //           : null,
+        //       borderRadius: BorderRadius.circular(14),
+        //       boxShadow: _isSimulating
+        //           ? []
+        //           : [
+        //               BoxShadow(
+        //                 color: const Color(0xFF7C3AED).withOpacity(0.35),
+        //                 blurRadius: 12,
+        //                 offset: const Offset(0, 4),
+        //               ),
+        //             ],
+        //     ),
+        //     child: Row(
+        //       mainAxisSize: MainAxisSize.min,
+        //       mainAxisAlignment: MainAxisAlignment.center,
+        //       children: [
+        //         if (_isSimulating) ...[
+        //           const SizedBox(
+        //             width: 15,
+        //             height: 15,
+        //             child: CircularProgressIndicator(
+        //               strokeWidth: 2,
+        //               color: Colors.white,
+        //             ),
+        //           ),
+        //           const SizedBox(width: 8),
+        //         ] else ...[
+        //           const Icon(Icons.play_circle_outline_rounded,
+        //               color: Colors.white, size: 18),
+        //           const SizedBox(width: 6),
+        //         ],
+        //         Text(
+        //           _isSimulating ? 'Simulating…' : 'Simulate Investment Cycle',
+        //           style: GoogleFonts.outfit(
+        //             fontSize: screenWidth / 34,
+        //             fontWeight: FontWeight.w700,
+        //             color: Colors.white,
+        //             letterSpacing: 0.2,
+        //           ),
+        //         ),
+        //       ],
+        //     ),
+        //   ),
+        // ),
+
+        const SizedBox(height: 20),
+
+        // List
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: boxColor(context),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: investments.isEmpty
+              ? _buildEmptyInvestmentsMessage(context)
+              : ListView.separated(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: investments.length,
+                  separatorBuilder: (context, index) => Divider(
+                    color: primaryColor(context).withOpacity(0.1),
+                    height: 24,
+                  ),
+                  itemBuilder: (context, index) {
+                    final investment = investments[index];
+                    final isOneTime = investment.isOneTime ?? false;
+
+                    return Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: isOneTime
+                                  ? [
+                                      Colors.green.shade700,
+                                      Colors.green.shade900,
+                                    ]
+                                  : [
+                                      Theme.of(context)
+                                          .primaryColor
+                                          .withOpacity(0.7),
+                                      Theme.of(context).primaryColor,
                                     ],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: isOneTime
+                                    ? Colors.green.withOpacity(0.2)
+                                    : Theme.of(context)
+                                        .primaryColor
+                                        .withOpacity(0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            isOneTime
+                                ? Icons.savings_outlined
+                                : categoryIcons[investment.category]?['icon']
+                                        as IconData? ??
+                                    categoryIcons['default']!['icon']
+                                        as IconData,
+                            color: Colors.white,
+                            size: screenWidth / 25,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    investment.name,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: screenWidth / 30,
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryColor(context),
+                                    ),
                                   ),
-                                  child: Icon(
-                                    Icons.add,
-                                    color: inversePrimaryColor(context),
-                                    size: 20,
-                                  ),
+                                ],
+                              ),
+                              Text(
+                                '$symbol${investment.amount.toStringAsFixed(2)}',
+                                style: GoogleFonts.outfit(
+                                  fontSize: screenWidth / 30,
+                                  color: budgetTextLight(context),
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 28),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: primaryColor(context).withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: primaryColor(context).withOpacity(0.1),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: shadowColor(context).withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: investments.isEmpty
-                      ? _buildEmptyInvestmentsMessage(context)
-                      : ListView.separated(
-                          padding: EdgeInsets.zero,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: investments.length,
-                          separatorBuilder: (context, index) => Divider(
-                            color: primaryColor(context).withOpacity(0.1),
-                            height: 24,
+                        ),
+                        if (!isOneTime)
+                          Transform.scale(
+                            scale: screenWidth / 700,
+                            child: Switch.adaptive(
+                              padding: const EdgeInsetsGeometry.only(right: 0),
+                              value: investment.isActive,
+                              onChanged: (value) {
+                                budgetProvider.toggleInvestment(index);
+                              },
+                              activeColor: Theme.of(context).primaryColor,
+                            ),
                           ),
-                          itemBuilder: (context, index) {
-                            final investment = investments[index];
-                            final isOneTime = investment.isOneTime ?? false;
-
-                            return Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: isOneTime
-                                          ? [
-                                              Colors.green.shade700,
-                                              Colors.green.shade900,
-                                            ]
-                                          : [
-                                              Theme.of(context)
-                                                  .primaryColor
-                                                  .withOpacity(0.7),
-                                              Theme.of(context).primaryColor,
-                                            ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(14),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: isOneTime
-                                            ? Colors.green.withOpacity(0.2)
-                                            : Theme.of(context)
-                                                .primaryColor
-                                                .withOpacity(0.2),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 3),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Icon(
-                                    isOneTime
-                                        ? Icons.savings_outlined
-                                        : categoryIcons[investment.category]
-                                                ?['icon'] as IconData? ??
-                                            categoryIcons['default']!['icon']
-                                                as IconData,
-                                    color: Colors.white,
-                                    size: screenWidth / 25,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Text(
-                                            investment.name,
-                                            overflow: TextOverflow.ellipsis,
-                                            maxLines: 1,
-                                            style: GoogleFonts.outfit(
-                                              fontSize: screenWidth / 28,
-                                              fontWeight: FontWeight.w600,
-                                              color: cardTextColor(context),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '$symbol${investment.amount.toStringAsFixed(2)}',
-                                        style: GoogleFonts.outfit(
-                                          fontSize: screenWidth / 28,
-                                          color: primaryColor(context),
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (!isOneTime)
-                                  Transform.scale(
-                                    scale: screenWidth / 700,
-                                    child: Switch.adaptive(
-                                      padding: const EdgeInsetsGeometry.only(
-                                          right: 0),
-                                      value: investment.isActive,
-                                      onChanged: (value) {
-                                        budgetProvider.toggleInvestment(index);
-                                      },
-                                      activeColor:
-                                          Theme.of(context).primaryColor,
-                                    ),
-                                  ),
-                                PopupMenuButton<String>(
-                                  padding:
-                                      const EdgeInsetsGeometry.only(left: 0),
-                                  onSelected: (value) {
-                                    if (value == 'Edit') {
-                                      _showEditInvestmentDialog(
-                                          context, investment, index);
-                                    } else if (value == 'Delete') {
-                                      _showDeleteConfirmation(
-                                          context, investment, index);
-                                    }
-                                  },
-                                  itemBuilder: (BuildContext context) => [
-                                    const PopupMenuItem(
-                                      value: 'Edit',
-                                      child: Text('Edit'),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'Delete',
-                                      child: Text('Delete'),
-                                    ),
-                                  ],
-                                  icon: Icon(
-                                    Icons.more_vert,
-                                    color: cardTextColor(context),
-                                    size: screenWidth / 22,
-                                  ),
-                                ),
-                              ],
-                            );
+                        PopupMenuButton<String>(
+                          padding: const EdgeInsetsGeometry.only(left: 0),
+                          onSelected: (value) {
+                            if (value == 'Edit') {
+                              _showEditInvestmentDialog(
+                                  context, investment, index);
+                            } else if (value == 'Delete') {
+                              _showDeleteConfirmation(
+                                  context, investment, index);
+                            }
                           },
+                          itemBuilder: (BuildContext context) => [
+                            const PopupMenuItem(
+                              value: 'Edit',
+                              child: Text('Edit'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'Delete',
+                              child: Text('Delete'),
+                            ),
+                          ],
+                          icon: Icon(
+                            Icons.more_vert,
+                            color: cardTextColor(context),
+                            size: screenWidth / 22,
+                          ),
                         ),
+                      ],
+                    );
+                  },
                 ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: primaryColor(context).withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: primaryColor(context).withOpacity(0.1),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: shadowColor(context).withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+        ),
+
+        const SizedBox(
+          height: 20,
+        ),
+
+        GestureDetector(
+          onTap: () => _showAddInvestmentDialog(context),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: purpleColors(context),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).primaryColor.withOpacity(0.3),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 5,
+              children: [
+                Text(
+                  'Investment More',
+                  style: GoogleFonts.outfit(
+                    fontSize: screenWidth / 30,
+                    fontWeight: FontWeight.w600,
+                    color: primaryColor(context),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Total Investments',
-                            style: GoogleFonts.outfit(
-                              fontSize: screenWidth / 22,
-                              color: cardTextColor(context),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '$symbol${totalInvestments.toStringAsFixed(2)}',
-                            style: GoogleFonts.outfit(
-                              fontSize: screenWidth / 18,
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor(context),
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: percentageChangeValue >= 0
-                              ? Colors.green.withOpacity(0.1)
-                              : Colors.red.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: percentageChangeValue >= 0
-                                  ? Colors.green.withOpacity(0.1)
-                                  : Colors.red.withOpacity(0.1),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              percentageChangeValue >= 0
-                                  ? Icons.arrow_upward
-                                  : Icons.arrow_downward,
-                              color: percentageChangeValue >= 0
-                                  ? Colors.green.shade600
-                                  : Colors.red.shade600,
-                              size: screenWidth / 28,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              '${percentageChangeValue.toStringAsFixed(1)} %',
-                              style: GoogleFonts.outfit(
-                                fontSize: screenWidth / 34,
-                                fontWeight: FontWeight.w600,
-                                color: percentageChangeValue >= 0
-                                    ? Colors.green.shade600
-                                    : Colors.red.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                ),
+                Icon(
+                  Icons.add,
+                  color: primaryColor(context),
+                  size: 20,
                 ),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildGradientIconContainer(
-      BuildContext context, IconData icon, List<Color> gradientColors) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: gradientColors,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: gradientColors[0].withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Icon(
-        icon,
-        color: Colors.white,
-        size: 15,
-      ),
+      ],
     );
   }
 
@@ -497,13 +450,16 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              color: boxColor(context),
               shape: BoxShape.circle,
+              border: Border.all(
+                color: shadowColor(context),
+              ),
             ),
             child: Icon(
               Icons.trending_up,
               size: 32,
-              color: Theme.of(context).primaryColor,
+              color: primaryColor(context),
             ),
           ),
           const SizedBox(height: 16),
@@ -512,7 +468,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
             style: GoogleFonts.outfit(
               fontSize: 22,
               fontWeight: FontWeight.w600,
-              color: cardTextColor(context),
+              color: primaryColor(context),
             ),
           ),
           const SizedBox(height: 8),
@@ -521,7 +477,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
             textAlign: TextAlign.center,
             style: GoogleFonts.outfit(
               fontSize: 16,
-              color: cardTextColor(context),
+              color: budgetTextLight(context),
               height: 1.5,
             ),
           ),
@@ -543,10 +499,10 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                 horizontal: 28,
                 vertical: 14,
               ),
-              backgroundColor: Theme.of(context).primaryColor,
+              backgroundColor: purpleColors(context),
               foregroundColor: Colors.white,
               elevation: 4,
-              shadowColor: Theme.of(context).primaryColor.withOpacity(0.4),
+              shadowColor: shadowColor(context),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -1438,6 +1394,268 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Investment Chart Widget
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _InvestmentChart extends StatelessWidget {
+  final double screenWidth;
+
+  const _InvestmentChart({
+    required this.screenWidth,
+  });
+
+  /// Builds FlSpots from the percentage history list with smooth interpolation.
+  /// Adds intermediate points between each entry for elegant curves.
+  List<FlSpot> _buildHistorySpots(List<double> history) {
+    if (history.isEmpty) return [];
+    if (history.length == 1) {
+      return [FlSpot(0, history.first), FlSpot(1, history.first)];
+    }
+
+    final spots = <FlSpot>[];
+    const int stepsPerSegment = 6; // intermediate points between entries
+
+    for (int i = 0; i < history.length - 1; i++) {
+      final y1 = history[i];
+      final y2 = history[i + 1];
+
+      for (int s = 0; s < stepsPerSegment; s++) {
+        final t = s / stepsPerSegment; // 0.0 … <1.0
+        // Smooth ease-in-out interpolation
+        final eased = t * t * (3.0 - 2.0 * t);
+        final y = y1 + (y2 - y1) * eased;
+        final x = i.toDouble() + t;
+        spots.add(FlSpot(x, y));
+      }
+    }
+    // Add the final point
+    spots.add(FlSpot((history.length - 1).toDouble(), history.last));
+    return spots;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = Provider.of<InvestmentProvider>(context);
+    final sw = screenWidth;
+
+    final percentageChange = provider.percentageChange;
+    final history = provider.percentageHistory;
+
+    // If there are no investments at all, show empty state
+    if (provider.investments.isEmpty) {
+      return Container(
+        height: 160,
+        decoration: BoxDecoration(
+          color: boxColor(context),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: const Color(0xFF4C1D95).withOpacity(0.12),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF4C1D95).withOpacity(0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.show_chart_rounded,
+                  size: 38, color: const Color(0xFF7C3AED).withOpacity(0.35)),
+              const SizedBox(height: 8),
+              Text(
+                'No investment data',
+                style: GoogleFonts.outfit(
+                  fontSize: sw / 34,
+                  color: const Color(0xFF4C1D95).withOpacity(0.4),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Prepend 0.0 so the graph always starts from the bottom left
+    final displayHistory = [0.0, ...history];
+
+    // Build spots from history
+    List<FlSpot> spots;
+    if (displayHistory.length >= 2) {
+      // Enough data points for a real graph
+      spots = _buildHistorySpots(displayHistory);
+    } else {
+      // Very unlikely edge case since we prepended 0.0, but just in case
+      spots = [const FlSpot(0, 0), const FlSpot(1, 0)];
+    }
+
+    // Determine colours based on latest percentage
+    final bool isHealthy = percentageChange >= 50;
+    final Color stroke =
+        isHealthy ? const Color(0xFF4C1D95) : const Color(0xFFDC2626);
+    final Color glowMid =
+        isHealthy ? const Color(0xFF7C3AED) : const Color(0xFFEF4444);
+    final Color bgLight =
+        isHealthy ? const Color(0xFFEDE9FE) : const Color(0xFFFEE2E2);
+
+    return _buildChartCard(
+      context: context,
+      spots: spots,
+      stroke: stroke,
+      glowMid: glowMid,
+      bgLight: bgLight,
+      screenWidth: sw,
+      percentageChange: percentageChange,
+    );
+  }
+
+  Widget _buildChartCard({
+    required BuildContext context,
+    required List<FlSpot> spots,
+    required Color stroke,
+    required Color glowMid,
+    required Color bgLight,
+    required double screenWidth,
+    required double percentageChange,
+  }) {
+    // Fixed Y range for percentage (0–100%)
+    const double minY = 0.0;
+    const double maxY = 105.0; // slight buffer above 100
+
+    // ── X range ──────────────────────────────────────────────────────────────
+    const double minXWidth = 6.0; // Show at least "6 intervals" of space
+    final minX = spots.first.x - 0.1;
+
+    // If we have less than minXWidth intervals, force maxX to maintain the scale
+    final actualXRange = spots.last.x - spots.first.x;
+    final maxX = actualXRange < minXWidth
+        ? spots.first.x + minXWidth
+        : spots.last.x + (actualXRange * 0.02);
+
+    const titlesData = FlTitlesData(
+      show: true,
+      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+    );
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: bgLight.withOpacity(0.38),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: stroke.withOpacity(0.08),
+          width: 1.0,
+        ),
+      ),
+      padding: const EdgeInsets.only(top: 24, bottom: 2, left: 0, right: 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: 188,
+            child: LineChart(
+              LineChartData(
+                lineTouchData: LineTouchData(
+                  handleBuiltInTouches: true,
+                  touchSpotThreshold: 44,
+                  getTouchedSpotIndicator: (barData, idxs) => idxs.map((idx) {
+                    return TouchedSpotIndicatorData(
+                      FlLine(
+                        color: stroke.withOpacity(0.35),
+                        strokeWidth: 1.5,
+                        dashArray: [5, 5],
+                      ),
+                      FlDotData(
+                        getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
+                          radius: 5,
+                          color: stroke,
+                          strokeWidth: 2.5,
+                          strokeColor: Colors.white,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (_) =>
+                        const Color(0xFF3B0764).withOpacity(0.92),
+                    tooltipRoundedRadius: 12,
+                    tooltipPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    getTooltipItems: (touched) => touched.map((ts) {
+                      final val = ts.y;
+                      final text =
+                          '${val >= 0 ? '+' : ''}${val.toStringAsFixed(1)}%';
+                      return LineTooltipItem(
+                        text,
+                        GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: screenWidth / 31,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                minX: minX,
+                maxX: maxX,
+                minY: minY,
+                maxY: maxY,
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                titlesData: titlesData,
+                clipData: const FlClipData.all(),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    curveSmoothness: 0.45,
+                    preventCurveOverShooting: true,
+                    preventCurveOvershootingThreshold: 1.5,
+                    color: stroke,
+                    barWidth: 2.8,
+                    isStrokeCapRound: true,
+                    isStrokeJoinRound: true,
+                    shadow: Shadow(
+                      color: stroke.withOpacity(0.5),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: const [0.0, 0.55, 1.0],
+                        colors: [
+                          glowMid.withOpacity(0.28),
+                          glowMid.withOpacity(0.07),
+                          bgLight.withOpacity(0.0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              duration: const Duration(milliseconds: 450),
+              curve: Curves.easeOutCubic,
+            ),
+          ),
+        ],
       ),
     );
   }

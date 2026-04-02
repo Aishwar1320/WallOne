@@ -401,6 +401,66 @@ class _SettingsPageState extends State<SettingsPage> {
             context,
           ),
 
+          // Premium Subscription Section
+          Consumer<UserProfileProvider>(
+            builder: (ctx, userProvider, _) {
+              return _buildSettingsSection(
+                'Premium Subscription',
+                [
+                  ListTile(
+                    title: Text(
+                      userProvider.isPremium
+                          ? 'Premium Active'
+                          : 'Upgrade to Premium',
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor(context),
+                      ),
+                    ),
+                    subtitle: Text(
+                      userProvider.isPremium
+                          ? 'You have access to all premium features'
+                          : 'Unlock AI insights and advanced features',
+                      style: GoogleFonts.outfit(
+                        color: budgetTextLight(context),
+                      ),
+                    ),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: userProvider.isPremium
+                            ? Colors.amber.withOpacity(0.2)
+                            : Colors.deepPurple.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: userProvider.isPremium
+                              ? Colors.amber.shade700
+                              : Colors.deepPurple,
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        userProvider.isPremium ? 'Active' : 'Upgrade',
+                        style: GoogleFonts.outfit(
+                          color: userProvider.isPremium
+                              ? Colors.amber.shade700
+                              : Colors.deepPurple,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    onTap: () => _handlePremiumTap(context, userProvider),
+                  ),
+                ],
+                context,
+              );
+            },
+          ),
+
           // Reset Section
           _buildSettingsSection(
             'Data Management',
@@ -461,6 +521,462 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 16),
       ],
     );
+  }
+
+  void _handlePremiumTap(
+      BuildContext context, UserProfileProvider userProvider) {
+    if (userProvider.isPremium) {
+      // Show manage subscription dialog
+      _showManageSubscriptionDialog(context, userProvider);
+    } else {
+      // Show upgrade options dialog
+      _showUpgradeDialog(context, userProvider);
+    }
+  }
+
+  void _showUpgradeDialog(
+      BuildContext context, UserProfileProvider userProvider) {
+    final products = userProvider.availableProducts;
+    final isDevMode = userProvider.isInDevelopmentMode;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SingleChildScrollView(
+          child: Container(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 24,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Center(
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.workspace_premium,
+                        color: Colors.deepPurple,
+                        size: 48,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Upgrade to Premium',
+                        style: GoogleFonts.outfit(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          color: primaryColor(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Benefits
+                Text(
+                  'Premium Benefits:',
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: primaryColor(context),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ..._buildBenefitsList(context),
+                const SizedBox(height: 24),
+
+                // Upgrade button
+                if (isDevMode)
+                  _buildDevModeUpgradeButton(context, userProvider)
+                else if (products.isEmpty)
+                  Center(
+                    child: Column(
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Loading subscription options...',
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            color: budgetTextLight(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.deepPurple.shade400,
+                          Colors.deepPurple.shade600,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () async {
+                          Navigator.pop(context);
+                          // Purchase first product (monthly subscription)
+                          final monthlyProduct = products.firstWhere(
+                            (p) => (p as dynamic).id.contains('monthly'),
+                            orElse: () => products.first,
+                          );
+                          await userProvider
+                              .purchasePremium((monthlyProduct as dynamic).id);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Center(
+                            child: Text(
+                              'Upgrade Now',
+                              style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                const SizedBox(height: 12),
+
+                // Restore purchases (production only)
+                if (!isDevMode)
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                        await userProvider.restorePurchases();
+                        if (context.mounted) Navigator.pop(context);
+                      },
+                      icon: const Icon(Icons.restore),
+                      label: Text(
+                        'Restore Purchases',
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ),
+
+                // Close button
+                Center(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Maybe Later',
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDevModeUpgradeButton(
+      BuildContext context, UserProfileProvider userProvider) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: purpleColors(context),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () async {
+            await userProvider.setPremium(true);
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: Colors.white),
+                    const SizedBox(width: 12),
+                    Text(
+                      '🔧 DEV: Premium activated!',
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: purpleColors(context),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: Text(
+                'Upgrade Now',
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showManageSubscriptionDialog(
+      BuildContext context, UserProfileProvider userProvider) {
+    final isDevMode = userProvider.isInDevelopmentMode;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.verified,
+                color: isDevMode ? Colors.orange : Colors.amber.shade700,
+                size: 48,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Premium Active',
+                style: GoogleFonts.outfit(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: primaryColor(context),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You have access to all premium features',
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  color: budgetTextLight(context),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+
+              Text(
+                'Your Benefits:',
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: primaryColor(context),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ..._buildBenefitsList(context),
+              const SizedBox(height: 24),
+
+              // Manage or deactivate button
+              if (isDevMode)
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border:
+                        Border.all(color: purpleColors(context), width: 1.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        userProvider.setPremium(false);
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              '🔧 DEV: Premium deactivated',
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                              ),
+                            ),
+                            backgroundColor: purpleColors(context),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: Text(
+                            'Deactivate',
+                            style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: purpleColors(context),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.amber.shade500,
+                        Colors.amber.shade600,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        userProvider.purchaseService.manageSubscription();
+
+                        showDialog(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: Text(
+                              'Manage Subscription',
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            content: Text(
+                              'To manage your subscription:\n\n'
+                              '1. Open Google Play Store\n'
+                              '2. Tap your profile\n'
+                              '3. Go to Payments & subscriptions\n'
+                              '4. Select Subscriptions\n'
+                              '5. Choose Wallone Premium',
+                              style: GoogleFonts.outfit(),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text(
+                                  'OK',
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: Text(
+                            'Manage Subscription',
+                            style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 16),
+
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Close',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  List<Widget> _buildBenefitsList(BuildContext context) {
+    final benefits = [
+      'Advanced AI Insights & Analytics',
+      'Real-time Financial Recommendations',
+      'Ad-free Experience',
+    ];
+
+    return benefits.map((benefit) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          children: [
+            Icon(
+              Icons.check_circle,
+              color: Colors.green.shade600,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                benefit,
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: primaryColor(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
   }
 
   Future<void> _handleReset(BuildContext context) async {

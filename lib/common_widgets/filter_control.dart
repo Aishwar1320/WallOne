@@ -8,6 +8,7 @@ class TransactionFilterControls extends StatelessWidget {
   final String selectedPeriod;
   final Function(bool) onTypeChanged;
   final Function(String?) onPeriodChanged;
+  final bool showCustomDateOption;
 
   const TransactionFilterControls({
     super.key,
@@ -15,9 +16,11 @@ class TransactionFilterControls extends StatelessWidget {
     required this.selectedPeriod,
     required this.onTypeChanged,
     required this.onPeriodChanged,
+    this.showCustomDateOption = false,
   });
 
-  Map<String, String> _generateDateOptions({int days = 7}) {
+  Map<String, String> _generateDateOptions(String currentSelected,
+      {int days = 7}) {
     final now = DateTime.now();
     final keyFormat = DateFormat('yyyy-MM-dd');
     final displayFormat = DateFormat('MM-dd');
@@ -33,14 +36,25 @@ class TransactionFilterControls extends StatelessWidget {
       options[key] = label;
     }
 
+    if (showCustomDateOption) {
+      options['Custom_Date'] = 'Select Date...';
+    }
+
+    if (currentSelected.isNotEmpty &&
+        currentSelected != 'All Transactions' &&
+        currentSelected != 'Custom_Date' &&
+        !options.containsKey(currentSelected)) {
+      options[currentSelected] = currentSelected;
+    }
+
     return options;
   }
 
   @override
   Widget build(BuildContext context) {
-    final dateOptions = _generateDateOptions();
     final actualValue =
         selectedPeriod.isEmpty ? 'All Transactions' : selectedPeriod;
+    final dateOptions = _generateDateOptions(actualValue);
 
     return DropdownMenuDynamicWidget(
       boxColor: boxColor(context),

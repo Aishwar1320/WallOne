@@ -96,8 +96,8 @@ class _ItemListWidgetState extends State<ItemListWidget> {
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Container(
         decoration: BoxDecoration(
-          color: inversePrimaryColor(context),
-          borderRadius: BorderRadius.circular(25),
+          color: boxColor(context),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
               color: shadowColor(context).withOpacity(0.1),
@@ -126,17 +126,17 @@ class _ItemListWidgetState extends State<ItemListWidget> {
   Widget _buildHeader(BuildContext context, String headerDate) {
     return ScaleInTransition(
       child: InkWell(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         onTap: () => setState(() => _isExpanded = !_isExpanded),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 headerDate,
                 style: GoogleFonts.outfit(
-                  fontSize: 15,
+                  fontSize: 12,
                   color: primaryColor(context),
                   fontWeight: FontWeight.bold,
                 ),
@@ -146,6 +146,7 @@ class _ItemListWidgetState extends State<ItemListWidget> {
                     ? Icons.keyboard_arrow_up
                     : Icons.keyboard_arrow_down,
                 color: primaryColor(context),
+                size: 18,
               ),
             ],
           ),
@@ -271,23 +272,23 @@ class _TransactionTile extends StatelessWidget {
               onPressed: (_) => onEdit(),
               backgroundColor: purpleColors(context),
               borderRadius: const BorderRadius.only(
-                topRight: Radius.circular(20),
-                bottomRight: Radius.circular(20),
+                topRight: Radius.circular(15),
+                bottomRight: Radius.circular(15),
               ),
               child: const Icon(Icons.edit_square, color: Colors.white),
             ),
           ],
         ),
         child: Container(
-          height: 70,
+          height: 60,
           decoration: BoxDecoration(
             color: boxColor(context),
             borderRadius: BorderRadius.circular(15),
             boxShadow: [
               BoxShadow(
                 color: shadowColor(context).withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                blurRadius: 3,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -308,7 +309,7 @@ class _TransactionTile extends StatelessWidget {
                     Text(
                       "$symbol${transaction.amount.toStringAsFixed(2)}",
                       style: GoogleFonts.outfit(
-                        fontSize: 20,
+                        fontSize: 17,
                         color: primaryColor(context),
                         fontWeight: FontWeight.bold,
                       ),
@@ -377,7 +378,7 @@ class _TransactionInfo extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           maxLines: 1,
           style: GoogleFonts.outfit(
-            fontSize: 15,
+            fontSize: 12,
             color: purpleColors(context),
             fontWeight: FontWeight.bold,
           ),

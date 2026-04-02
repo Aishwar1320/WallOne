@@ -7,8 +7,11 @@ import 'package:wallone/pages/Ai%20Control%20Panel/tabs/Insights%20Tab/insights_
 import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/constants.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:wallone/utils/services/purchase_service.dart';
 
 /// Simplified AI Advisor Dashboard — Only shows InsightsTab
+/// Works in both development mode (manual toggle) and production mode (real IAP)
 class AIAdvisorDashboard extends StatefulWidget {
   const AIAdvisorDashboard({super.key});
 
@@ -17,6 +20,8 @@ class AIAdvisorDashboard extends StatefulWidget {
 }
 
 class _AIAdvisorDashboardState extends State<AIAdvisorDashboard> {
+  final PurchaseService _purchaseService = PurchaseService();
+
   @override
   void initState() {
     super.initState();
@@ -174,17 +179,15 @@ class _AIAdvisorDashboardState extends State<AIAdvisorDashboard> {
     BuildContext context,
     UserProfileProvider userProvider,
   ) {
-    if (userProvider.isPremium) {
-      // Show manage subscription
-      _showPremiumDialog(context, userProvider, isPremium: true);
-    } else {
-      // Show upgrade options
-      _showUpgradeDialog(context, userProvider);
-    }
+    // Show upgrade options
+    _showUpgradeDialog(context, userProvider);
   }
 
   void _showUpgradeDialog(
       BuildContext context, UserProfileProvider userProvider) {
+    final products = _purchaseService.products;
+    final isDevMode = userProvider.isInDevelopmentMode;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -222,82 +225,29 @@ class _AIAdvisorDashboardState extends State<AIAdvisorDashboard> {
 
                 const SizedBox(height: 32),
 
-                // Pricing info
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: purpleColors(context).withAlpha(30),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Monthly Plan',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: primaryColor(context),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '\$9.99/month',
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.deepPurple,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.deepPurple.shade400,
-                                Colors.deepPurple.shade600,
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                // Simulate upgrade process
-                                userProvider.setPremium(true);
-                                Navigator.pop(context);
-                                _showSuccessSnackbar(context);
-                              },
-                              borderRadius: BorderRadius.circular(10),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                                child: Text(
-                                  'Upgrade Now',
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
+                // Show loading, products, or dev mode option
+                if (isDevMode)
+                  Center(
+                      child: _buildDevModeUpgradeButton(context, userProvider))
+                else if (products.isEmpty)
+                  Center(
+                    child: Column(
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Loading subscription options...',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: budgetTextLight(context),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
+                      ],
+                    ),
+                  )
+                else
+                  ...products.map((product) =>
+                      _buildProductOption(context, product, userProvider)),
 
                 const SizedBox(height: 16),
 
@@ -323,165 +273,208 @@ class _AIAdvisorDashboardState extends State<AIAdvisorDashboard> {
     );
   }
 
-  void _showPremiumDialog(
-    BuildContext context,
-    UserProfileProvider userProvider, {
-    required bool isPremium,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+  Widget _buildDevModeUpgradeButton(
+      BuildContext context, UserProfileProvider userProvider) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: purpleColors(context),
+        borderRadius: BorderRadius.circular(12),
       ),
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Center(
-                child: Column(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () async {
+            await userProvider.setPremium(true);
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
                   children: [
-                    Icon(
-                      Icons.verified,
-                      color: Colors.amber.shade600,
-                      size: 48,
-                    ),
-                    const SizedBox(height: 16),
+                    const Icon(Icons.check_circle, color: Colors.white),
+                    const SizedBox(width: 12),
                     Text(
-                      'Premium Member',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: primaryColor(context),
+                      '🔧 DEV: Premium activated!',
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
                       ),
                     ),
                   ],
                 ),
+                backgroundColor: purpleColors(context),
               ),
-              const SizedBox(height: 24),
-
-              // Active features
-              Text(
-                'Your Premium Benefits:',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: primaryColor(context),
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: Text(
+                'Upgrade Now',
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 12),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-              ..._buildBenefitsList(),
+  Widget _buildProductOption(
+    BuildContext context,
+    ProductDetails product,
+    UserProfileProvider userProvider,
+  ) {
+    final isAnnual = product.id.contains('annual');
 
-              const SizedBox(height: 24),
-
-              // Manage subscription
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.amber.shade500,
-                      Colors.amber.shade600,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: purpleColors(context).withAlpha(30),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isAnnual ? Colors.amber : Colors.deepPurple.withAlpha(100),
+          width: isAnnual ? 2 : 1,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        product.title,
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: primaryColor(context),
+                        ),
+                      ),
+                    ),
+                    if (isAnnual) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.amber,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'SAVE 20%',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     ],
-                  ),
-                  borderRadius: BorderRadius.circular(10),
+                  ],
                 ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      // Manage subscription action
-                      Navigator.pop(context);
-                    },
-                    borderRadius: BorderRadius.circular(10),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: Text(
-                        'Manage Subscription',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
+                const SizedBox(height: 4),
+                Text(
+                  product.description,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: budgetTextLight(context),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  product.price,
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.deepPurple,
                   ),
                 ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.deepPurple.shade400,
+                  Colors.deepPurple.shade600,
+                ],
               ),
-
-              const SizedBox(height: 12),
-
-              // Cancel subscription button
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.red.shade400,
-                    width: 1.5,
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      userProvider.setPremium(false);
-                      Navigator.pop(context);
-                      _showCancelSnackbar(context);
-                    },
-                    borderRadius: BorderRadius.circular(10),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: Text(
-                        'Cancel Subscription',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.red.shade400,
-                        ),
-                      ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () async {
+                  // Show loading
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const Center(
+                      child: CircularProgressIndicator(),
                     ),
+                  );
+
+                  try {
+                    // Initiate purchase
+                    await _purchaseService.buyProduct(product);
+
+                    // Close loading (purchase flow continues in background)
+                    if (context.mounted) {
+                      Navigator.pop(context); // Close loading
+                    }
+                  } catch (e) {
+                    // Close loading
+                    if (context.mounted) {
+                      Navigator.pop(context);
+
+                      // Show error
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Purchase failed: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
                   ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              Center(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
                   child: Text(
-                    'Close',
+                    'Subscribe',
+                    textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
                       fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -489,9 +482,6 @@ class _AIAdvisorDashboardState extends State<AIAdvisorDashboard> {
     final benefits = [
       'Advanced AI Insights & Analytics',
       'Real-time Financial Recommendations',
-      'Priority Support & Assistance',
-      'Unlimited Data Analysis',
-      'Custom Financial Reports',
       'Ad-free Experience',
     ];
 
@@ -520,49 +510,5 @@ class _AIAdvisorDashboardState extends State<AIAdvisorDashboard> {
         ),
       );
     }).toList();
-  }
-
-  void _showSuccessSnackbar(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green.shade400),
-            const SizedBox(width: 12),
-            Text(
-              'Premium activated successfully!',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w500,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.green.shade600,
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  }
-
-  void _showCancelSnackbar(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.info, color: Colors.orange.shade400),
-            const SizedBox(width: 12),
-            Text(
-              'Premium subscription cancelled',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w500,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.orange.shade600,
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
 }

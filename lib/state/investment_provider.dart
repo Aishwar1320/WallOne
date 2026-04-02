@@ -24,12 +24,36 @@ class InvestmentProvider with ChangeNotifier {
   ListProvider? listProvider;
   BalanceProvider? balanceProvider;
 
+  /// Per-investment simulation dates — each investment tracks its own
+  /// next simulated deduction month independently.
+  final Map<String, DateTime> _simulationDates = {};
+
+  /// Returns (and lazily initialises) the next simulation date for [key].
+  DateTime _nextSimDate(String key) {
+    if (!_simulationDates.containsKey(key)) {
+      // Find the investment to get its actual last deduction date
+      final inv = _investments.cast<InvestmentModel?>().firstWhere(
+            (i) => i?.id == key || i?.name == key,
+            orElse: () => null,
+          );
+
+      DateTime baseDate = inv?.lastDeductionDate ?? DateTime.now();
+      _simulationDates[key] =
+          DateTime(baseDate.year, baseDate.month + 1, baseDate.day);
+    }
+    return _simulationDates[key]!;
+  }
+
   // In-memory caches
   List<InvestmentModel> _investments = [];
   List<InvestmentTransactionModel> _transactions = [];
   double _totalInvestments = 0.0;
 
-  // Tracking for percentage change
+  // Tracking for percentage change (cumulative)
+  double _percentageChange = 0.0;
+  double _cumulativeExpected = 0.0;
+  double _cumulativeActual = 0.0;
+  final List<double> _percentageHistory = [];
   double lastMonthTotal = 0.0;
 
   // state flags
@@ -83,9 +107,26 @@ class InvestmentProvider with ChangeNotifier {
             _investments.where((i) => !i.isActive).toList(growable: false),
       );
 
-  double get percentageChange {
-    if (lastMonthTotal == 0) return 0.0;
-    return ((totalInvestments - lastMonthTotal) / lastMonthTotal) * 100;
+  double get percentageChange => _percentageChange;
+  List<double> get percentageHistory => List.unmodifiable(_percentageHistory);
+
+  /// Recalculate percentage based on cumulative expected vs actual.
+  /// [expectedThisCycle] = amount expected this cycle (all recurring)
+  /// [actualThisCycle] = amount actually invested this cycle (active recurring)
+  void _recalcPercentage({
+    required double expectedThisCycle,
+    required double actualThisCycle,
+  }) {
+    _cumulativeExpected += expectedThisCycle;
+    _cumulativeActual += actualThisCycle;
+
+    if (_cumulativeExpected <= 0) {
+      _percentageChange = 0.0;
+    } else {
+      _percentageChange =
+          ((_cumulativeActual / _cumulativeExpected) * 100).clamp(0.0, 100.0);
+    }
+    _percentageHistory.add(_percentageChange);
   }
 
   Map<String, dynamic> toJson() {
@@ -172,6 +213,10 @@ class InvestmentProvider with ChangeNotifier {
       _investments = [];
       _transactions = [];
       _totalInvestments = 0.0;
+      _percentageChange = 0.0;
+      _cumulativeExpected = 0.0;
+      _cumulativeActual = 0.0;
+      _percentageHistory.clear();
       _isInitialized = false;
       notifyListeners();
 
@@ -595,6 +640,11 @@ class InvestmentProvider with ChangeNotifier {
       await loadTransactions();
       await _updateTotalFromTransactions();
 
+      final bool isRecur = !isOneTime;
+      _recalcPercentage(
+        expectedThisCycle: isRecur ? amount : 0.0,
+        actualThisCycle: isRecur ? amount : 0.0,
+      );
       notifyListeners();
       _log(
           'Investment added successfully. Total investments: $_totalInvestments');
@@ -631,6 +681,13 @@ class InvestmentProvider with ChangeNotifier {
       await loadInvestments();
       await loadTransactions();
       await _updateTotalFromTransactions();
+
+      if (_investments.isEmpty) {
+        _percentageChange = 0.0;
+        _cumulativeExpected = 0.0;
+        _cumulativeActual = 0.0;
+        _percentageHistory.clear();
+      }
 
       notifyListeners();
       _log(
@@ -840,8 +897,13 @@ class InvestmentProvider with ChangeNotifier {
     }
   }
 
-  /// Process investment deductions for all active investments
-  Future<void> processInvestmentDeductions({bool force = false}) async {
+  /// Process investment deductions for all active investments.
+  /// Pass [simulatedDate] to override the wall-clock date used for
+  /// transaction timestamps (used by the simulate feature).
+  Future<void> processInvestmentDeductions({
+    bool force = false,
+    DateTime? simulatedDate,
+  }) async {
     if (_processingInvestments) {
       _log('Already processing investments. Skipping.');
       return;
@@ -863,7 +925,7 @@ class InvestmentProvider with ChangeNotifier {
       await loadInvestments();
       await loadTransactions();
 
-      final now = DateTime.now();
+      final now = simulatedDate ?? DateTime.now();
       bool anyDeduction = false;
 
       final batch = _fs.batch();
@@ -978,16 +1040,82 @@ class InvestmentProvider with ChangeNotifier {
     }
   }
 
-  /// Simulate investment deduction (for testing)
+  /// Simulate investment deductions (for testing/demo).
+  /// Each investment tracks its OWN simulation date independently,
+  /// advancing by one month per call so the chart shows clear growth
+  /// even when investments were added at different real-world times.
   Future<void> simulateInvestmentDeduction() async {
     try {
-      _log('Simulating full investment deduction (forced)');
+      // All recurring (non-one-time) investments
+      final allRecurring =
+          _investments.where((i) => !(i.isOneTime ?? false)).toList();
+      final expectedAmt =
+          allRecurring.fold(0.0, (sum, inv) => sum + inv.amount);
 
-      // Store current total as "last month" before deduction
-      lastMonthTotal = investments.fold(0.0, (sum, inv) => sum + inv.amount);
+      // Only active recurring investments — what WILL actually be invested
+      final activeInvestments = allRecurring.where((i) => i.isActive).toList();
+      final actualAmt =
+          activeInvestments.fold(0.0, (sum, inv) => sum + inv.amount);
 
-      await processInvestmentDeductions(force: true);
+      // Update lastMonthTotal for backward compat
+      lastMonthTotal = expectedAmt;
 
+      if (activeInvestments.isEmpty) {
+        _log('No active non-one-time investments to simulate.');
+        _recalcPercentage(
+          expectedThisCycle: expectedAmt,
+          actualThisCycle: actualAmt,
+        );
+        notifyListeners();
+        return;
+      }
+
+      for (final inv in activeInvestments) {
+        final key = inv.id ?? inv.name;
+        final simDate = _nextSimDate(key);
+        _log('Simulating "${inv.name}" for $simDate');
+
+        // Deduct from balance
+        if (balanceProvider != null) {
+          balanceProvider!.addExpense(inv.amount);
+        }
+
+        // Add to general transaction list (for history)
+        if (listProvider != null) {
+          await listProvider!.addTransaction(
+            AllListProvider(
+              title: 'Investment',
+              category: inv.name,
+              amount: inv.amount,
+              isIncome: false,
+              date: simDate.toIso8601String(),
+              transactionType: TransactionType.investment,
+            ),
+            updateBalance: false,
+          );
+        }
+
+        // Write investment transaction to Firestore
+        await recordInvestmentTransaction(
+          inv.amount,
+          date: simDate,
+          investmentName: inv.name,
+          note: 'Simulated monthly deduction',
+        );
+
+        // Advance THIS investment's simulation clock by one month
+        _simulationDates[key] = DateTime(
+          simDate.year,
+          simDate.month + 1,
+          simDate.day,
+        );
+      }
+
+      await _updateTotalFromTransactions();
+      _recalcPercentage(
+        expectedThisCycle: expectedAmt,
+        actualThisCycle: actualAmt,
+      );
       notifyListeners();
     } catch (e, st) {
       _logError('Failed to simulate investment deduction', e, st);

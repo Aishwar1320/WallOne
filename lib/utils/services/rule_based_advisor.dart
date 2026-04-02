@@ -1471,7 +1471,6 @@ class RuleBasedAdvisor implements FinancialAdvisor {
 
       _insights[idx] =
           _insights[idx].copyWith(isExecuted: true, executedAt: DateTime.now());
-      await generateFinancialInsights(forceRefresh: true);
       return true;
     } catch (e, st) {
       _logError('Failed to execute action', e, st);

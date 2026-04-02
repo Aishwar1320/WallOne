@@ -1,7 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lottie/lottie.dart';
 import 'package:wallone/pages/Onboarding/user_setup.dart';
 import 'package:wallone/utils/constants.dart';
+
+class OnboardingModel {
+  final String title;
+  final String lottie;
+  final String subtitle;
+
+  OnboardingModel({
+    required this.title,
+    required this.lottie,
+    required this.subtitle,
+  });
+}
 
 class OnboardingPage extends StatefulWidget {
   final VoidCallback? onFinish;
@@ -12,22 +25,25 @@ class OnboardingPage extends StatefulWidget {
 }
 
 class _OnboardingPageState extends State<OnboardingPage> {
-  final List<Map<String, String>> onboardingData = [
-    {
-      'title': 'Take Control of Your Finances',
-      'subtitle':
+  final List<OnboardingModel> onboardingData = [
+    OnboardingModel(
+      title: 'Take Control of Your Finances',
+      lottie: 'assets/images/manage_money.json',
+      subtitle:
           'Welcome to WallOne! Your personal financial companion. Take control of your money effortlessly with powerful tools to track and manage your finances.',
-    },
-    {
-      'title': 'Budget Smarter',
-      'subtitle':
+    ),
+    OnboardingModel(
+      title: 'Budget Smarter',
+      lottie: 'assets/images/finance.json',
+      subtitle:
           'Set your monthly budget, monitor spending habits, and receive smart insights to save more effectively every month.',
-    },
-    {
-      'title': 'Streamline Your Finances',
-      'subtitle':
+    ),
+    OnboardingModel(
+      title: 'Streamline Your Finances',
+      lottie: 'assets/images/advisor.json',
+      subtitle:
           'Use your personal AI Advisor for efficient savings and budget planning making financial management automated and intelligent!',
-    },
+    ),
   ];
 
   int currentIndex = 0;
@@ -78,9 +94,17 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
             const Spacer(),
 
+            Lottie.asset(
+              current.lottie,
+              width: 250,
+              height: 250,
+            ),
+
+            const Spacer(),
+
             // Dynamic Title
             Text(
-              current['title']!,
+              current.title,
               textAlign: TextAlign.center,
               style: GoogleFonts.outfit(
                 fontSize: 22,
@@ -91,7 +115,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
             // Dynamic Subtitle
             Text(
-              current['subtitle']!,
+              current.subtitle,
               textAlign: TextAlign.center,
               style: GoogleFonts.outfit(
                 fontSize: 15,
@@ -108,11 +132,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 backgroundColor: WidgetStatePropertyAll(
                   purpleColors(context),
                 ),
-                padding: WidgetStatePropertyAll(
+                padding: const WidgetStatePropertyAll(
                   EdgeInsets.symmetric(
                     horizontal: 40,
-                    vertical:
-                        currentIndex == onboardingData.length - 1 ? 25 : 16,
+                    vertical: 16,
                   ),
                 ),
                 shape: WidgetStatePropertyAll(
