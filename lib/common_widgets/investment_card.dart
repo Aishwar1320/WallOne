@@ -1,4 +1,4 @@
-﻿import 'package:fl_chart/fl_chart.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -21,7 +21,7 @@ class FixedInvestmentsCard extends StatefulWidget {
 }
 
 class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
-  bool _isSimulating = false;
+  final bool _isSimulating = false;
 
   @override
   Widget build(BuildContext context) {
@@ -628,7 +628,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
     selectedDate ??= DateTime.now();
     selectedTime ??= TimeOfDay.fromDateTime(selectedDate);
 
-    final _formKey = GlobalKey<FormState>();
+    final formKey = GlobalKey<FormState>();
 
     showGeneralDialog(
       context: context,
@@ -821,7 +821,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                 );
               } else {
                 return Form(
-                  key: _formKey,
+                  key: formKey,
                   child: SingleChildScrollView(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -1069,7 +1069,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                             Expanded(
                               child: ElevatedButton(
                                 onPressed: () {
-                                  if (_formKey.currentState!.validate()) {
+                                  if (formKey.currentState!.validate()) {
                                     final amount =
                                         double.parse(amountController.text);
                                     final isOneTime =
@@ -1138,7 +1138,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
       BuildContext context, InvestmentModel investment, int index) {
     final TextEditingController amountController =
         TextEditingController(text: investment.amount.toString());
-    final _formKey = GlobalKey<FormState>();
+    final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
@@ -1160,7 +1160,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
             ],
           ),
           child: Form(
-            key: _formKey,
+            key: formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1249,7 +1249,7 @@ class _FixedInvestmentsCardState extends State<FixedInvestmentsCard> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
-                          if (_formKey.currentState!.validate()) {
+                          if (formKey.currentState!.validate()) {
                             final amount = double.parse(amountController.text);
                             Provider.of<BudgetProvider>(context, listen: false)
                                 .updateInvestmentAmount(index, amount);
@@ -1545,10 +1545,10 @@ class _InvestmentChart extends StatelessWidget {
 
     const titlesData = FlTitlesData(
       show: true,
-      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-      bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
     );
 
     return Container(

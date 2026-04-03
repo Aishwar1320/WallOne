@@ -150,8 +150,4 @@ class CategoryProvider with ChangeNotifier {
     return category.iconName;
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }

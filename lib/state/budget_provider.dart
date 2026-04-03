@@ -330,10 +330,12 @@ class BudgetProvider with ChangeNotifier {
       final jsonData = budget.toJson();
       _log('Saving budget to Firebase: $jsonData');
 
-      await col.doc(budget.id).set(jsonData);
+      col.doc(budget.id).set(jsonData).catchError((e) {
+        _logError('Failed to add budget to Firestore', e, null);
+      });
       // Local cache will update from snapshot listener
       // Then _syncSpentFromTransactions will be called automatically
-      _log('✅ Successfully added budget ${budget.id} to Firestore');
+      _log('✅ Queued budget ${budget.id} to Firestore');
       return true;
     } catch (e, st) {
       _logError('❌ Failed to add budget', e, st);
@@ -366,8 +368,10 @@ class BudgetProvider with ChangeNotifier {
         createdAt: budget.createdAt, // Preserve creation date
       );
 
-      await col.doc(budgetId).set(updatedBudget.toJson());
-      _log('✅ Updated budget $budgetId');
+      col.doc(budgetId).set(updatedBudget.toJson()).catchError((e) {
+        _logError('Failed to update budget in Firestore', e, null);
+      });
+      _log('✅ Queued update for budget $budgetId');
       return true;
     } catch (e, st) {
       _logError('Failed to update budget', e, st);
@@ -395,9 +399,11 @@ class BudgetProvider with ChangeNotifier {
       if (col == null) return;
 
       _log('Removing budget $id');
-      await col.doc(id).delete();
+      col.doc(id).delete().catchError((e) {
+        _logError('Failed to delete budget in Firestore', e, null);
+      });
       // Local cache will update via listener
-      _log('✅ Successfully removed budget $id');
+      _log('✅ Queued removal for budget $id');
     } catch (e, st) {
       _logError('Failed to remove budget', e, st);
     }
@@ -423,8 +429,10 @@ class BudgetProvider with ChangeNotifier {
           id: existing.id,
           createdAt: existing.createdAt, // Preserve creation date
         );
-        await col.doc(updated.id).set(updated.toJson());
-        _log('✅ Updated existing budget for $category');
+        col.doc(updated.id).set(updated.toJson()).catchError((e) {
+          _logError('Failed to update existing budget for $category', e, null);
+        });
+        _log('✅ Queued updated existing budget for $category');
       } else {
         // Create new budget
         final newBudget = Budget(
@@ -433,8 +441,10 @@ class BudgetProvider with ChangeNotifier {
           spent: 0.0,
           iconKey: iconKey,
         );
-        await col.doc(newBudget.id).set(newBudget.toJson());
-        _log('✅ Created new budget for $category');
+        col.doc(newBudget.id).set(newBudget.toJson()).catchError((e) {
+          _logError('Failed to create new budget for $category', e, null);
+        });
+        _log('✅ Queued new budget for $category');
       }
       // Local cache will update from snapshot
     } catch (e, st) {

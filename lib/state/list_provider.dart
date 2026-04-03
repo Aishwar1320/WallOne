@@ -361,7 +361,7 @@ class ListProvider with ChangeNotifier {
           final txnDateOnly = DateFormat('dd-MM-yyyy').format(txnDate);
           try {
             final legacy = DateFormat('dd-MM-yyyy').format(DateFormat('dd-MM')
-                .parse(selectedDate + '-${DateTime.now().year}'));
+                .parse('$selectedDate-${DateTime.now().year}'));
             if (txnDateOnly == legacy) return true;
           } catch (_) {}
           return txnDateOnly == selectedDate;
@@ -529,7 +529,9 @@ class ListProvider with ChangeNotifier {
           // update local docId reference
           _transactions[j] = t.copyWith(docId: docRef.id);
         }
-        await batch.commit();
+        batch.commit().catchError((e) {
+          _logError('Failed to save transactions batch', e, null);
+        });
       }
 
       // after saving, rebuild and save balance history via BalanceProvider
@@ -580,7 +582,9 @@ class ListProvider with ChangeNotifier {
       final map = newTransaction.toJson();
       map['id'] = newTransaction.id;
       map['date'] = Timestamp.fromDate(DateTime.parse(newTransaction.date));
-      await docRef.set(map, SetOptions(merge: true));
+      docRef.set(map, SetOptions(merge: true)).catchError((e) {
+        _logError('Failed to add transaction to Firestore', e, null);
+      });
 
       // optimistic add to local cache with docId
       final withDoc = newTransaction.copyWith(docId: docRef.id);
@@ -700,7 +704,9 @@ class ListProvider with ChangeNotifier {
       // Apply new transaction data
       final map = updatedTransaction.toJson();
       map['date'] = Timestamp.fromDate(DateTime.parse(updatedTransaction.date));
-      await col.doc(docId).set(map, SetOptions(merge: true));
+      col.doc(docId).set(map, SetOptions(merge: true)).catchError((e) {
+        _logError('Failed to update transaction in Firestore', e, null);
+      });
 
       // Update local cache
       final idxLocal = _transactions
@@ -764,7 +770,7 @@ class ListProvider with ChangeNotifier {
           'beforeBalance': m['beforeBalance'],
         }, docId: doc.id);
         // remove remote doc
-        await col.doc(doc.id).delete().catchError((_) {});
+        col.doc(doc.id).delete().catchError((_) {});
         // update balance
         if (t.isIncome) {
           _balanceProvider.deductBalanceForIncome(t.amount);
@@ -785,12 +791,12 @@ class ListProvider with ChangeNotifier {
       final removed = _transactions.removeAt(idx);
       // delete remote doc if docId exists
       if (removed.docId != null) {
-        await col.doc(removed.docId!).delete().catchError((_) {});
+        col.doc(removed.docId!).delete().catchError((_) {});
       } else {
         // fallback: delete by numeric id
         final q = await col.where('id', isEqualTo: removed.id).limit(1).get();
         if (q.docs.isNotEmpty) {
-          await col.doc(q.docs.first.id).delete().catchError((_) {});
+          col.doc(q.docs.first.id).delete().catchError((_) {});
         }
       }
 
@@ -867,16 +873,14 @@ class ListProvider with ChangeNotifier {
             // update remote doc and local cache
             final col = _txCollection;
             if (col != null && t.docId != null) {
-              await col
-                  .doc(t.docId!)
-                  .set({'beforeBalance': snap}, SetOptions(merge: true));
+              col.doc(t.docId!).set({'beforeBalance': snap},
+                  SetOptions(merge: true)).catchError((_) {});
             } else if (col != null && t.docId == null) {
               // try to find doc by id and update
               final q = await col.where('id', isEqualTo: t.id).limit(1).get();
               if (q.docs.isNotEmpty) {
-                await col
-                    .doc(q.docs.first.id)
-                    .set({'beforeBalance': snap}, SetOptions(merge: true));
+                col.doc(q.docs.first.id).set({'beforeBalance': snap},
+                    SetOptions(merge: true)).catchError((_) {});
               }
             }
             // Find and update the transaction in the current list by ID/docId
@@ -986,7 +990,11 @@ class ListProvider with ChangeNotifier {
             if (count >= 500) break; // Firestore batch limit
           }
         }
-        if (count > 0) await batch.commit();
+        if (count > 0) {
+          batch.commit().catchError((e) {
+            _logError('Failed to commit beforeBalance batch', e, null);
+          });
+        }
       }
 
       notifyListeners();

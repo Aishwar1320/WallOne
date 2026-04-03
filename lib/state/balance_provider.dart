@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:wallone/models/balance_model.dart';
 import 'package:wallone/pages/Onboarding/onboarding_page.dart';
@@ -39,7 +41,41 @@ class BalanceProvider extends ChangeNotifier {
 
   // Constructor
   BalanceProvider() {
+    _loadFromLocal();
     _initListener();
+  }
+
+  Future<void> _loadFromLocal() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      final str = prefs.getString('cached_balance_model');
+      if (str != null) {
+        final map = jsonDecode(str);
+        // Cast values to double where needed, or let BalanceModel.fromMap handle it if it uses _toDouble
+        _balance = BalanceModel.fromMap(map);
+        notifyListeners();
+      }
+
+      final cur = prefs.getString('cached_currencyCode');
+      if (cur != null && supportedCurrencies.contains(cur)) {
+        _currencyCode = cur;
+        notifyListeners();
+      }
+    } catch (e) {
+      _log('Error loading local cache: $e');
+    }
+  }
+
+  Future<void> _saveToLocal() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+          'cached_balance_model', jsonEncode(_balance.toMap()));
+      await prefs.setString('cached_currencyCode', _currencyCode);
+    } catch (e) {
+      _log('Error saving local cache: $e');
+    }
   }
 
   void _log(String message) => debugPrint('[$_tag] $message');
@@ -119,6 +155,8 @@ class BalanceProvider extends ChangeNotifier {
                 freshData['lastResetDate'] ?? freshData['dailyKey'],
             'totalInvestments': _toDouble(freshData['totalInvestments']),
           });
+          _saveToLocal();
+
           // Load currency from user doc
           _loadCurrencyForUid(uid);
 
@@ -199,6 +237,7 @@ class BalanceProvider extends ChangeNotifier {
   void setCurrency(String newCode) {
     if (newCode == _currencyCode) return;
     _currencyCode = newCode;
+    _saveToLocal();
 
     // Save to Firestore
     _saveCurrencyToFirestore(newCode);
@@ -214,11 +253,11 @@ class BalanceProvider extends ChangeNotifier {
         return;
       }
 
-      await _fs
-          .collection('users')
-          .doc(uid)
-          .set({'currencyCode': currencyCode}, SetOptions(merge: true));
-      _log('Currency saved to Firestore: $currencyCode');
+      await _fs.collection('users').doc(uid).set({'currencyCode': currencyCode},
+          SetOptions(merge: true)).catchError((e) {
+        _logError('Failed to save currency to Firestore', e, null);
+      });
+      _log('Currency queued to save to Firestore: $currencyCode');
     } catch (e, st) {
       _logError('Failed to save currency to Firestore', e, st);
     }
@@ -296,6 +335,7 @@ class BalanceProvider extends ChangeNotifier {
         'lastResetDate': freshData['lastResetDate'] ?? freshData['dailyKey'],
         'totalInvestments': _toDouble(freshData['totalInvestments']),
       });
+      _saveToLocal();
       notifyListeners();
       _log('Balances loaded');
     } catch (e, st) {
@@ -309,16 +349,19 @@ class BalanceProvider extends ChangeNotifier {
   Future<void> saveBalances() async {
     try {
       final docRef = _currentBalancesDocRef();
-      if (docRef == null)
+      if (docRef == null) {
         throw Exception('User must be signed in to save balances');
+      }
 
       final map = _balance.toMap();
-      await docRef.set(map, SetOptions(merge: true));
-      _log('Saved balances to Firestore');
+      docRef.set(map, SetOptions(merge: true)).catchError((e) {
+        _logError('Failed to save balances to Firestore: $e', null, null);
+      });
+      _log('Queued balances for Firestore save');
 
       // also save today's snapshot automatically
       try {
-        await saveBalanceSnapshot(DateTime.now(), _balance.totalBalance);
+        saveBalanceSnapshot(DateTime.now(), _balance.totalBalance); // no await
       } catch (e, st) {
         // ignore snapshot errors, but log
         _logError('Failed to save snapshot', e, st);
@@ -340,12 +383,14 @@ class BalanceProvider extends ChangeNotifier {
 
       final key = _dateKey(date);
       final docRef = historyRef.doc(key);
-      await docRef.set({
+      docRef.set({
         'totalBalance': totalBalance,
         'ts': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      }, SetOptions(merge: true)).catchError((e) {
+        _logError('Failed to save snapshot to Firestore: $e', null, null);
+      });
 
-      _log('Saved snapshot for $key');
+      _log('Queued snapshot for $key');
 
       // prune older than maxDays
       final cutoff = DateTime.now().subtract(Duration(days: maxDays));
@@ -364,9 +409,11 @@ class BalanceProvider extends ChangeNotifier {
         for (final d in oldDocs.docs) {
           batch.delete(d.reference);
         }
-        await batch.commit();
+        batch.commit().catchError((e) {
+          _logError('Failed to prune snapshots on Firestore: $e', null, null);
+        });
         _log(
-            'Pruned ${oldDocs.docs.length} old history docs older than $cutoffKey');
+            'Queued pruning of ${oldDocs.docs.length} old history docs older than $cutoffKey');
       }
     } catch (e, st) {
       _logError('Failed to save/prune balance snapshot', e, st);
@@ -439,8 +486,10 @@ class BalanceProvider extends ChangeNotifier {
         }
       });
 
-      await batch.commit();
-      _log('Saved ${history.length} balance history entries to Firestore');
+      batch.commit().catchError((e) {
+        _logError('Batch commit failed for saveBalanceHistory: $e', null, null);
+      });
+      _log('Queued ${history.length} balance history entries to Firestore');
     } catch (e, st) {
       _logError('Failed to save balance history', e, st);
     }
@@ -524,7 +573,8 @@ class BalanceProvider extends ChangeNotifier {
   // ---------------------------
   Future<void> _persistAfterChange() async {
     // persist but don't await everywhere - caller awaits saveBalances when needed
-    await saveBalances();
+    _saveToLocal();
+    saveBalances(); // Fire and forget
   }
 
   void addIncome(double amount) {
@@ -665,8 +715,12 @@ class BalanceProvider extends ChangeNotifier {
       final docRef = _currentBalancesDocRef();
       if (docRef == null) return;
       final iso = date.toIso8601String();
-      await docRef.set({'lastResetDate': iso}, SetOptions(merge: true));
-      _log('Saved lastResetDate = $iso');
+      docRef
+          .set({'lastResetDate': iso}, SetOptions(merge: true)).catchError((e) {
+        _logError(
+            'Failed to save last reset date to Firestore: $e', null, null);
+      });
+      _log('Queued lastResetDate = $iso');
     } catch (e, st) {
       _logError('Failed to save last reset date', e, st);
     }
@@ -703,7 +757,9 @@ class BalanceProvider extends ChangeNotifier {
             q = await historyRef.limit(500).get();
             if (q.docs.isEmpty) break;
             final batch = _fs.batch();
-            for (final d in q.docs) batch.delete(d.reference);
+            for (final d in q.docs) {
+              batch.delete(d.reference);
+            }
             await batch.commit();
           } while (q.docs.isNotEmpty);
 
@@ -719,7 +775,9 @@ class BalanceProvider extends ChangeNotifier {
             q = await investmentsRef.limit(500).get();
             if (q.docs.isEmpty) break;
             final batch = _fs.batch();
-            for (final d in q.docs) batch.delete(d.reference);
+            for (final d in q.docs) {
+              batch.delete(d.reference);
+            }
             await batch.commit();
           } while (q.docs.isNotEmpty);
 
@@ -871,7 +929,10 @@ class BalanceProvider extends ChangeNotifier {
       }
 
       if (updates.isNotEmpty) {
-        await docRef.set(updates, SetOptions(merge: true));
+        docRef.set(updates, SetOptions(merge: true)).catchError((e) {
+          _logError('checkAndResetIfNeeded failed to set to Firestore: $e',
+              null, null);
+        });
       }
     } catch (e, st) {
       _logError('checkAndResetIfNeeded failed', e, st);

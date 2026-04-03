@@ -21,6 +21,7 @@ import 'package:wallone/state/transaction_type_provider.dart';
 import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/layout.dart';
 import 'package:wallone/utils/services/purchase_service.dart';
+import 'package:wallone/utils/services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +33,17 @@ Future<void> main() async {
 
   if (kDebugMode) {
     debugPrint('[main] Firebase initialized successfully');
+  }
+
+  // Initialize Notification Service
+  try {
+    if (kDebugMode) debugPrint('[main] Initializing NotificationService...');
+    await NotificationService().initialize();
+    if (kDebugMode) debugPrint('[main] NotificationService initialized');
+  } catch (e) {
+    if (kDebugMode) {
+      debugPrint('[main] NotificationService initialization error: $e');
+    }
   }
 
   // Initialize Google Mobile Ads SDK
@@ -98,11 +110,11 @@ Future<void> main() async {
   // Wire up a quick refresh when new transactions are added.
   // Use a short debounce to avoid spamming the AI service when multiple
   // transactions are created in quick succession.
-  Timer? _aiRefreshTimer;
+  Timer? aiRefreshTimer;
   listProvider.onTransactionAdded = (transaction) {
     try {
-      _aiRefreshTimer?.cancel();
-      _aiRefreshTimer = Timer(const Duration(milliseconds: 800), () async {
+      aiRefreshTimer?.cancel();
+      aiRefreshTimer = Timer(const Duration(milliseconds: 800), () async {
         try {
           // If the advisor is not ready this call will be a no-op.
           await aiAdvisorProvider.refreshInsights(forceRefresh: true);

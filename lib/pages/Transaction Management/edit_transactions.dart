@@ -16,8 +16,7 @@ import 'package:wallone/state/category_provider.dart';
 class EditTransactionPage extends StatefulWidget {
   final AllListProvider transaction;
 
-  const EditTransactionPage({Key? key, required this.transaction})
-      : super(key: key);
+  const EditTransactionPage({super.key, required this.transaction});
 
   @override
   State<EditTransactionPage> createState() => _EditTransactionPageState();

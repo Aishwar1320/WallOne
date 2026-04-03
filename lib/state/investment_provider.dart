@@ -461,8 +461,10 @@ class InvestmentProvider with ChangeNotifier {
         };
         batch.set(docRef, data, SetOptions(merge: true));
       }
-      await batch.commit();
-      _log('Saved ${_investments.length} investments to Firestore');
+      batch.commit().catchError((e) {
+        _logError('Failed to commit investments batch', e, null);
+      });
+      _log('Queued ${_investments.length} investments to Firestore');
 
       // update current doc's totalInvestments
       await _updateCurrentDocMeta();
@@ -479,13 +481,15 @@ class InvestmentProvider with ChangeNotifier {
         throw Exception('User must be signed in to save transactions');
       }
       final docRef = col.doc(tx.id ?? _newTxId(tx));
-      await docRef.set({
+      docRef.set({
         'amount': tx.amount,
         'date': Timestamp.fromDate(tx.date),
         'investmentName': tx.investmentName ?? '',
         if (tx.note != null) 'note': tx.note,
-      }, SetOptions(merge: true));
-      _log('Saved transaction ${docRef.id}');
+      }, SetOptions(merge: true)).catchError((e) {
+        _logError('Failed to save transaction to Firestore', e, null);
+      });
+      _log('Queued transaction ${docRef.id}');
     } catch (e, st) {
       _logError('Failed to save transaction', e, st);
     }
@@ -495,8 +499,8 @@ class InvestmentProvider with ChangeNotifier {
     try {
       final col = _txCol;
       if (col == null) return;
-      await col.doc(txId).delete().catchError((_) {});
-      _log('Deleted transaction $txId');
+      col.doc(txId).delete().catchError((_) {});
+      _log('Queued delete for transaction $txId');
     } catch (e, st) {
       _logError('Failed to delete transaction $txId', e, st);
     }
@@ -525,10 +529,12 @@ class InvestmentProvider with ChangeNotifier {
     try {
       final current = _currentDocRef;
       if (current == null) return;
-      await current.set({
+      current.set({
         'totalInvestments': _totalInvestments,
         'lastInvestmentCheckDate': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      }, SetOptions(merge: true)).catchError((e) {
+        _logError('Failed to update meta doc in Firestore', e, null);
+      });
     } catch (e, st) {
       _logError('Failed to update current meta doc', e, st);
     }
@@ -592,7 +598,7 @@ class InvestmentProvider with ChangeNotifier {
 
       // Persist investment doc
       final docRef = col.doc(inv.id ?? inv.name);
-      await docRef.set({
+      docRef.set({
         'name': inv.name,
         'amount': inv.amount,
         'category': inv.category,
@@ -601,7 +607,9 @@ class InvestmentProvider with ChangeNotifier {
         'monthlyDeductions': inv.monthlyDeductions,
         'lastDeductionDate': Timestamp.fromDate(inv.lastDeductionDate),
         'isOneTime': inv.isOneTime ?? false,
-      }, SetOptions(merge: true));
+      }, SetOptions(merge: true)).catchError((e) {
+        _logError('Failed to add investment to Firestore', e, null);
+      });
 
       // Deduct amount from balance and add a transaction record
       final now = startDate ?? DateTime.now();
@@ -664,7 +672,7 @@ class InvestmentProvider with ChangeNotifier {
       final inv = _investments[index];
       final col = _listCol;
       if (col != null) {
-        await col.doc(inv.id ?? inv.name).delete().catchError((_) {});
+        col.doc(inv.id ?? inv.name).delete().catchError((_) {});
       }
 
       // delete associated transactions
@@ -673,8 +681,12 @@ class InvestmentProvider with ChangeNotifier {
         final q =
             await txCol.where('investmentName', isEqualTo: inv.name).get();
         final batch = _fs.batch();
-        for (final d in q.docs) batch.delete(d.reference);
-        if (q.docs.isNotEmpty) await batch.commit();
+        for (final d in q.docs) {
+          batch.delete(d.reference);
+        }
+        if (q.docs.isNotEmpty) {
+          batch.commit().catchError((_) {});
+        }
       }
 
       // reload
@@ -708,7 +720,10 @@ class InvestmentProvider with ChangeNotifier {
       if (col == null) return;
 
       final docRef = col.doc(inv.id ?? inv.name);
-      await docRef.set({'isActive': newStatus}, SetOptions(merge: true));
+      docRef.set({'isActive': newStatus}, SetOptions(merge: true)).catchError(
+          (e) {
+        _logError('Failed to toggle investment in Firestore', e, null);
+      });
 
       // local cache will be updated by snapshot; but update immediately for UX
       _investments[index] = inv.copyWith(isActive: newStatus);
@@ -732,7 +747,9 @@ class InvestmentProvider with ChangeNotifier {
       if (col == null) return;
 
       final docRef = col.doc(inv.id ?? inv.name);
-      await docRef.set({'amount': amount}, SetOptions(merge: true));
+      docRef.set({'amount': amount}, SetOptions(merge: true)).catchError((e) {
+        _logError('Failed to update investment amount in Firestore', e, null);
+      });
 
       // local optimistic update
       _investments[index] = inv.copyWith(amount: amount);
@@ -1155,7 +1172,9 @@ class InvestmentProvider with ChangeNotifier {
           q = await txCol.limit(500).get();
           if (q.docs.isEmpty) break;
           final batch = _fs.batch();
-          for (final d in q.docs) batch.delete(d.reference);
+          for (final d in q.docs) {
+            batch.delete(d.reference);
+          }
           await batch.commit();
         } while (q.docs.isNotEmpty);
       }
@@ -1166,7 +1185,9 @@ class InvestmentProvider with ChangeNotifier {
           q = await col.limit(500).get();
           if (q.docs.isEmpty) break;
           final batch = _fs.batch();
-          for (final d in q.docs) batch.delete(d.reference);
+          for (final d in q.docs) {
+            batch.delete(d.reference);
+          }
           await batch.commit();
         } while (q.docs.isNotEmpty);
       }

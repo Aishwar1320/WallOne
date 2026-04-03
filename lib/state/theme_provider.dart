@@ -81,10 +81,6 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }
 
 class ThemeSwitcher extends StatelessWidget {

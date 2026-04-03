@@ -895,7 +895,7 @@ class RuleBasedAdvisor implements FinancialAdvisor {
           id: 'expense_missing_category_$category',
           title: 'Missing ${category.capitalize()} Expenses?',
           description:
-              'You haven\'t tracked any ${category} expenses. If you have these costs, '
+              'You haven\'t tracked any $category expenses. If you have these costs, '
               'make sure to categorize them properly for accurate budgeting.',
           category: category,
           type: InsightType.expense,
@@ -1324,7 +1324,7 @@ class RuleBasedAdvisor implements FinancialAdvisor {
 
     // Predict year-end net worth
     if (flow.netCashFlow != 0) {
-      final monthsRemaining = 12;
+      const monthsRemaining = 12;
       final projectedYearEndBalance =
           balance + (flow.netCashFlow * monthsRemaining);
       final currentInvestments = _investmentProvider.investments
@@ -1369,9 +1369,9 @@ class RuleBasedAdvisor implements FinancialAdvisor {
     if (balance > 0) score += 10;
     if (balance > expenses * 3) score += 10;
     if (netCashFlow > 0) score += 15;
-    if (savingsRate >= 0.20)
+    if (savingsRate >= 0.20) {
       score += 15;
-    else if (savingsRate >= 0.10) score += 10;
+    } else if (savingsRate >= 0.10) score += 10;
     if (income > expenses) score += 10;
 
     // Negative indicators

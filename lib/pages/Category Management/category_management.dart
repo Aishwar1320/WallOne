@@ -268,7 +268,7 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Category updated successfully'),
+              content: const Text('Category updated successfully'),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),

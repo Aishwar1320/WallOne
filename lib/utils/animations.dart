@@ -7,12 +7,12 @@ class FadeSlideTransition extends StatefulWidget {
   final double offset;
 
   const FadeSlideTransition({
-    Key? key,
+    super.key,
     required this.child,
     this.slideUp = true,
     this.duration = const Duration(milliseconds: 500),
     this.offset = 50,
-  }) : super(key: key);
+  });
 
   @override
   State<FadeSlideTransition> createState() => _FadeSlideTransitionState();
@@ -72,11 +72,11 @@ class ScaleInTransition extends StatefulWidget {
   final Curve curve;
 
   const ScaleInTransition({
-    Key? key,
+    super.key,
     required this.child,
     this.duration = const Duration(milliseconds: 300),
     this.curve = Curves.easeOutBack,
-  }) : super(key: key);
+  });
 
   @override
   State<ScaleInTransition> createState() => _ScaleInTransitionState();
@@ -125,11 +125,11 @@ class StaggeredListAnimation extends StatefulWidget {
   final Duration initialDelay;
 
   const StaggeredListAnimation({
-    Key? key,
+    super.key,
     required this.child,
     required this.index,
     this.initialDelay = const Duration(milliseconds: 0),
-  }) : super(key: key);
+  });
 
   @override
   State<StaggeredListAnimation> createState() => _StaggeredListAnimationState();
@@ -197,11 +197,11 @@ class BounceSlideTransition extends StatefulWidget {
   final Duration delay;
 
   const BounceSlideTransition({
-    Key? key,
+    super.key,
     required this.child,
     required this.index,
     this.delay = const Duration(milliseconds: 0),
-  }) : super(key: key);
+  });
 
   @override
   State<BounceSlideTransition> createState() => _BounceSlideTransitionState();

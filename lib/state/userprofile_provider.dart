@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wallone/utils/services/purchase_service.dart';
 
 class UserProfileProvider extends ChangeNotifier {
@@ -27,7 +28,35 @@ class UserProfileProvider extends ChangeNotifier {
     _init();
   }
 
+  Future<void> _loadFromLocal() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      userName = prefs.getString('cached_userName');
+      coverImagePath = prefs.getString('cached_coverImagePath');
+      isPremium = prefs.getBool('cached_isPremium') ?? false;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[UserProfileProvider] Error loading local cache: $e');
+    }
+  }
+
+  Future<void> _saveToLocal(String key, dynamic value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (value is String) {
+        await prefs.setString(key, value);
+      } else if (value is bool) {
+        await prefs.setBool(key, value);
+      } else if (value == null) {
+        await prefs.remove(key);
+      }
+    } catch (e) {
+      debugPrint('[UserProfileProvider] Error saving local cache: $e');
+    }
+  }
+
   Future<void> _init() async {
+    await _loadFromLocal();
     // Only initialize purchase service if NOT in development mode
     if (!_isDevelopmentMode) {
       await _initializePurchases();
@@ -116,19 +145,27 @@ class UserProfileProvider extends ChangeNotifier {
         final remotePremium = data?['isPremium'];
         final coverBase64 = data?['coverImageBase64'] as String?;
 
-        if (remoteName != null) userName = remoteName;
+        if (remoteName != null) {
+          userName = remoteName;
+          _saveToLocal('cached_userName', remoteName);
+        }
 
         // Update premium status from Firestore
         if (remotePremium is bool) {
           isPremium = remotePremium;
+          _saveToLocal('cached_isPremium', remotePremium);
         } else if (remotePremium is int) {
           // sometimes boolean flags may be stored as 0/1
           isPremium = remotePremium != 0;
+          _saveToLocal('cached_isPremium', isPremium);
         }
 
         if (coverBase64 != null && coverBase64.isNotEmpty) {
           final savedPath = await _saveBase64ImageToLocalFile(coverBase64, uid);
-          if (savedPath != null) coverImagePath = savedPath;
+          if (savedPath != null) {
+            coverImagePath = savedPath;
+            _saveToLocal('cached_coverImagePath', savedPath);
+          }
         }
 
         notifyListeners();
@@ -142,15 +179,19 @@ class UserProfileProvider extends ChangeNotifier {
   /// When setting a name, write to Firestore if signed-in; otherwise fallback to local prefs
   Future<void> setName(String name) async {
     userName = name;
+    _saveToLocal('cached_userName', name);
     notifyListeners();
 
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       try {
-        await FirebaseFirestore.instance
+        FirebaseFirestore.instance
             .collection('users')
             .doc(uid)
-            .set({'name': name}, SetOptions(merge: true));
+            .set({'name': name}, SetOptions(merge: true)).catchError((e) {
+          debugPrint(
+              '[UserProfileProvider] Error saving name to Firestore: $e');
+        });
       } catch (e) {
         debugPrint('[UserProfileProvider] Error saving name: $e');
       }
@@ -160,6 +201,7 @@ class UserProfileProvider extends ChangeNotifier {
   /// When setting an image path (local file), save as base64 to Firestore and keep local path for UI
   Future<void> setImagePath(String path) async {
     coverImagePath = path;
+    _saveToLocal('cached_coverImagePath', path);
     notifyListeners();
 
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -169,10 +211,12 @@ class UserProfileProvider extends ChangeNotifier {
         if (await f.exists()) {
           final bytes = await f.readAsBytes();
           final base64Img = base64Encode(bytes);
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(uid)
-              .set({'coverImageBase64': base64Img}, SetOptions(merge: true));
+          FirebaseFirestore.instance.collection('users').doc(uid).set(
+              {'coverImageBase64': base64Img},
+              SetOptions(merge: true)).catchError((e) {
+            debugPrint(
+                '[UserProfileProvider] Error saving image to Firestore: $e');
+          });
         }
       } catch (e) {
         debugPrint('[UserProfileProvider] Error saving image: $e');
@@ -194,15 +238,19 @@ class UserProfileProvider extends ChangeNotifier {
     }
 
     isPremium = value;
+    _saveToLocal('cached_isPremium', value);
     notifyListeners();
 
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       try {
-        await FirebaseFirestore.instance
+        FirebaseFirestore.instance
             .collection('users')
             .doc(uid)
-            .set({'isPremium': value}, SetOptions(merge: true));
+            .set({'isPremium': value}, SetOptions(merge: true)).catchError((e) {
+          debugPrint(
+              '[UserProfileProvider] Error saving premium status to Firestore: $e');
+        });
       } catch (e) {
         debugPrint('[UserProfileProvider] Error saving premium status: $e');
       }
@@ -304,16 +352,22 @@ class UserProfileProvider extends ChangeNotifier {
     userName = null;
     coverImagePath = null;
     isPremium = false;
+    _saveToLocal('cached_userName', null);
+    _saveToLocal('cached_coverImagePath', null);
+    _saveToLocal('cached_isPremium', false);
     notifyListeners();
 
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       try {
-        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        FirebaseFirestore.instance.collection('users').doc(uid).set({
           'name': FieldValue.delete(),
           'coverImageBase64': FieldValue.delete(),
           'isPremium': FieldValue.delete(),
-        }, SetOptions(merge: true));
+        }, SetOptions(merge: true)).catchError((e) {
+          debugPrint(
+              '[UserProfileProvider] Error clearing profile in Firestore: $e');
+        });
       } catch (e) {
         debugPrint('[UserProfileProvider] Error clearing profile: $e');
       }
