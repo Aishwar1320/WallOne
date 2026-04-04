@@ -95,7 +95,7 @@ Designed for performance, simplicity, and intelligence — WallOne acts like you
 
 | Dashboard | Investments | AI Advisor |
 |----------|------------|------------|
-| <img width="419" height="793" alt="image" src="https://github.com/user-attachments/assets/e3c7cfd9-4bdf-4140-9506-66759bd9c2ea" />
+| <img width="419" height="793" alt="image" src="https://github.com/user-attachments/assets/e3c7cfd9-4bdf-4140-9506-66759bd9c2ea" /> |
  | <img width="419" height="798" alt="image" src="https://github.com/user-attachments/assets/983afcb9-2b59-41a5-a512-f52e967b587f" />
  | <img width="419" height="797" alt="image" src="https://github.com/user-attachments/assets/ec0d6ed6-43fe-4c5a-8aa7-13847ef0c594" />
  | <img width="419" height="798" alt="image" src="https://github.com/user-attachments/assets/2742a630-6351-4a16-8a11-aa2243ff63bd" />
