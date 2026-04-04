@@ -95,9 +95,7 @@ Designed for performance, simplicity, and intelligence — WallOne acts like you
 
 | Onboarding | Auth | Dashboard | Budgets Tab | Investment Tab | Analytics Tab | AI Advisor | Settings |
 |----------|------------|------------|----------|------------|------------|------------|------------|
-| <img src="https://github.com/user-attachments/assets/e3c7cfd9-4bdf-4140-9506-66759bd9c2ea" width="250"/> | <img src="https://github.com/user-attachments/assets/983afcb9-2b59-41a5-a512-f52e967b587f" width="250"/> | <img src="https://github.com/user-attachments/assets/ec0d6ed6-43fe-4c5a-8aa7-13847ef0c594" width="250"/> |
-| <img src="https://github.com/user-attachments/assets/2742a630-6351-4a16-8a11-aa2243ff63bd" width="250"/> | <img src="https://github.com/user-attachments/assets/c8a0b983-de89-4d6c-8cff-3d1d3912bd03" width="250"/> | <img src="https://github.com/user-attachments/assets/216c2c2f-2c26-47a6-8397-5ae054a87698" width="250"/> |
-| <img src="https://github.com/user-attachments/assets/d5573378-c1e9-48af-bf68-96d7d63047a1" width="250"/> | <img src="https://github.com/user-attachments/assets/f4a70279-7e37-45b3-b0d1-f05441414141" width="250"/> |  |
+| <img src="https://github.com/user-attachments/assets/e3c7cfd9-4bdf-4140-9506-66759bd9c2ea" width="250"/> | <img src="https://github.com/user-attachments/assets/983afcb9-2b59-41a5-a512-f52e967b587f" width="250"/> | <img src="https://github.com/user-attachments/assets/ec0d6ed6-43fe-4c5a-8aa7-13847ef0c594" width="250"/> | <img src="https://github.com/user-attachments/assets/2742a630-6351-4a16-8a11-aa2243ff63bd" width="250"/> | <img src="https://github.com/user-attachments/assets/c8a0b983-de89-4d6c-8cff-3d1d3912bd03" width="250"/> | <img src="https://github.com/user-attachments/assets/216c2c2f-2c26-47a6-8397-5ae054a87698" width="250"/> | <img src="https://github.com/user-attachments/assets/d5573378-c1e9-48af-bf68-96d7d63047a1" width="250"/> | <img src="https://github.com/user-attachments/assets/f4a70279-7e37-45b3-b0d1-f05441414141" width="250"/> |  |
 
 
 
