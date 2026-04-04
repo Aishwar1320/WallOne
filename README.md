@@ -1,78 +1,117 @@
-# 💸 Wall One — Your Smart Financial Companion
+# 💸 WallOne — AI-Powered Smart Financial Companion
 
-Wall One is a sleek, modern **Financial Tracking App** built with Flutter, designed to simplify personal finance management. With features like **Budget Tracking**, **Investment Logging**, and an **AI Assistant** for insights and tips, Wall One is your intelligent wallet on the go.
+WallOne is a modern, intelligent **Personal Finance Management App** built with Flutter. It helps users track expenses, manage investments, and make smarter financial decisions using a powerful **AI Advisor that works even offline**.
+
+Designed for performance, simplicity, and intelligence — WallOne acts like your **personal finance assistant in your pocket**.
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-### 🧾 Expense & Income Tracking
+### 🧾 Smart Expense & Income Tracking
+- Track daily, weekly, and monthly **expenses & income** with ease.
+- Categorized transactions with full customization support.
 
-- Track daily, weekly, and monthly **Expenses & Income**.
-- Automatically categorized transactions with customizable categories.
+---
 
-### 📊 Budget Dashboard
+### 📊 Advanced Financial Dashboard
+- Real-time overview of your **total balance, cash flow, and spending trends**.
+- Interactive **financial graphs & analytics** for better insights.
 
-- Visual overview of your financial health.
-- Real-time updates of total balance and cash flow.
+---
 
-### 💼 Investment Manager
+### 💼 Investment Tracking System
+- Add and manage your **investment portfolio**.
+- Visualize performance using **investment graphs**.
 
-- Record, view, and manage your **Investment Entries**.
-- Visual insights into asset allocation.
+---
 
-### 🧠 AI Assistant _(Coming Soon / Beta)_
+### 🧠 AI Financial Advisor (Beta)
+- Built-in **AI Advisor** that provides:
+  - Smart saving suggestions 💡
+  - Spending insights 📉
+  - Investment guidance 📈
+- Works **offline using rule-based intelligence**.
 
-- Personalized suggestions on how to save more or invest smarter.
-- Ask the AI anything about your spending patterns.
+---
 
-### 🎯 Smart Categories
+### 📅 Smart Daily Spending Limit
+- Automatically calculates:
+  > 💰 *How much you can spend daily for the entire month*
+- Based on:
+  - Total balance
+  - Remaining days in the month
+- Helps users avoid overspending and stay within budget.
 
-- Custom category creation with **Icon Selection**.
-- Edit and delete categories as per your needs.
+---
 
-### 💾 Persistent Storage
+### 🔐 Secure Account System (Firebase)
+- User authentication (Login / Register).
+- Each user’s data is securely stored and isolated.
 
-- All data is saved locally using `shared_preferences`.
-- Your data remains intact between app launches.
+---
+
+### ☁️ Cloud-Connected Data
+- All financial data is:
+  - Stored in **Firebase**
+  - Synced across devices
+- Ensures **real-time updates and backup**.
+
+---
+
+### 🎯 Custom Categories & UI
+- Create, edit, and delete categories.
+- Icon-based customization for better user experience.
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Technology                | Usage                     |
-| ------------------------- | ------------------------- |
-| **Flutter**               | UI & Core App Development |
-| **Provider**              | State Management          |
-| **Shared Preferences**    | Local Storage             |
-| **Google Fonts**          | Typography                |
-| **Material Icons**        | Icon Selection            |
-| **Dart**                  | Backend Logic             |
-| **OpenAI API (Optional)** | AI Assistant Integration  |
+| Technology            | Usage                          |
+|----------------------|--------------------------------|
+| **Flutter**          | UI & App Development           |
+| **Dart**             | Business Logic                 |
+| **Provider**         | State Management               |
+| **Firebase Auth**    | Authentication                 |
+| **Cloud Firestore**  | Database & Sync                |
+| **Charts/Graphs**    | Financial Visualization        |
+| **Shared Preferences** | Local Caching               |
+
+---
+
+## 🚀 What Makes WallOne Unique?
+
+- ⚡ AI Advisor
+- 🔄 Firebase-powered real-time sync
+- 📊 Actionable insights, not just raw data
+- 💡 Intelligent daily spending calculation
+- 🔔 Smart notifications & reminders
+- 🌙 Enhanced dark mode support
+- 🎯 Clean and modern Flutter UI
 
 ---
 
 ## 📸 Screenshots
 
-| Home Screen   | Budget Overview | Add Category  |
-| ------------- | --------------- | ------------- |
-| _Coming Soon_ | _Coming Soon_   | _Coming Soon_ |
+| Dashboard | Investments | AI Advisor |
+|----------|------------|------------|
+| _Coming Soon_ | _Coming Soon_ | _Coming Soon_ |
 
 ---
 
 ## 📦 Installation
 
 ### 🚀 Prerequisites
-
-- [Flutter SDK](https://flutter.dev/docs/get-started/install)
+- Flutter SDK
 - Dart >= 3.x
-- Android Studio / VS Code with Flutter plugin
+- Android Studio or VS Code
+
+---
 
 ### 🧪 Run Locally
 
 ```bash
 git clone https://github.com/Aishwar1320/WallOne.git
-cd wall-one
+cd WallOne
 flutter pub get
 flutter run
-```
