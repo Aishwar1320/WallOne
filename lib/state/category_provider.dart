@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:wallone/models/icon_map_model.dart';
-import 'dart:convert';
 
 /// Category model using icon name instead of IconData
 class Category {
@@ -32,43 +32,84 @@ class Category {
 
 class CategoryProvider with ChangeNotifier {
   List<Category> _categories = [];
-  final SharedPreferences _prefs;
-  static const String _categoriesKey = 'categories';
 
-  CategoryProvider(this._prefs) {
+  CategoryProvider() {
     _loadCategories();
-    if (_categories.isEmpty) {
-      _categories = [
-        Category(name: "Food", iconName: 'fastfood'),
-        Category(name: "Shopping", iconName: 'shopping_bag'),
-        Category(name: "Bills", iconName: 'receipt'),
-        Category(name: "Groceries", iconName: 'local_grocery_store'),
-        Category(name: "Games", iconName: 'sports_esports'),
-        Category(name: "Friends", iconName: 'people'),
-        Category(name: "Family", iconName: 'home'),
-        Category(name: "Education", iconName: 'school'),
-        Category(name: "Salary", iconName: 'attach_money'),
-      ];
-      _saveCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        _loadDefaultCategories();
+        notifyListeners();
+        return;
+      }
+
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('settings')
+          .doc('categories')
+          .get();
+
+      if (doc.exists && doc.data() != null) {
+        final List<dynamic>? categoriesData =
+            doc.data()?['categories'] as List<dynamic>?;
+        if (categoriesData != null) {
+          _categories = categoriesData
+              .map((item) => Category.fromJson(item as Map<String, dynamic>))
+              .toList();
+        }
+      } else {
+        _loadDefaultCategories();
+      }
+    } catch (e) {
+      debugPrint('Error loading categories: $e');
+      _loadDefaultCategories();
     }
+
+    notifyListeners();
+  }
+
+  void _loadDefaultCategories() {
+    _categories = [
+      Category(name: "Food", iconName: 'fastfood'),
+      Category(name: "Shopping", iconName: 'shopping_bag'),
+      Category(name: "Bills", iconName: 'receipt'),
+      Category(name: "Groceries", iconName: 'local_grocery_store'),
+      Category(name: "Games", iconName: 'sports_esports'),
+      Category(name: "Friends", iconName: 'people'),
+      Category(name: "Family", iconName: 'home'),
+      Category(name: "Education", iconName: 'school'),
+      Category(name: "Salary", iconName: 'attach_money'),
+    ];
+    _saveCategories();
   }
 
   List<Category> get categories => _categories;
 
-  Future<void> _loadCategories() async {
-    final String? categoriesJson = _prefs.getString(_categoriesKey);
-    if (categoriesJson != null) {
-      final List<dynamic> decoded = jsonDecode(categoriesJson);
-      _categories = decoded.map((item) => Category.fromJson(item)).toList();
-      notifyListeners();
-    }
-  }
-
   Future<void> _saveCategories() async {
-    final String encoded =
-        jsonEncode(_categories.map((c) => c.toJson()).toList());
-    await _prefs.setString(_categoriesKey, encoded);
-    notifyListeners();
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        debugPrint('No user logged in, skipping category save');
+        return;
+      }
+
+      final categoriesData = _categories.map((c) => c.toJson()).toList();
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('settings')
+          .doc('categories')
+          .set({'categories': categoriesData}, SetOptions(merge: true));
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error saving categories: $e');
+    }
   }
 
   Future<void> addCategory(String name, String iconName) async {
@@ -108,4 +149,5 @@ class CategoryProvider with ChangeNotifier {
     );
     return category.iconName;
   }
+
 }

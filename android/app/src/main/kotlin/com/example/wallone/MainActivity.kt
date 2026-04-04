@@ -1,4 +1,4 @@
-package com.example.wallone
+package com.aishwar.wallone
 
 import io.flutter.embedding.android.FlutterActivity
 

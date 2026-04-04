@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:wallone/common_widgets/ads/banner_ad_widget.dart';
 import 'package:wallone/common_widgets/usage_card.dart';
 import 'package:wallone/state/budget_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
+import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'package:wallone/common_widgets/budget_card.dart';
 import 'package:wallone/common_widgets/investment_card.dart';
+import 'package:wallone/common_widgets/add_budget_dialog.dart';
 
 class BudgetPage extends StatefulWidget {
   const BudgetPage({super.key});
@@ -45,54 +48,51 @@ class _BudgetPageState extends State<BudgetPage>
   Widget build(BuildContext context) {
     final budgetProvider = Provider.of<BudgetProvider>(context);
     final balanceProvider = Provider.of<BalanceProvider>(context);
+    final userHasPremium = context.read<UserProfileProvider>().isPremium;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     final double progress = (budgetProvider.monthlyIncome > 0)
         ? (balanceProvider.monthlyExpenses / budgetProvider.monthlyIncome)
             .clamp(0.0, 1.0)
         : 0.0;
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Theme.of(context).scaffoldBackgroundColor,
-            Theme.of(context).scaffoldBackgroundColor.withOpacity(0.95),
-          ],
-        ),
-      ),
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 35),
-                _buildMonthlyIncomeCard(
-                    context, budgetProvider, progress, balanceProvider),
-                const SizedBox(height: 55),
-                _buildSectionWithBadge(
-                  "Budget Categories",
-                  "${budgetProvider.budgets.length} Active",
-                  context,
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 16),
+              _buildMonthlyIncomeCard(
+                  context, budgetProvider, progress, balanceProvider),
+              const SizedBox(height: 30),
+              _buildSectionWithBadge(
+                "Budget Categories",
+                "${budgetProvider.budgets.length} Active",
+                context,
+              ),
+              const SizedBox(height: 16),
+              const BudgetOverviewCard(),
+              if (!userHasPremium) ...[
+                const SizedBox(height: 20),
+                const Align(
+                  alignment: Alignment.center,
+                  child: BannerAdWidget(),
                 ),
-                const SizedBox(height: 16),
-                const BudgetOverviewCard(),
-                const SizedBox(height: 40),
-                _buildSectionWithInfoButton(
-                  "Fixed Investments",
-                  context,
-                  onInfoPressed: () => _showInvestmentInfo(context),
-                ),
-                const SizedBox(height: 16),
-                const FixedInvestmentsCard(),
-                const SizedBox(height: 110),
               ],
-            ),
+              const SizedBox(height: 35),
+              _buildSectionWithInfoButton(
+                "Fixed Investments",
+                context,
+                onInfoPressed: () => _showInvestmentInfo(context),
+              ),
+              const SizedBox(height: 16),
+              const FixedInvestmentsCard(),
+              const SizedBox(height: 110),
+            ],
           ),
         ),
       ),
@@ -105,52 +105,66 @@ class _BudgetPageState extends State<BudgetPage>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        Text(
+          title,
+          style: GoogleFonts.outfit(
+            fontSize: screenWidth / 23,
+            color: primaryColor(context),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         Row(
           children: [
             Container(
-              width: 4,
-              height: 24,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 4,
+              ),
               decoration: BoxDecoration(
-                color: primaryColor(context),
-                borderRadius: BorderRadius.circular(2),
+                color: primaryColor(context).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: shadowColor(context).withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Text(
+                badgeText,
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.w600,
+                  color: primaryColor(context),
+                ),
               ),
             ),
-            const SizedBox(width: 12),
-            Text(
-              title,
-              style: GoogleFonts.outfit(
-                fontSize: screenWidth / 20,
-                fontWeight: FontWeight.bold,
-                color: primaryColor(context),
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 8,
-          ),
-          decoration: BoxDecoration(
-            color: primaryColor(context).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: shadowColor(context).withOpacity(0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+            if (title == "Budget Categories") ...[
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => showAddBudgetDialog(context),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: primaryColor(context),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: shadowColor(context).withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.add,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
               ),
             ],
-          ),
-          child: Text(
-            badgeText,
-            style: GoogleFonts.outfit(
-              fontSize: screenWidth / 25,
-              fontWeight: FontWeight.w600,
-              color: primaryColor(context),
-            ),
-          ),
+          ],
         ),
       ],
     );
@@ -162,38 +176,24 @@ class _BudgetPageState extends State<BudgetPage>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Container(
-              width: 4,
-              height: 24,
-              decoration: BoxDecoration(
-                color: primaryColor(context),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              title,
-              style: GoogleFonts.outfit(
-                fontSize: screenWidth / 20,
-                fontWeight: FontWeight.bold,
-                color: primaryColor(context),
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
+        Text(
+          title,
+          style: GoogleFonts.outfit(
+            fontSize: screenWidth / 23,
+            fontWeight: FontWeight.w500,
+            color: primaryColor(context),
+          ),
         ),
-        IconButton(
-          onPressed: onInfoPressed,
-          icon: Container(
-            padding: const EdgeInsets.all(8),
+        GestureDetector(
+          onTap: onInfoPressed,
+          child: Container(
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: primaryColor(context).withOpacity(0.1),
+              color: boxColor(context),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: shadowColor(context).withOpacity(0.1),
+                  color: shadowColor(context),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -239,7 +239,7 @@ class _BudgetPageState extends State<BudgetPage>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: Colors.deepPurple.shade900.withOpacity(0.3),
@@ -330,10 +330,9 @@ class _BudgetPageState extends State<BudgetPage>
                           Text(
                             "$symbol${budgetProvider.monthlySavings.toStringAsFixed(2)}",
                             style: GoogleFonts.outfit(
-                              fontSize: screenWidth / 14,
+                              fontSize: screenWidth / 16,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
-                              letterSpacing: 0.5,
                             ),
                           ),
                         ],

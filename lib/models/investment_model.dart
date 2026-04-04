@@ -1,4 +1,5 @@
 class InvestmentModel {
+  final String? id; // Optional Firestore document ID
   final String name;
   final double amount;
   final bool isActive;
@@ -6,8 +7,11 @@ class InvestmentModel {
   final DateTime lastDeductionDate;
   final String category;
   final List<double> monthlyDeductions;
+  final bool?
+      isOneTime; // True for one-time savings, null/false for recurring investments
 
   const InvestmentModel({
+    this.id,
     required this.name,
     required this.amount,
     this.isActive = true,
@@ -15,10 +19,12 @@ class InvestmentModel {
     required this.lastDeductionDate,
     this.category = 'Other',
     this.monthlyDeductions = const [],
+    this.isOneTime = false,
   });
 
   // Factory constructor with defaults
   factory InvestmentModel.create({
+    String? id,
     required String name,
     required double amount,
     bool isActive = true,
@@ -26,16 +32,19 @@ class InvestmentModel {
     DateTime? lastDeductionDate,
     String category = 'Other',
     List<double>? monthlyDeductions,
+    bool? isOneTime = false,
   }) {
     final now = DateTime.now();
     return InvestmentModel(
+      id: id,
       name: name,
       amount: amount,
       isActive: isActive,
       startDate: startDate ?? now,
       lastDeductionDate: lastDeductionDate ?? now,
       category: category,
-      monthlyDeductions: monthlyDeductions ?? [amount],
+      monthlyDeductions: monthlyDeductions ?? [],
+      isOneTime: isOneTime,
     );
   }
 
@@ -44,6 +53,7 @@ class InvestmentModel {
       monthlyDeductions.fold(0.0, (sum, amount) => sum + amount);
 
   InvestmentModel copyWith({
+    String? id,
     String? name,
     double? amount,
     bool? isActive,
@@ -51,8 +61,10 @@ class InvestmentModel {
     DateTime? lastDeductionDate,
     String? category,
     List<double>? monthlyDeductions,
+    bool? isOneTime,
   }) {
     return InvestmentModel(
+      id: id ?? this.id,
       name: name ?? this.name,
       amount: amount ?? this.amount,
       isActive: isActive ?? this.isActive,
@@ -60,6 +72,7 @@ class InvestmentModel {
       lastDeductionDate: lastDeductionDate ?? this.lastDeductionDate,
       category: category ?? this.category,
       monthlyDeductions: monthlyDeductions ?? List.from(this.monthlyDeductions),
+      isOneTime: isOneTime ?? this.isOneTime,
     );
   }
 
@@ -89,6 +102,7 @@ class InvestmentModel {
 
   Map<String, dynamic> toMap() {
     return {
+      if (id != null) 'id': id,
       'name': name,
       'amount': amount,
       'isActive': isActive,
@@ -96,49 +110,87 @@ class InvestmentModel {
       'lastDeductionDate': lastDeductionDate.toIso8601String(),
       'category': category,
       'monthlyDeductions': monthlyDeductions,
+      'isOneTime': isOneTime ?? false,
     };
   }
 
   factory InvestmentModel.fromMap(Map<String, dynamic> map) {
+    // Helper function to safely parse dates
+    DateTime parseDate(dynamic value) {
+      if (value == null) return DateTime.now();
+      if (value is DateTime) return value;
+      try {
+        return DateTime.parse(value.toString());
+      } catch (e) {
+        return DateTime.now();
+      }
+    }
+
+    // Helper function to safely parse doubles
+    double parseDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is num) return value.toDouble();
+      try {
+        return double.parse(value.toString());
+      } catch (e) {
+        return 0.0;
+      }
+    }
+
+    // Helper function to safely parse list of doubles
+    List<double> parseDoubleList(dynamic value) {
+      if (value == null) return [];
+      if (value is List) {
+        return value.map((e) => parseDouble(e)).toList();
+      }
+      return [];
+    }
+
     return InvestmentModel(
+      id: map['id'] as String?,
       name: map['name'] ?? '',
-      amount: (map['amount'] ?? 0).toDouble(),
+      amount: parseDouble(map['amount']),
       isActive: map['isActive'] ?? true,
-      startDate:
-          DateTime.parse(map['startDate'] ?? DateTime.now().toIso8601String()),
-      lastDeductionDate: DateTime.parse(
-          map['lastDeductionDate'] ?? DateTime.now().toIso8601String()),
+      startDate: parseDate(map['startDate']),
+      lastDeductionDate: parseDate(map['lastDeductionDate']),
       category: map['category'] ?? 'Other',
-      monthlyDeductions: List<double>.from(map['monthlyDeductions'] ?? []),
+      monthlyDeductions: parseDoubleList(map['monthlyDeductions']),
+      isOneTime: map['isOneTime'] as bool? ?? false,
     );
   }
 
   @override
   String toString() {
-    return 'InvestmentModel(name: $name, amount: $amount, isActive: $isActive, startDate: $startDate, lastDeductionDate: $lastDeductionDate, category: $category, monthlyDeductions: $monthlyDeductions)';
+    return 'InvestmentModel(id: $id, name: $name, amount: $amount, isActive: $isActive, startDate: $startDate, lastDeductionDate: $lastDeductionDate, category: $category, monthlyDeductions: $monthlyDeductions)';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is InvestmentModel &&
+        other.id == id &&
         other.name == name &&
         other.amount == amount &&
         other.isActive == isActive &&
         other.startDate == startDate &&
         other.lastDeductionDate == lastDeductionDate &&
         other.category == category &&
+        other.isOneTime == isOneTime &&
         _listEquals(other.monthlyDeductions, monthlyDeductions);
   }
 
   @override
   int get hashCode {
-    return name.hashCode ^
+    return id.hashCode ^
+        name.hashCode ^
         amount.hashCode ^
         isActive.hashCode ^
         startDate.hashCode ^
         lastDeductionDate.hashCode ^
         category.hashCode ^
+        isOneTime.hashCode ^
         monthlyDeductions.hashCode;
   }
 

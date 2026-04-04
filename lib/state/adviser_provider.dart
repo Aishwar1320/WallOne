@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:flutter/scheduler.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/investment_provider.dart';
 import 'package:wallone/state/budget_provider.dart';
 import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/state/category_provider.dart';
-import 'package:wallone/utils/services/gemini_service.dart';
+import 'package:wallone/utils/services/rule_based_advisor.dart';
 
 /// Enhanced provider for managing AI financial advisor functionality with smart insight management
 class AIAdvisorProvider with ChangeNotifier {
-  final SharedPreferences _prefs;
-  GeminiFinancialAdvisor? _advisor;
+  /// Underlying advisor instance (rule-based). Gemini support has been removed
+  /// and the app uses the local rule-based advisor implementation.
+  FinancialAdvisor? _advisor;
 
   List<FinancialInsight> _insights = [];
   bool _isLoading = false;
-  bool _isAIEnabled = true;
+  bool _isAIEnabled = false;
   String? _error;
 
   // Auto-pilot settings
@@ -34,15 +36,31 @@ class AIAdvisorProvider with ChangeNotifier {
   final Set<String> _dismissedInsightIds = {};
 
   static const String _tag = 'AIAdvisorProvider';
-  static const String _insightsKey = 'ai_insights';
-  static const String _settingsKey = 'ai_settings';
-  static const String _executedInsightsKey = 'executed_insights';
-  static const String _dismissedInsightsKey = 'dismissed_insights';
 
-  AIAdvisorProvider(this._prefs) {
-    _loadSettings();
-    _loadCachedInsights();
-    _loadExecutionHistory();
+  AIAdvisorProvider() {
+    // Run async initialization without blocking the constructor.
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      await _loadSettings();
+      await _loadCachedInsights();
+      await _loadExecutionHistory();
+    } catch (e, st) {
+      _logError('Initialization failed', e, st);
+    }
+  }
+
+  @override
+  void dispose() {
+    // Stop any background AI scheduler when provider is disposed.
+    try {
+      AIScheduler.stop();
+    } catch (e) {
+      _logError('Error stopping AIScheduler', e, null);
+    }
+    super.dispose();
   }
 
   // Enhanced getters
@@ -63,9 +81,15 @@ class AIAdvisorProvider with ChangeNotifier {
   int get analysisFrequencyHours => _analysisFrequencyHours;
   bool get hasAdvisor => _advisor != null;
 
-  /// Initialize AI advisor with API key and providers
+  /// Human-friendly advisor type (always 'rule-based' after Gemini removal)
+  String get advisorType {
+    if (_advisor == null) return 'none';
+    return 'rule-based';
+  }
+
+  /// Initialize AI advisor and attach required providers.
+  /// This app now uses the local rule-based advisor only.
   Future<void> initializeAdvisor({
-    required String apiKey,
     required BalanceProvider balanceProvider,
     required InvestmentProvider investmentProvider,
     required BudgetProvider budgetProvider,
@@ -75,8 +99,9 @@ class AIAdvisorProvider with ChangeNotifier {
     try {
       _log('Initializing AI advisor...');
 
-      _advisor = GeminiFinancialAdvisor(
-        apiKey: apiKey,
+      // Use rule-based advisor (Gemini removed)
+      _log('Using RuleBasedAdvisor (gemini removed)');
+      _advisor = RuleBasedAdvisor(
         balanceProvider: balanceProvider,
         investmentProvider: investmentProvider,
         budgetProvider: budgetProvider,
@@ -86,21 +111,42 @@ class AIAdvisorProvider with ChangeNotifier {
 
       _error = null;
       _log('AI advisor initialized successfully');
-      notifyListeners();
+      _safeNotify();
 
-      // Run initial analysis if enabled
-      if (_isAIEnabled) {
+      // Run initial analysis if enabled AND user is premium
+      if (_isAIEnabled && await _isPremiumUser()) {
         await refreshInsights();
       }
     } catch (e, stackTrace) {
       _logError('Failed to initialize AI advisor', e, stackTrace);
       _error = 'Failed to initialize AI advisor: $e';
-      notifyListeners();
+      _safeNotify();
+    }
+  }
+
+  /// Check if current user is premium
+  Future<bool> _isPremiumUser() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return false;
+
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      return doc.data()?['isPremium'] ?? false;
+    } catch (e) {
+      _logError('Error checking premium status', e, null);
+      return false;
     }
   }
 
   /// Generate fresh insights from AI with smart filtering
   Future<void> refreshInsights({bool forceRefresh = false}) async {
+    // Check premium status first
+    if (!await _isPremiumUser()) {
+      _log('AI insights refresh blocked - user is not premium');
+      return;
+    }
+
     if (_advisor == null || !_isAIEnabled) {
       _log('AI advisor not available or disabled');
       return;
@@ -109,7 +155,7 @@ class AIAdvisorProvider with ChangeNotifier {
     try {
       _isLoading = true;
       _error = null;
-      notifyListeners();
+      _safeNotify();
 
       _log('Refreshing AI insights...');
 
@@ -129,7 +175,7 @@ class AIAdvisorProvider with ChangeNotifier {
       _error = 'Failed to get AI insights: $e';
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _safeNotify();
     }
   }
 
@@ -140,6 +186,12 @@ class AIAdvisorProvider with ChangeNotifier {
     String? customCategory,
     double? customAmount,
   }) async {
+    // Check premium status first
+    if (!await _isPremiumUser()) {
+      _log('Insight execution blocked - user is not premium');
+      return false;
+    }
+
     if (_advisor == null) {
       _log('AI advisor not available');
       return false;
@@ -169,9 +221,20 @@ class AIAdvisorProvider with ChangeNotifier {
           );
         }
 
-        // Trigger refresh to get new insights after execution
-        await refreshInsights(forceRefresh: true);
-        notifyListeners();
+        // ✅ Cache the updated insights
+        await _cacheInsights();
+
+        // ✅ Notify listeners FIRST so UI updates immediately
+        _safeNotify();
+
+        // ✅ Then refresh in background with a delay to allow provider sync
+        Future.delayed(const Duration(milliseconds: 800), () async {
+          try {
+            await refreshInsights(forceRefresh: true);
+          } catch (e) {
+            _logError('Background refresh failed', e, null);
+          }
+        });
       } else {
         _log('Failed to execute insight: $insightId');
       }
@@ -193,7 +256,7 @@ class AIAdvisorProvider with ChangeNotifier {
     _saveDismissedInsights();
 
     _log('Dismissed insight: $insightId');
-    notifyListeners();
+    _safeNotify();
   }
 
   /// Restore a dismissed insight
@@ -202,7 +265,80 @@ class AIAdvisorProvider with ChangeNotifier {
     _saveDismissedInsights();
 
     _log('Restored insight: $insightId');
-    notifyListeners();
+    _safeNotify();
+  }
+
+  void reset() {
+    _isAIEnabled = false;
+    _autoBudgetOptimization = false;
+    _autoInvestmentSuggestions = false;
+    _autoExpenseCategorization = false; // ✅ Added
+    _smartNotifications = false; // ✅ Added
+    _safeNotify(); // ✅ Changed from notifyListeners()
+  }
+
+  Future<void> loadUserSettings(bool isPremium) async {
+    if (!isPremium) {
+      // Force OFF for free users and disable all AI features
+      _isAIEnabled = false;
+      _autoBudgetOptimization = false;
+      _autoInvestmentSuggestions = false;
+      _autoExpenseCategorization = false;
+      _smartNotifications = false;
+      await _saveSettings();
+      _safeNotify();
+      return;
+    }
+
+    // load settings normally for premium user
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('aiAdvisor')
+          .doc('settings')
+          .get();
+
+      if (doc.exists) {
+        final settings = doc.data();
+        _isAIEnabled = settings?['isAIEnabled'] ?? false;
+        _autoBudgetOptimization = settings?['autoBudgetOptimization'] ?? false;
+        _autoInvestmentSuggestions =
+            settings?['autoInvestmentSuggestions'] ?? false;
+        _autoExpenseCategorization =
+            settings?['autoExpenseCategorization'] ?? true;
+        _smartNotifications = settings?['smartNotifications'] ?? true;
+        _analysisFrequencyHours = settings?['analysisFrequencyHours'] ?? 24;
+
+        if (settings?['lastAnalysis'] != null) {
+          _lastAnalysis = (settings?['lastAnalysis'] as Timestamp?)?.toDate();
+        }
+
+        _log('User settings loaded successfully (isPremium: true)');
+      } else {
+        // First time premium user - settings don't exist yet
+        // Keep defaults but ensure AI is disabled until user explicitly enables
+        _log('No existing settings found for premium user - using defaults');
+      }
+      _safeNotify();
+    } catch (e, st) {
+      _logError('Error loading user settings', e, st);
+    }
+  }
+
+  Future<void> onPremiumStatusChanged(bool isPremium) async {
+    _log('Premium status changed to: $isPremium');
+
+    // Reload settings based on new premium status
+    await loadUserSettings(isPremium);
+
+    // If user became premium and AI is enabled, refresh insights
+    if (isPremium && _isAIEnabled && _advisor != null) {
+      await refreshInsights(forceRefresh: true);
+    }
   }
 
   /// Get insight execution preview (what will happen when executed)
@@ -255,6 +391,12 @@ class AIAdvisorProvider with ChangeNotifier {
 
   /// Auto-optimize budgets using AI recommendations
   Future<bool> optimizeBudgetsAutomatically() async {
+    // Check premium status first
+    if (!await _isPremiumUser()) {
+      _log('Budget optimization blocked - user is not premium');
+      return false;
+    }
+
     if (_advisor == null || !_autoBudgetOptimization) {
       return false;
     }
@@ -282,6 +424,11 @@ class AIAdvisorProvider with ChangeNotifier {
       return 'Others';
     }
 
+    // Check premium status
+    if (!await _isPremiumUser()) {
+      return 'Others';
+    }
+
     try {
       return await _advisor!.suggestCategory(description, amount);
     } catch (e, stackTrace) {
@@ -292,6 +439,11 @@ class AIAdvisorProvider with ChangeNotifier {
 
   /// Get spending recommendations
   Future<Map<String, dynamic>> getSpendingRecommendations() async {
+    // Check premium status first
+    if (!await _isPremiumUser()) {
+      return {};
+    }
+
     if (_advisor == null) {
       return {};
     }
@@ -320,44 +472,88 @@ class AIAdvisorProvider with ChangeNotifier {
       return;
     }
 
+    // Check premium status
+    if (!await _isPremiumUser()) {
+      return;
+    }
+
     await refreshInsights();
+    Future.microtask(() {
+      _safeNotify();
+    });
   }
 
-  // Enhanced settings management
-  void setAIEnabled(bool enabled) {
-    _isAIEnabled = enabled;
-    _saveSettings();
-    notifyListeners();
+  Future<void> setAIEnabled(bool enabled) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final isPremium = doc.data()?['isPremium'] ?? false;
+
+      if (!isPremium && enabled) {
+        // Block non-premium users from enabling AI
+        _log('AI enable blocked - user is not premium');
+        return;
+      }
+
+      _isAIEnabled = enabled;
+      await _saveSettings();
+      _safeNotify();
+    } catch (e, st) {
+      _logError('Error setting AI enabled state', e, st);
+    }
   }
 
-  void setAutoBudgetOptimization(bool enabled) {
+  Future<void> setAutoBudgetOptimization(bool enabled) async {
+    if (!await _isPremiumUser() && enabled) {
+      _log('Auto budget optimization blocked - user is not premium');
+      return;
+    }
+
     _autoBudgetOptimization = enabled;
-    _saveSettings();
-    notifyListeners();
+    await _saveSettings();
+    _safeNotify();
   }
 
-  void setAutoInvestmentSuggestions(bool enabled) {
+  Future<void> setAutoInvestmentSuggestions(bool enabled) async {
+    if (!await _isPremiumUser() && enabled) {
+      _log('Auto investment suggestions blocked - user is not premium');
+      return;
+    }
+
     _autoInvestmentSuggestions = enabled;
-    _saveSettings();
-    notifyListeners();
+    await _saveSettings();
+    _safeNotify();
   }
 
-  void setAutoExpenseCategorization(bool enabled) {
+  Future<void> setAutoExpenseCategorization(bool enabled) async {
+    if (!await _isPremiumUser() && enabled) {
+      _log('Auto expense categorization blocked - user is not premium');
+      return;
+    }
+
     _autoExpenseCategorization = enabled;
-    _saveSettings();
-    notifyListeners();
+    await _saveSettings();
+    _safeNotify();
   }
 
-  void setSmartNotifications(bool enabled) {
+  Future<void> setSmartNotifications(bool enabled) async {
+    if (!await _isPremiumUser() && enabled) {
+      _log('Smart notifications blocked - user is not premium');
+      return;
+    }
+
     _smartNotifications = enabled;
-    _saveSettings();
-    notifyListeners();
+    await _saveSettings();
+    _safeNotify();
   }
 
-  void setAnalysisFrequency(int hours) {
+  Future<void> setAnalysisFrequency(int hours) async {
     _analysisFrequencyHours = hours;
-    _saveSettings();
-    notifyListeners();
+    await _saveSettings();
+    _safeNotify();
   }
 
   /// Get insights by priority
@@ -476,6 +672,13 @@ class AIAdvisorProvider with ChangeNotifier {
 
   /// Run comprehensive AI analysis and automation
   Future<void> runFullAnalysis() async {
+    // Check premium status first
+    final isPremium = await _isPremiumUser();
+    if (!isPremium) {
+      _log('Full analysis blocked — user is not Premium');
+      return;
+    }
+
     if (_advisor == null || !_isAIEnabled) {
       _log('AI advisor not available or disabled');
       return;
@@ -514,36 +717,57 @@ class AIAdvisorProvider with ChangeNotifier {
     }
   }
 
-  /// Load settings from SharedPreferences
+  /// Load settings from Firestore
+  /// Load settings from Firestore (called during init)
+  /// NOTE: This should be followed by loadUserSettings() which handles premium logic
   Future<void> _loadSettings() async {
     try {
-      final settingsJson = _prefs.getString(_settingsKey);
-      if (settingsJson != null) {
-        final settings = jsonDecode(settingsJson);
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        _log('No user logged in, skipping settings load');
+        return;
+      }
 
-        _isAIEnabled = settings['isAIEnabled'] ?? true;
-        _autoBudgetOptimization = settings['autoBudgetOptimization'] ?? false;
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('aiAdvisor')
+          .doc('settings')
+          .get();
+
+      if (doc.exists) {
+        final settings = doc.data();
+
+        // Load all settings (premium check happens in loadUserSettings)
+        _isAIEnabled = settings?['isAIEnabled'] ?? false;
+        _autoBudgetOptimization = settings?['autoBudgetOptimization'] ?? false;
         _autoInvestmentSuggestions =
-            settings['autoInvestmentSuggestions'] ?? false;
+            settings?['autoInvestmentSuggestions'] ?? false;
         _autoExpenseCategorization =
-            settings['autoExpenseCategorization'] ?? true;
-        _smartNotifications = settings['smartNotifications'] ?? true;
-        _analysisFrequencyHours = settings['analysisFrequencyHours'] ?? 24;
+            settings?['autoExpenseCategorization'] ?? true;
+        _smartNotifications = settings?['smartNotifications'] ?? true;
+        _analysisFrequencyHours = settings?['analysisFrequencyHours'] ?? 24;
 
-        if (settings['lastAnalysis'] != null) {
-          _lastAnalysis = DateTime.parse(settings['lastAnalysis']);
+        if (settings?['lastAnalysis'] != null) {
+          _lastAnalysis = (settings?['lastAnalysis'] as Timestamp?)?.toDate();
         }
 
-        _log('Settings loaded');
+        _log('Settings loaded from Firestore during init');
       }
     } catch (e, stackTrace) {
       _logError('Failed to load settings', e, stackTrace);
     }
   }
 
-  /// Save settings to SharedPreferences
+  /// Save settings to Firestore
   Future<void> _saveSettings() async {
     try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        _log('No user logged in, skipping settings save');
+        return;
+      }
+
       final settings = {
         'isAIEnabled': _isAIEnabled,
         'autoBudgetOptimization': _autoBudgetOptimization,
@@ -551,27 +775,47 @@ class AIAdvisorProvider with ChangeNotifier {
         'autoExpenseCategorization': _autoExpenseCategorization,
         'smartNotifications': _smartNotifications,
         'analysisFrequencyHours': _analysisFrequencyHours,
-        'lastAnalysis': _lastAnalysis?.toIso8601String(),
+        'lastAnalysis': _lastAnalysis,
       };
 
-      await _prefs.setString(_settingsKey, jsonEncode(settings));
-      _log('Settings saved');
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('aiAdvisor')
+          .doc('settings')
+          .set(settings, SetOptions(merge: true));
+      _log('Settings saved to Firestore');
     } catch (e, stackTrace) {
       _logError('Failed to save settings', e, stackTrace);
     }
   }
 
-  /// Load cached insights from SharedPreferences
+  /// Load cached insights from Firestore
   Future<void> _loadCachedInsights() async {
     try {
-      final insightsJson = _prefs.getString(_insightsKey);
-      if (insightsJson != null) {
-        final List<dynamic> insightsData = jsonDecode(insightsJson);
-        _insights = insightsData
-            .map((data) => FinancialInsight.fromJson(data))
-            .toList();
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        _log('No user logged in, skipping insights load');
+        return;
+      }
 
-        _log('Loaded ${_insights.length} cached insights');
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('aiAdvisor')
+          .doc('insights')
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data();
+        final List<dynamic>? insightsData = data?['insights'];
+        if (insightsData != null) {
+          _insights = insightsData
+              .map((data) => FinancialInsight.fromJson(data))
+              .toList();
+
+          _log('Loaded ${_insights.length} insights from Firestore');
+        }
       }
     } catch (e, stackTrace) {
       _logError('Failed to load cached insights', e, stackTrace);
@@ -579,32 +823,57 @@ class AIAdvisorProvider with ChangeNotifier {
     }
   }
 
-  /// Cache insights to SharedPreferences
+  /// Cache insights to Firestore
   Future<void> _cacheInsights() async {
     try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        _log('No user logged in, skipping insights cache');
+        return;
+      }
+
       final insightsData =
           _insights.map((insight) => insight.toJson()).toList();
 
-      await _prefs.setString(_insightsKey, jsonEncode(insightsData));
-      _log('Cached ${_insights.length} insights');
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('aiAdvisor')
+          .doc('insights')
+          .set({'insights': insightsData}, SetOptions(merge: true));
+      _log('Cached ${_insights.length} insights to Firestore');
     } catch (e, stackTrace) {
       _logError('Failed to cache insights', e, stackTrace);
     }
   }
 
-  /// Load execution history
+  /// Load execution history from Firestore
   Future<void> _loadExecutionHistory() async {
     try {
-      final executedJson = _prefs.getString(_executedInsightsKey);
-      if (executedJson != null) {
-        final List<dynamic> executedIds = jsonDecode(executedJson);
-        _executedInsightIds.addAll(executedIds.cast<String>());
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        _log('No user logged in, skipping execution history load');
+        return;
       }
 
-      final dismissedJson = _prefs.getString(_dismissedInsightsKey);
-      if (dismissedJson != null) {
-        final List<dynamic> dismissedIds = jsonDecode(dismissedJson);
-        _dismissedInsightIds.addAll(dismissedIds.cast<String>());
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('aiAdvisor')
+          .doc('executionHistory')
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data();
+        final List<dynamic>? executedIds = data?['executed'];
+        if (executedIds != null) {
+          _executedInsightIds.addAll(executedIds.cast<String>());
+        }
+
+        final List<dynamic>? dismissedIds = data?['dismissed'];
+        if (dismissedIds != null) {
+          _dismissedInsightIds.addAll(dismissedIds.cast<String>());
+        }
       }
 
       _log(
@@ -614,34 +883,70 @@ class AIAdvisorProvider with ChangeNotifier {
     }
   }
 
-  /// Save execution history
+  /// Save execution history to Firestore
   Future<void> _saveExecutionHistory() async {
     try {
-      await _prefs.setString(
-          _executedInsightsKey, jsonEncode(_executedInsightIds.toList()));
-      _log('Saved execution history');
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        _log('No user logged in, skipping execution history save');
+        return;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('aiAdvisor')
+          .doc('executionHistory')
+          .set({
+        'executed': _executedInsightIds.toList(),
+        'dismissed': _dismissedInsightIds.toList(),
+      }, SetOptions(merge: true));
+      _log('Saved execution history to Firestore');
     } catch (e, stackTrace) {
       _logError('Failed to save execution history', e, stackTrace);
     }
   }
 
-  /// Save dismissed insights
+  /// Save dismissed insights to Firestore
   Future<void> _saveDismissedInsights() async {
     try {
-      await _prefs.setString(
-          _dismissedInsightsKey, jsonEncode(_dismissedInsightIds.toList()));
-      _log('Saved dismissed insights');
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        _log('No user logged in, skipping dismissed insights save');
+        return;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('aiAdvisor')
+          .doc('executionHistory')
+          .set({'dismissed': _dismissedInsightIds.toList()},
+              SetOptions(merge: true));
+      _log('Saved dismissed insights to Firestore');
     } catch (e, stackTrace) {
       _logError('Failed to save dismissed insights', e, stackTrace);
     }
   }
 
-  /// Clear all cached data
+  /// Clear all cached data from Firestore
   Future<void> clearCache() async {
     try {
-      await _prefs.remove(_insightsKey);
-      await _prefs.remove(_executedInsightsKey);
-      await _prefs.remove(_dismissedInsightsKey);
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('aiAdvisor')
+            .doc('insights')
+            .delete();
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('aiAdvisor')
+            .doc('executionHistory')
+            .delete();
+      }
 
       _insights.clear();
       _executedInsightIds.clear();
@@ -650,8 +955,8 @@ class AIAdvisorProvider with ChangeNotifier {
 
       await _saveSettings();
 
-      notifyListeners();
-      _log('Cache cleared');
+      _safeNotify();
+      _log('Cache cleared from Firestore');
     } catch (e, stackTrace) {
       _logError('Failed to clear cache', e, stackTrace);
     }
@@ -680,6 +985,32 @@ class AIAdvisorProvider with ChangeNotifier {
     debugPrint('Error details: $error');
     if (stackTrace != null) {
       debugPrint('Stack trace: $stackTrace');
+    }
+  }
+
+  /// Safely notify listeners. If called during the build phase this will
+  /// schedule a post-frame callback to avoid calling `notifyListeners()`
+  /// synchronously and triggering "setState() or markNeedsBuild() called during build".
+  bool _notifyScheduled = false;
+
+  void _safeNotify() {
+    // Coalesce repeated notifications into a single post-frame callback.
+    if (_notifyScheduled) return;
+    _notifyScheduled = true;
+
+    try {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _notifyScheduled = false;
+        try {
+          notifyListeners();
+        } catch (_) {}
+      });
+    } catch (_) {
+      // Fallback: try notifying synchronously if scheduling fails.
+      _notifyScheduled = false;
+      try {
+        notifyListeners();
+      } catch (_) {}
     }
   }
 }

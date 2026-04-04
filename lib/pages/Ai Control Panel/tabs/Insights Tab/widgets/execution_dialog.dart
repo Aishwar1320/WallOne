@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:wallone/common_widgets/custom_text_field.dart';
 import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/utils/constants.dart';
-import 'package:wallone/utils/services/gemini_service.dart';
+import 'package:wallone/utils/services/rule_based_advisor.dart';
 
 /// Custom execution dialog with your app's theme
 class CustomInsightExecutionDialog extends StatefulWidget {

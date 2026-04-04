@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:wallone/pages/Ai%20Control%20Panel/tabs/Insights%20Tab/widgets/placeholders.dart';
 import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/utils/constants.dart';
-import 'package:wallone/utils/services/gemini_service.dart';
+import 'package:wallone/utils/services/rule_based_advisor.dart';
 
 /// Minimal insight display widget - single container with key information
 class MinimalInsightDisplay extends StatelessWidget {
@@ -53,7 +53,7 @@ class MinimalInsightDisplay extends StatelessWidget {
 
         return Card(
           color: boxColor(context),
-          elevation: 6,
+          elevation: 3,
           shadowColor: shadowColor(context),
           child: InkWell(
             onTap: onTap,
@@ -413,6 +413,8 @@ class MinimalInsightDisplay extends StatelessWidget {
         return Icons.trending_up;
       case InsightType.expense:
         return Icons.money_off;
+      case InsightType.income:
+        return Icons.attach_money;
       case InsightType.alert:
         return Icons.warning;
       case InsightType.general:
@@ -591,6 +593,8 @@ class EnhancedInsightsTab extends StatelessWidget {
         return Icons.trending_up;
       case InsightType.expense:
         return Icons.money_off;
+      case InsightType.income:
+        return Icons.attach_money;
       case InsightType.alert:
         return Icons.warning;
       case InsightType.general:
@@ -647,7 +651,7 @@ class _SetupRequiredWidget extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Configure your Gemini API key to get started',
+            'Rule-based advisor is active — no external API key required',
             style: GoogleFonts.outfit(
               fontWeight: FontWeight.bold,
               color: budgetTextLight(context),
