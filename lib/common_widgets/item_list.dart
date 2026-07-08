@@ -100,7 +100,7 @@ class _ItemListWidgetState extends State<ItemListWidget> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: shadowColor(context).withOpacity(0.1),
+              color: shadowColor(context).withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -173,7 +173,7 @@ class _ItemListWidgetState extends State<ItemListWidget> {
       builder: (dialogContext) => _DeleteDialog(context: context),
     );
 
-    if (confirm == true && mounted) {
+    if (confirm == true && context.mounted) {
       context.read<ListProvider>().removeTransaction(transaction.id);
     }
   }
@@ -187,7 +187,7 @@ class _ItemListWidgetState extends State<ItemListWidget> {
       ),
     );
 
-    if (updatedTransaction != null && mounted) {
+    if (updatedTransaction != null && context.mounted) {
       context.read<ListProvider>().editTransaction(updatedTransaction);
     }
   }
@@ -286,7 +286,7 @@ class _TransactionTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(15),
             boxShadow: [
               BoxShadow(
-                color: shadowColor(context).withOpacity(0.1),
+                color: shadowColor(context).withValues(alpha: 0.1),
                 blurRadius: 3,
                 offset: const Offset(0, 2),
               ),
@@ -387,3 +387,4 @@ class _TransactionInfo extends StatelessWidget {
     );
   }
 }
+

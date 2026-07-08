@@ -541,10 +541,10 @@ class InvestmentProvider with ChangeNotifier {
   }
 
   void updateLastMonthTotal() {
-    lastMonthTotal = investments.fold(0.0, (sum, inv) {
+    lastMonthTotal = investments.fold(0.0, (acc, inv) {
       final monthsSinceStart =
           DateTime.now().difference(inv.startDate).inDays / 30;
-      return monthsSinceStart >= 1 ? sum + inv.amount : sum;
+      return monthsSinceStart >= 1 ? acc + inv.amount : acc;
     });
     notifyListeners();
   }
@@ -1067,12 +1067,12 @@ class InvestmentProvider with ChangeNotifier {
       final allRecurring =
           _investments.where((i) => !(i.isOneTime ?? false)).toList();
       final expectedAmt =
-          allRecurring.fold(0.0, (sum, inv) => sum + inv.amount);
+          allRecurring.fold(0.0, (acc, inv) => acc + inv.amount);
 
       // Only active recurring investments — what WILL actually be invested
       final activeInvestments = allRecurring.where((i) => i.isActive).toList();
       final actualAmt =
-          activeInvestments.fold(0.0, (sum, inv) => sum + inv.amount);
+          activeInvestments.fold(0.0, (acc, inv) => acc + inv.amount);
 
       // Update lastMonthTotal for backward compat
       lastMonthTotal = expectedAmt;

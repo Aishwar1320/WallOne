@@ -22,19 +22,12 @@ class DesignLayout extends StatefulWidget {
   const DesignLayout({super.key});
 
   @override
-  _DesignLayoutState createState() => _DesignLayoutState();
+  State<DesignLayout> createState() => _DesignLayoutState();
 }
 
 class _DesignLayoutState extends State<DesignLayout> {
   int _selectedIndex = 0;
   bool _showAppBarBalance = false;
-  @override
-  void initState() {
-    super.initState();
-    // No local SharedPreferences reads — user profile data comes from
-    // UserProfileProvider via Provider and is accessed in build().
-  }
-
   // List of pages to display based on the selected index
   List<Widget> get _pages => [
         DashboardPage(
@@ -64,13 +57,13 @@ class _DesignLayoutState extends State<DesignLayout> {
 
   @override
   Widget build(BuildContext context) {
-    final code = context.read<BalanceProvider>().currencyCode;
-    final symbol = NumberFormat.simpleCurrency(name: code).currencySymbol;
-    final balanceProvider = Provider.of<BalanceProvider>(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final profile = context.watch<UserProfileProvider>();
     final profileName = profile.userName ?? 'Guest User';
     final profileImagePath = profile.coverImagePath;
+    
+    final currencyCode = context.watch<BalanceProvider>().currencyCode;
+    final symbol = NumberFormat.simpleCurrency(name: currencyCode).currencySymbol;
 
     return Scaffold(
       // Drawer
@@ -207,6 +200,7 @@ class _DesignLayoutState extends State<DesignLayout> {
                   }
                 } catch (e) {
                   // Optional: show error
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text("Failed to logout: $e")),
                   );
@@ -232,67 +226,10 @@ class _DesignLayoutState extends State<DesignLayout> {
         backgroundColor: mainColor(context),
         centerTitle: true,
         scrolledUnderElevation: 0,
-        title: !_showAppBarBalance && _selectedIndex == 0
-            ? Text(
-                "Wall One",
-                style: GoogleFonts.outfit(
-                  color: purpleColors(context),
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              )
-            : Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: (_selectedIndex != 0 || _showAppBarBalance)
-                    ? Hero(
-                        tag: 'balanceHero',
-                        child: Material(
-                          color: Colors.transparent,
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 350),
-                            transitionBuilder: (child, anim) {
-                              final offsetAnim = anim.drive(
-                                Tween<Offset>(
-                                        begin: const Offset(0, -0.18),
-                                        end: Offset.zero)
-                                    .chain(CurveTween(curve: Curves.easeOut)),
-                              );
-                              return SlideTransition(
-                                position: offsetAnim,
-                                child: FadeTransition(
-                                  opacity: anim,
-                                  child: child,
-                                ),
-                              );
-                            },
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  symbol +
-                                      balanceProvider.totalBalance.toString(),
-                                  key: ValueKey(balanceProvider.totalBalance),
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 20,
-                                    color: primaryColor(context),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  "Total Balance",
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 13,
-                                    color: purpleColors(context),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
+        title: _AppBarBalanceTitle(
+          selectedIndex: _selectedIndex,
+          showAppBarBalance: _showAppBarBalance,
+        ),
         actions: [
           if (_selectedIndex == 4)
             Consumer<AIAdvisorProvider>(
@@ -401,7 +338,6 @@ class _DesignLayoutState extends State<DesignLayout> {
                       ),
                     ),
                     IconButton(
-                      // onPressed: () => showCustomSnackBar(context),
                       onPressed: () => _onItemTapped(3),
                       icon: Icon(
                         Icons.analytics_outlined,
@@ -411,7 +347,6 @@ class _DesignLayoutState extends State<DesignLayout> {
                       ),
                     ),
                     IconButton(
-                      // onPressed: () => showCustomSnackBar(context),
                       onPressed: () => _onItemTapped(4),
                       icon: Icon(
                         Icons.bolt,
@@ -426,6 +361,89 @@ class _DesignLayoutState extends State<DesignLayout> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A dedicated widget for the AppBar title that shows either the app name
+/// or the current balance. Using [context.select] means only this widget
+/// rebuilds when the balance changes — the rest of the Scaffold is untouched.
+class _AppBarBalanceTitle extends StatelessWidget {
+  final int selectedIndex;
+  final bool showAppBarBalance;
+
+  const _AppBarBalanceTitle({
+    required this.selectedIndex,
+    required this.showAppBarBalance,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final showBalance = showAppBarBalance || selectedIndex != 0;
+
+    if (!showBalance) {
+      return Text(
+        'Wall One',
+        style: GoogleFonts.outfit(
+          color: purpleColors(context),
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+    }
+
+    final totalBalance =
+        context.select<BalanceProvider, double>((p) => p.totalBalance);
+    final currencyCode =
+        context.select<BalanceProvider, String>((p) => p.currencyCode);
+    final symbol =
+        NumberFormat.simpleCurrency(name: currencyCode).currencySymbol;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: Hero(
+        tag: 'balanceHero',
+        child: Material(
+          color: Colors.transparent,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 350),
+            transitionBuilder: (child, anim) {
+              final offsetAnim = anim.drive(
+                Tween<Offset>(
+                  begin: const Offset(0, -0.18),
+                  end: Offset.zero,
+                ).chain(CurveTween(curve: Curves.easeOut)),
+              );
+              return SlideTransition(
+                position: offsetAnim,
+                child: FadeTransition(opacity: anim, child: child),
+              );
+            },
+            child: Column(
+              key: ValueKey(totalBalance),
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$symbol$totalBalance',
+                  style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    color: primaryColor(context),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Total Balance',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: purpleColors(context),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

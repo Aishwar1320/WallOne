@@ -6,7 +6,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:wallone/common_widgets/ads/banner_ad_widget.dart';
 import 'package:wallone/common_widgets/insights_quickaccess.dart';
 import 'package:wallone/state/balance_provider.dart';
-import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'dart:math' as math;
 
@@ -48,7 +47,6 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
   @override
   Widget build(BuildContext context) {
-    final userHasPremium = context.read<UserProfileProvider>().isPremium;
     return Consumer<BalanceProvider>(
       builder: (context, provider, _) {
         return FadeTransition(
@@ -65,11 +63,10 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                   const SizedBox(height: 16),
                   _buildMonthlyComparisonChart(context, provider),
                   const SizedBox(height: 20),
-                  if (!userHasPremium)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: BannerAdWidget(),
-                    ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: BannerAdWidget(),
+                  ),
                   const SizedBox(height: 35),
                   _buildSectionWithInfoButton(
                     "WallOne AI",
@@ -214,7 +211,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: primaryColor(context).withOpacity(0.1),
+                    color: primaryColor(context).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -240,7 +237,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: primaryColor(context).withOpacity(0.1),
+                color: primaryColor(context).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -273,7 +270,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                   if (tickValues
                       .any((tick) => (value - tick).abs() < tolerance)) {
                     return FlLine(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Colors.grey.withValues(alpha: 0.1),
                       strokeWidth: 1,
                     );
                   }
@@ -300,7 +297,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                         child: Text(
                           text,
                           style: GoogleFonts.outfit(
-                            color: textColor.withOpacity(0.7),
+                            color: textColor.withValues(alpha: 0.7),
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
                           ),
@@ -331,7 +328,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
                       // Customize label style
                       TextStyle labelStyle = GoogleFonts.outfit(
-                        color: textColor.withOpacity(0.7),
+                        color: textColor.withValues(alpha: 0.7),
                         fontSize: 11,
                       );
 
@@ -380,7 +377,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                       backDrawRodData: BackgroundBarChartRodData(
                         show: true,
                         toY: topY,
-                        color: Colors.grey.withOpacity(0.05),
+                        color: Colors.grey.withValues(alpha: 0.05),
                       ),
                     )
                   ],
@@ -403,7 +400,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                       backDrawRodData: BackgroundBarChartRodData(
                         show: true,
                         toY: topY,
-                        color: Colors.grey.withOpacity(0.05),
+                        color: Colors.grey.withValues(alpha: 0.05),
                       ),
                     )
                   ],
@@ -451,7 +448,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 ],
               ),
             ),
-            swapAnimationDuration: Duration.zero,
+            duration: Duration.zero,
           ),
         ),
         const SizedBox(height: 20),
@@ -466,7 +463,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                   'Net Balance: ',
                   style: GoogleFonts.outfit(
                     fontSize: 14,
-                    color: textColor.withOpacity(0.8),
+                    color: textColor.withValues(alpha: 0.8),
                   ),
                 ),
                 Text(
@@ -531,7 +528,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 10,
                 offset: const Offset(0, -5),
               ),
@@ -545,7 +542,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 height: 5,
                 margin: const EdgeInsets.only(top: 16, bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.3),
+                  color: Colors.grey.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(5),
                 ),
               ),
@@ -558,7 +555,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: primaryColor(context).withOpacity(0.1),
+                        color: primaryColor(context).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -664,7 +661,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: shadowColor(context).withOpacity(0.05),
+            color: shadowColor(context).withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -676,7 +673,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: primaryColor(context).withOpacity(0.1),
+              color: primaryColor(context).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -707,7 +704,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                         .textTheme
                         .bodyLarge
                         ?.color
-                        ?.withOpacity(0.7),
+                        ?.withValues(alpha: 0.7),
                     height: 1.5,
                   ),
                 ),

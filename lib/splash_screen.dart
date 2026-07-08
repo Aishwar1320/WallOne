@@ -82,7 +82,7 @@ class _SplashScreenState extends State<SplashScreen>
                           'Your Personal Finance AI Advisor',
                           style: GoogleFonts.outfit(
                             fontSize: 14,
-                            color: primaryColor(context).withOpacity(0.6),
+                            color: primaryColor(context).withValues(alpha: 0.6),
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -111,3 +111,4 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
+

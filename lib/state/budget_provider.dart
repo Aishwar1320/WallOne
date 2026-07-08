@@ -276,8 +276,12 @@ class BudgetProvider with ChangeNotifier {
           continue;
         }
 
-        // Only count transactions from current month
-        if (txDate.isBefore(firstDayOfMonth)) continue;
+        // Only count transactions from current month.
+        // Since transactions are sorted by date descending from Firestore,
+        // we can safely break early once we hit an older transaction.
+        if (txDate.isBefore(firstDayOfMonth)) {
+          break;
+        }
 
         final budget = getBudgetByCategory(tx.category);
         if (budget != null) {
@@ -379,19 +383,6 @@ class BudgetProvider with ChangeNotifier {
     }
   }
 
-  /// Updates a budget's spent (not recommended - spent should be calculated from transactions)
-  @deprecated
-  Future<void> updateBudgetSpent(String id, double spent) async {
-    try {
-      final idx = _budgets.indexWhere((b) => b.id == id);
-      if (idx != -1) {
-        _budgets[idx].spent = spent;
-        notifyListeners();
-      }
-    } catch (e, st) {
-      _logError('Failed to update budget spent', e, st);
-    }
-  }
 
   Future<void> removeBudget(String id) async {
     try {
@@ -467,7 +458,8 @@ class BudgetProvider with ChangeNotifier {
   // -------------------------
   double get monthlyIncome => _balanceProvider.monthlyIncomes;
 
-  double get monthlySavings => totalBalance + totalInvestments;
+  /// Net worth: total liquid balance + total invested amount.
+  double get netWorth => totalBalance + totalInvestments;
 
   double get dailyUsage {
     final now = DateTime.now();
@@ -499,32 +491,13 @@ class BudgetProvider with ChangeNotifier {
   }
 
   double get monthlyExpenses => _balanceProvider.monthlyExpenses;
+  double get monthlySavings => _balanceProvider.monthlyIncomes - _balanceProvider.monthlyExpenses;
 
   double get totalBalance => _balanceProvider.totalBalance;
 
   // -------------------------
-  // Investment helpers (pass-throughs)
+  // Investment date/time helpers (needed by investment card UI)
   // -------------------------
-  void addInvestment(String label, double amount,
-      {String category = 'Stocks',
-      DateTime? startDate,
-      bool isOneTime = false}) {
-    _investmentProvider.addInvestment(label, amount,
-        category: category, startDate: startDate, isOneTime: isOneTime);
-  }
-
-  void removeInvestment(int index) {
-    _investmentProvider.removeInvestment(index);
-  }
-
-  void toggleInvestment(int index) {
-    _investmentProvider.toggleInvestmentActive(index);
-  }
-
-  void updateInvestmentAmount(int index, double amount) {
-    _investmentProvider.updateInvestmentAmount(index, amount);
-  }
-
   DateTime selectedInvestmentDate = DateTime.now();
   TimeOfDay selectedInvestmentTime = TimeOfDay.fromDateTime(DateTime.now());
 

@@ -38,7 +38,7 @@ class DropdownMenuStaticWidget extends StatefulWidget {
   });
 
   @override
-  _DropdownMenuStaticWidgetState createState() =>
+  State<DropdownMenuStaticWidget> createState() =>
       _DropdownMenuStaticWidgetState();
 }
 
@@ -152,7 +152,7 @@ class DropdownMenuDynamicWidget extends StatefulWidget {
   });
 
   @override
-  _DropdownMenuDynamicWidgetState createState() =>
+  State<DropdownMenuDynamicWidget> createState() =>
       _DropdownMenuDynamicWidgetState();
 }
 
@@ -202,7 +202,7 @@ class _DropdownMenuDynamicWidgetState extends State<DropdownMenuDynamicWidget> {
             borderRadius: BorderRadius.circular(15),
             boxShadow: [
               BoxShadow(
-                color: shadowColor(context).withOpacity(0.1),
+                color: shadowColor(context).withValues(alpha: 0.1),
                 blurRadius: 3,
                 offset: const Offset(0, 2),
               ),
@@ -260,3 +260,4 @@ class _DropdownMenuDynamicWidgetState extends State<DropdownMenuDynamicWidget> {
     );
   }
 }
+

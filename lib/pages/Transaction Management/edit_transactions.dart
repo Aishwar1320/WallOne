@@ -8,7 +8,6 @@ import 'package:wallone/common_widgets/ads/banner_ad_widget.dart';
 import 'package:wallone/common_widgets/dropdown_menu.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/transaction_type_provider.dart';
-import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/state/category_provider.dart';
@@ -154,7 +153,7 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: shadowColor(context).withOpacity(0.1),
+                            color: shadowColor(context).withValues(alpha: 0.1),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -181,7 +180,7 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: shadowColor(context).withOpacity(0.1),
+                            color: shadowColor(context).withValues(alpha: 0.1),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -263,7 +262,6 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
     final listProvider = Provider.of<ListProvider>(context, listen: false);
     final code = context.read<BalanceProvider>().currencyCode;
     final symbol = intl.NumberFormat.simpleCurrency(name: code).currencySymbol;
-    final userHasPremium = context.read<UserProfileProvider>().isPremium;
 
     return Scaffold(
       backgroundColor: mainColor(context),
@@ -499,14 +497,14 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
                 ],
               ),
             ),
-            if (!userHasPremium)
-              const Padding(
-                padding: EdgeInsets.only(top: 8.0),
-                child: BannerAdWidget(),
-              ),
+            const Padding(
+              padding: EdgeInsets.only(top: 8.0),
+              child: BannerAdWidget(),
+            ),
           ],
         ),
       ),
     );
   }
 }
+

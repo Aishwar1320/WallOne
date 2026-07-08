@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:wallone/models/balance_model.dart';
 import 'package:wallone/pages/Onboarding/onboarding_page.dart';
@@ -47,9 +47,9 @@ class BalanceProvider extends ChangeNotifier {
 
   Future<void> _loadFromLocal() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      const storage = FlutterSecureStorage();
 
-      final str = prefs.getString('cached_balance_model');
+      final str = await storage.read(key: 'cached_balance_model');
       if (str != null) {
         final map = jsonDecode(str);
         // Cast values to double where needed, or let BalanceModel.fromMap handle it if it uses _toDouble
@@ -57,7 +57,7 @@ class BalanceProvider extends ChangeNotifier {
         notifyListeners();
       }
 
-      final cur = prefs.getString('cached_currencyCode');
+      final cur = await storage.read(key: 'cached_currencyCode');
       if (cur != null && supportedCurrencies.contains(cur)) {
         _currencyCode = cur;
         notifyListeners();
@@ -69,10 +69,10 @@ class BalanceProvider extends ChangeNotifier {
 
   Future<void> _saveToLocal() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-          'cached_balance_model', jsonEncode(_balance.toMap()));
-      await prefs.setString('cached_currencyCode', _currencyCode);
+      const storage = FlutterSecureStorage();
+      await storage.write(
+          key: 'cached_balance_model', value: jsonEncode(_balance.toMap()));
+      await storage.write(key: 'cached_currencyCode', value: _currencyCode);
     } catch (e) {
       _log('Error saving local cache: $e');
     }

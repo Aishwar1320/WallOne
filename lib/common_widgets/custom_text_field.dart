@@ -19,7 +19,7 @@ class CustomTextField extends StatefulWidget {
   });
 
   @override
-  _CustomTextFieldState createState() => _CustomTextFieldState();
+  State<CustomTextField> createState() => _CustomTextFieldState();
 }
 
 class _CustomTextFieldState extends State<CustomTextField> {
@@ -50,7 +50,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: shadowColor(context).withOpacity(0.1),
+            color: shadowColor(context).withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -69,12 +69,12 @@ class _CustomTextFieldState extends State<CustomTextField> {
         decoration: InputDecoration(
           labelText: widget.labelText,
           labelStyle: GoogleFonts.outfit(
-            color: primaryColor(context).withOpacity(0.7),
+            color: primaryColor(context).withValues(alpha: 0.7),
             fontWeight: FontWeight.w500,
           ),
           prefixIcon: Icon(
             widget.prefixIcon,
-            color: primaryColor(context).withOpacity(0.7),
+            color: primaryColor(context).withValues(alpha: 0.7),
           ),
           errorStyle: GoogleFonts.outfit(
             color: Colors.redAccent,
@@ -113,3 +113,4 @@ class _CustomTextFieldState extends State<CustomTextField> {
     );
   }
 }
+

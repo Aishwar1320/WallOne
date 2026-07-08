@@ -25,7 +25,7 @@ class _DynamicButtonsWidgetState extends State<DynamicButtonsWidget> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: shadowColor(context).withOpacity(0.1),
+            color: shadowColor(context).withValues(alpha: 0.1),
             blurRadius: 3,
             offset: const Offset(0, 2),
           ),
@@ -62,7 +62,7 @@ class _DynamicButtonsWidgetState extends State<DynamicButtonsWidget> {
                       style: GoogleFonts.outfit(
                         color: isExpensesSelected
                             ? primaryColor(context)
-                            : switchColor(context),
+                            : switchColor,
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
                       ),
@@ -102,7 +102,7 @@ class _DynamicButtonsWidgetState extends State<DynamicButtonsWidget> {
                       curve: Curves.easeInOut,
                       style: GoogleFonts.outfit(
                         color: isExpensesSelected
-                            ? switchColor(context)
+                            ? switchColor
                             : primaryColor(context),
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
@@ -119,3 +119,4 @@ class _DynamicButtonsWidgetState extends State<DynamicButtonsWidget> {
     );
   }
 }
+

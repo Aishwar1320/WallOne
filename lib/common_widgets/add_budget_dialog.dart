@@ -59,7 +59,7 @@ class _BudgetDialogWidgetState extends State<BudgetDialogWidget> {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: shadowColor(context).withOpacity(0.1),
+            color: shadowColor(context).withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -203,7 +203,7 @@ class _BudgetDialogWidgetState extends State<BudgetDialogWidget> {
                     ),
                     elevation: 4,
                     shadowColor:
-                        Theme.of(context).primaryColor.withOpacity(0.4),
+                        Theme.of(context).primaryColor.withValues(alpha: 0.4),
                   ),
                   child: Text(
                     isEditing ? 'Update Budget' : 'Add Budget',
@@ -222,3 +222,4 @@ class _BudgetDialogWidgetState extends State<BudgetDialogWidget> {
     );
   }
 }
+

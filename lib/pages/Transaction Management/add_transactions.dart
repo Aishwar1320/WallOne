@@ -12,7 +12,6 @@ import 'package:wallone/common_widgets/dropdown_menu.dart';
 import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/transaction_type_provider.dart';
-import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/ad_manager.dart';
 import 'package:wallone/utils/constants.dart';
 import 'package:wallone/state/list_provider.dart';
@@ -92,13 +91,9 @@ class _AddTransactionsPageState extends State<AddTransactionsPage>
     }
   }
 
-  void _showAdThenClose(bool isPremium) async {
-    if (isPremium) {
-      Navigator.pop(context);
-      return;
-    }
-
+  void _showAdThenClose() async {
     final shouldShowAd = await _shouldShowTransactionAd();
+    if (!mounted) return;
 
     if (!shouldShowAd) {
       Navigator.pop(context);
@@ -218,7 +213,7 @@ class _AddTransactionsPageState extends State<AddTransactionsPage>
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: shadowColor(context).withOpacity(0.1),
+                            color: shadowColor(context).withValues(alpha: 0.1),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -245,7 +240,7 @@ class _AddTransactionsPageState extends State<AddTransactionsPage>
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: shadowColor(context).withOpacity(0.1),
+                            color: shadowColor(context).withValues(alpha: 0.1),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -336,7 +331,6 @@ class _AddTransactionsPageState extends State<AddTransactionsPage>
   Widget build(BuildContext context) {
     final code = context.read<BalanceProvider>().currencyCode;
     final symbol = intl.NumberFormat.simpleCurrency(name: code).currencySymbol;
-    final userHasPremium = context.read<UserProfileProvider>().isPremium;
 
     final transactionTypeProvider =
         Provider.of<TransactionTypeProvider>(context);
@@ -532,7 +526,7 @@ class _AddTransactionsPageState extends State<AddTransactionsPage>
 
                         listProvider.addTransaction(newTransaction);
                         _controller.clear();
-                        _showAdThenClose(userHasPremium);
+                        _showAdThenClose();
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -572,14 +566,14 @@ class _AddTransactionsPageState extends State<AddTransactionsPage>
                 ],
               ),
             ),
-            if (!userHasPremium)
-              const Padding(
-                padding: EdgeInsets.only(top: 8.0),
-                child: BannerAdWidget(),
-              ),
+            const Padding(
+              padding: EdgeInsets.only(top: 8.0),
+              child: BannerAdWidget(),
+            ),
           ],
         ),
       ),
     );
   }
 }
+
