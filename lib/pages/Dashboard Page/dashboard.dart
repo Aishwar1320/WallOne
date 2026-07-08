@@ -11,7 +11,6 @@ import 'package:wallone/common_widgets/total_expense.dart';
 import 'package:wallone/pages/Transaction%20Management/all_transactions.dart';
 import 'package:wallone/state/balance_provider.dart';
 import 'package:wallone/state/list_provider.dart';
-import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/constants.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -63,8 +62,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     final code = context.read<BalanceProvider>().currencyCode;
     final symbol = NumberFormat.simpleCurrency(name: code).currencySymbol;
-    final balanceProvider = Provider.of<BalanceProvider>(context);
-    final userHasPremium = context.read<UserProfileProvider>().isPremium;
+    final totalBalance = context.select<BalanceProvider, double>((p) => p.totalBalance);
 
     return CustomScrollView(
       controller: _scrollController,
@@ -110,8 +108,8 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                         ),
                         Text(
-                          symbol + balanceProvider.totalBalance.toString(),
-                          key: ValueKey(balanceProvider.totalBalance),
+                          symbol + totalBalance.toString(),
+                          key: ValueKey(totalBalance),
                           style: GoogleFonts.outfit(
                             fontSize: 30,
                             color: primaryColor(context),
@@ -268,16 +266,6 @@ class _DashboardPageState extends State<DashboardPage> {
                     )
                   ],
                 ),
-                // if (userHasPremium)
-                //   Padding(
-                //     padding: const EdgeInsets.only(
-                //       left: 16.0,
-                //       right: 16,
-                //     ),
-                //     child: HealthScoreSection(
-                //       provider: context.read<AIAdvisorProvider>(),
-                //     ),
-                //   ),
               ],
             ),
           ),
@@ -377,7 +365,7 @@ class _DashboardPageState extends State<DashboardPage> {
                               ItemListWidget(
                                 transactions: groupedTransactions[date]!,
                               ),
-                              if (!userHasPremium && !isLastItem)
+                              if (!isLastItem)
                                 const Padding(
                                   padding: EdgeInsets.only(top: 8.0),
                                   child: BannerAdWidget(),

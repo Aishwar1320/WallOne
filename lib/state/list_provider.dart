@@ -60,10 +60,11 @@ class AllListProvider {
         final t = (json['transactionType'] as String).toLowerCase();
         if (t == 'income') {
           parsedType = TransactionType.income;
-        } else if (t == 'investment')
+        } else if (t == 'investment') {
           parsedType = TransactionType.investment;
-        else
+        } else {
           parsedType = TransactionType.expense;
+        }
       } else {
         final isIncome = json['isIncome'] == true;
         if (isIncome) {

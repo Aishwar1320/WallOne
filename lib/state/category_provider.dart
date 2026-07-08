@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import 'package:wallone/models/icon_map_model.dart';
 
 /// Category model using icon name instead of IconData
@@ -32,9 +33,26 @@ class Category {
 
 class CategoryProvider with ChangeNotifier {
   List<Category> _categories = [];
+  StreamSubscription<User?>? _authSub;
 
   CategoryProvider() {
-    _loadCategories();
+    // Subscribe to auth state so categories reload whenever the user
+    // signs in (including after a cold start where the sign-in may
+    // happen after this provider is constructed).
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
+        _loadCategories();
+      } else {
+        _loadDefaultCategories();
+        notifyListeners();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadCategories() async {

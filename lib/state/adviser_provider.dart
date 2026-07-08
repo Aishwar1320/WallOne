@@ -124,19 +124,9 @@ class AIAdvisorProvider with ChangeNotifier {
     }
   }
 
-  /// Check if current user is premium
+  /// Check if current user is premium (Hardcoded to true for V1)
   Future<bool> _isPremiumUser() async {
-    try {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid == null) return false;
-
-      final doc =
-          await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      return doc.data()?['isPremium'] ?? false;
-    } catch (e) {
-      _logError('Error checking premium status', e, null);
-      return false;
-    }
+    return true;
   }
 
   /// Generate fresh insights from AI with smart filtering

@@ -6,7 +6,6 @@ import 'package:wallone/common_widgets/ads/banner_ad_widget.dart';
 import 'package:wallone/common_widgets/usage_card.dart';
 import 'package:wallone/state/budget_provider.dart';
 import 'package:wallone/state/balance_provider.dart';
-import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/constants.dart';
 import 'package:wallone/common_widgets/budget_card.dart';
 import 'package:wallone/common_widgets/investment_card.dart';
@@ -48,8 +47,6 @@ class _BudgetPageState extends State<BudgetPage>
   Widget build(BuildContext context) {
     final budgetProvider = Provider.of<BudgetProvider>(context);
     final balanceProvider = Provider.of<BalanceProvider>(context);
-    final userHasPremium = context.read<UserProfileProvider>().isPremium;
-    final screenWidth = MediaQuery.of(context).size.width;
 
     final double progress = (budgetProvider.monthlyIncome > 0)
         ? (balanceProvider.monthlyExpenses / budgetProvider.monthlyIncome)
@@ -76,13 +73,11 @@ class _BudgetPageState extends State<BudgetPage>
               ),
               const SizedBox(height: 16),
               const BudgetOverviewCard(),
-              if (!userHasPremium) ...[
-                const SizedBox(height: 20),
-                const Align(
-                  alignment: Alignment.center,
-                  child: BannerAdWidget(),
-                ),
-              ],
+              const SizedBox(height: 20),
+              const Align(
+                alignment: Alignment.center,
+                child: BannerAdWidget(),
+              ),
               const SizedBox(height: 35),
               _buildSectionWithInfoButton(
                 "Fixed Investments",
@@ -121,11 +116,11 @@ class _BudgetPageState extends State<BudgetPage>
                 vertical: 4,
               ),
               decoration: BoxDecoration(
-                color: primaryColor(context).withOpacity(0.1),
+                color: primaryColor(context).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: shadowColor(context).withOpacity(0.1),
+                    color: shadowColor(context).withValues(alpha: 0.1),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -150,7 +145,7 @@ class _BudgetPageState extends State<BudgetPage>
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: shadowColor(context).withOpacity(0.1),
+                        color: shadowColor(context).withValues(alpha: 0.1),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -242,7 +237,7 @@ class _BudgetPageState extends State<BudgetPage>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.deepPurple.shade900.withOpacity(0.3),
+            color: Colors.deepPurple.shade900.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -259,7 +254,7 @@ class _BudgetPageState extends State<BudgetPage>
               height: 160,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
               ),
             ),
           ),
@@ -271,7 +266,7 @@ class _BudgetPageState extends State<BudgetPage>
               height: 120,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
               ),
             ),
           ),
@@ -279,12 +274,12 @@ class _BudgetPageState extends State<BudgetPage>
           Positioned(
             right: 40,
             top: 40,
-            child: _buildDotPattern(6, 6, 4, 4, Colors.white.withOpacity(0.1)),
+            child: _buildDotPattern(6, 6, 4, 4, Colors.white.withValues(alpha: 0.1)),
           ),
           Positioned(
             left: 30,
             bottom: 30,
-            child: _buildDotPattern(4, 4, 3, 3, Colors.white.withOpacity(0.1)),
+            child: _buildDotPattern(4, 4, 3, 3, Colors.white.withValues(alpha: 0.1)),
           ),
           // Content
           Padding(
@@ -305,12 +300,12 @@ class _BudgetPageState extends State<BudgetPage>
                               Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Icon(
                                   Icons.account_balance_wallet,
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha: 0.9),
                                   size: screenWidth / 25,
                                 ),
                               ),
@@ -319,7 +314,7 @@ class _BudgetPageState extends State<BudgetPage>
                                 'Total Savings',
                                 style: GoogleFonts.outfit(
                                   fontSize: screenWidth / 25,
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha: 0.9),
                                   fontWeight: FontWeight.w500,
                                   letterSpacing: 0.5,
                                 ),
@@ -358,12 +353,12 @@ class _BudgetPageState extends State<BudgetPage>
                             Container(
                               padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Icon(
                                 Icons.account_balance,
-                                color: Colors.white.withOpacity(0.9),
+                                color: Colors.white.withValues(alpha: 0.9),
                                 size: 14,
                               ),
                             ),
@@ -372,7 +367,7 @@ class _BudgetPageState extends State<BudgetPage>
                               'Monthly Expenses',
                               style: GoogleFonts.outfit(
                                 fontSize: screenWidth / 27,
-                                color: Colors.white.withOpacity(0.9),
+                                color: Colors.white.withValues(alpha: 0.9),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -395,7 +390,7 @@ class _BudgetPageState extends State<BudgetPage>
                         Container(
                           height: 12,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
@@ -407,7 +402,7 @@ class _BudgetPageState extends State<BudgetPage>
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  progressColor.withOpacity(0.7),
+                                  progressColor.withValues(alpha: 0.7),
                                   progressColor,
                                 ],
                                 begin: Alignment.centerLeft,
@@ -416,7 +411,7 @@ class _BudgetPageState extends State<BudgetPage>
                               borderRadius: BorderRadius.circular(6),
                               boxShadow: [
                                 BoxShadow(
-                                  color: progressColor.withOpacity(0.3),
+                                  color: progressColor.withValues(alpha: 0.3),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),
@@ -433,7 +428,7 @@ class _BudgetPageState extends State<BudgetPage>
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
                             color: (progress > 0.8 ? Colors.red : Colors.white)
-                                .withOpacity(0.2),
+                                .withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Icon(
@@ -442,7 +437,7 @@ class _BudgetPageState extends State<BudgetPage>
                                 : Icons.info_outline,
                             color: progress > 0.8
                                 ? Colors.red.shade300
-                                : Colors.white.withOpacity(0.9),
+                                : Colors.white.withValues(alpha: 0.9),
                             size: 14,
                           ),
                         ),
@@ -453,7 +448,7 @@ class _BudgetPageState extends State<BudgetPage>
                             fontSize: screenWidth / 27,
                             color: progress > 0.8
                                 ? Colors.red.shade300
-                                : Colors.white.withOpacity(0.9),
+                                : Colors.white.withValues(alpha: 0.9),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -512,7 +507,7 @@ void _showInvestmentInfo(BuildContext context) {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),
@@ -526,7 +521,7 @@ void _showInvestmentInfo(BuildContext context) {
               height: 5,
               margin: const EdgeInsets.only(top: 16, bottom: 16),
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.3),
+                color: Colors.grey.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(5),
               ),
             ),
@@ -539,7 +534,7 @@ void _showInvestmentInfo(BuildContext context) {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: primaryColor(context).withOpacity(0.1),
+                      color: primaryColor(context).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -644,7 +639,7 @@ Widget _buildTipCard(BuildContext context,
       borderRadius: BorderRadius.circular(16),
       boxShadow: [
         BoxShadow(
-          color: shadowColor(context).withOpacity(0.05),
+          color: shadowColor(context).withValues(alpha: 0.05),
           blurRadius: 10,
           offset: const Offset(0, 5),
         ),
@@ -656,7 +651,7 @@ Widget _buildTipCard(BuildContext context,
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: primaryColor(context).withOpacity(0.1),
+            color: primaryColor(context).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
@@ -687,7 +682,7 @@ Widget _buildTipCard(BuildContext context,
                       .textTheme
                       .bodyLarge
                       ?.color
-                      ?.withOpacity(0.7),
+                      ?.withValues(alpha: 0.7),
                   height: 1.5,
                 ),
               ),
@@ -698,3 +693,4 @@ Widget _buildTipCard(BuildContext context,
     ),
   );
 }
+

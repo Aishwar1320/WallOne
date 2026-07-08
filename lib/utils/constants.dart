@@ -17,10 +17,10 @@ Color inversePrimaryColor(BuildContext context) =>
         ? Colors.white
         : const Color(0xFF424345);
 
-Color switchColor(BuildContext context) =>
-    Theme.of(context).brightness == Brightness.light
-        ? const Color(0xFF424345)
-        : const Color(0xFF424345);
+/// NOTE: switchColor is used in dynamic_buttons.dart for a toggle background.
+/// The value is intentionally the same shade across modes as the buttons use
+/// their own overlay for active/inactive state differentiation.
+const Color switchColor = Color(0xFF424345);
 
 Color purpleColors(BuildContext context) =>
     Theme.of(context).brightness == Brightness.light

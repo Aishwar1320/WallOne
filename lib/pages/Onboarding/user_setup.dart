@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,7 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
+
 import 'package:wallone/common_widgets/ads/intertitial_ad_widget.dart';
 import 'package:wallone/utils/ad_manager.dart';
 import 'package:wallone/utils/constants.dart';
@@ -111,58 +110,63 @@ class _UserSetupPageState extends State<UserSetupPage> {
 
       // Show profile setup after signup
       setState(() => _showProfileSetup = true);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'weak-password') {
+        snack('The password provided is too weak.');
+      } else if (e.code == 'email-already-in-use') {
+        snack('An account already exists for that email.');
+      } else if (e.code == 'invalid-email') {
+        snack('Invalid email address.');
+      } else {
+        snack(e.message ?? "Registration failed");
+      }
     } catch (e) {
-      snack("$e");
+      snack("An unexpected error occurred");
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   Future<void> signIn() async {
     try {
       setState(() => isLoading = true);
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _email.text.trim(),
         password: _password.text.trim(),
       );
 
       // After sign-in, try to load profile from Firestore into provider
-      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final uid = credential.user?.uid;
       if (uid != null) {
         final doc =
             await FirebaseFirestore.instance.collection('users').doc(uid).get();
+        if (!mounted) return;
 
         if (doc.exists) {
           final data = doc.data();
           final name = data?['name'] as String?;
-          final coverBase64 = data?['coverImageBase64'] as String?;
 
           // Update provider (and SharedPreferences via provider methods)
           if (name != null && name.isNotEmpty) {
             await context.read<UserProfileProvider>().setName(name);
-          }
-
-          if (coverBase64 != null && coverBase64.isNotEmpty) {
-            // Save base64 image locally and give provider the path
-            try {
-              final savedPath =
-                  await _saveBase64ImageToLocalFile(coverBase64, uid);
-              if (savedPath != null) {
-                await context
-                    .read<UserProfileProvider>()
-                    .setImagePath(savedPath);
-              }
-            } catch (_) {}
           }
         }
       }
 
       // Go to the main app
       _showAdAndGoHome();
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        snack("Invalid email or password");
+      } else if (e.code == 'invalid-email') {
+        snack("Invalid email format");
+      } else {
+        snack(e.message ?? "Authentication failed");
+      }
     } catch (e) {
-      snack("$e");
+      snack("An unexpected error occurred");
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -177,11 +181,7 @@ class _UserSetupPageState extends State<UserSetupPage> {
     }
   }
 
-  String? encodeImageToBase64() {
-    if (_coverImage == null) return null;
-    final bytes = _coverImage!.readAsBytesSync();
-    return base64Encode(bytes);
-  }
+
 
   Future<void> saveProfile() async {
     if (_name.text.trim().isEmpty) {
@@ -191,16 +191,16 @@ class _UserSetupPageState extends State<UserSetupPage> {
     try {
       setState(() => isLoading = true);
       final uid = FirebaseAuth.instance.currentUser!.uid;
-      final imageBase64 = encodeImageToBase64();
       await FirebaseFirestore.instance.collection("users").doc(uid).update({
         "name": _name.text.trim(),
-        "coverImageBase64": imageBase64,
       });
+      if (!mounted) return;
 
       // Update the in-app provider so UI shows the name/image immediately
       try {
         await context.read<UserProfileProvider>().setName(_name.text.trim());
         if (_coverImage != null) {
+          if (!mounted) return;
           // Use the picked file path directly so app can show it immediately
           await context
               .read<UserProfileProvider>()
@@ -223,25 +223,13 @@ class _UserSetupPageState extends State<UserSetupPage> {
 
       _showAdAndGoHome();
     } catch (e) {
-      snack("$e");
+      snack("An unexpected error occurred while saving profile");
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
-  /// Helper: save a base64-encoded image string to a local file and return its path
-  Future<String?> _saveBase64ImageToLocalFile(
-      String base64Str, String uid) async {
-    try {
-      final bytes = base64Decode(base64Str);
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/user_cover_$uid.png');
-      await file.writeAsBytes(bytes);
-      return file.path;
-    } catch (e) {
-      return null;
-    }
-  }
+
 
   void snack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -351,7 +339,7 @@ class _UserSetupPageState extends State<UserSetupPage> {
                               ? "Don't have an account? "
                               : "Already have an account? ",
                           style: GoogleFonts.outfit(
-                            color: primaryColor(context).withOpacity(0.7),
+                            color: primaryColor(context).withValues(alpha: 0.7),
                           ),
                         ),
                         GestureDetector(
@@ -398,7 +386,7 @@ class _UserSetupPageState extends State<UserSetupPage> {
               height: 100,
               width: 100,
               decoration: BoxDecoration(
-                color: purpleColors(context).withOpacity(0.1),
+                color: purpleColors(context).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: purpleColors(context), width: 1),
               ),
@@ -468,3 +456,4 @@ class _UserSetupPageState extends State<UserSetupPage> {
     );
   }
 }
+

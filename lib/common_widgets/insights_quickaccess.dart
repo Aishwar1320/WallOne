@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:wallone/pages/Ai%20Control%20Panel/tabs/Insights%20Tab/widgets/placeholders.dart';
 import 'package:wallone/state/adviser_provider.dart';
 import 'package:wallone/utils/constants.dart';
+import 'package:wallone/utils/insight_helpers.dart';
 import 'package:wallone/utils/services/rule_based_advisor.dart';
 
 /// Minimal insight display widget - single container with key information
@@ -19,7 +20,6 @@ class MinimalInsightDisplay extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AIAdvisorProvider>(
       builder: (context, provider, child) {
-        debugPrint('AI provider in builder: $provider');
         if (!provider.hasAdvisor) {
           return const SetupRequiredWidget();
         }
@@ -92,10 +92,10 @@ class MinimalInsightDisplay extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color:
-                              _getHealthScoreColor(healthScore).withAlpha(30),
+                              insightHealthScoreColor(healthScore).withAlpha(30),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: _getHealthScoreColor(healthScore),
+                            color: insightHealthScoreColor(healthScore),
                             width: 1.5,
                           ),
                         ),
@@ -107,14 +107,14 @@ class MinimalInsightDisplay extends StatelessWidget {
                               style: GoogleFonts.outfit(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
-                                color: _getHealthScoreColor(healthScore),
+                                color: insightHealthScoreColor(healthScore),
                               ),
                             ),
                             const SizedBox(width: 4),
                             Icon(
-                              _getHealthScoreIcon(healthScore),
+                              insightHealthScoreIcon(healthScore),
                               size: 14,
-                              color: _getHealthScoreColor(healthScore),
+                              color: insightHealthScoreColor(healthScore),
                             ),
                           ],
                         ),
@@ -140,11 +140,11 @@ class MinimalInsightDisplay extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: _getPriorityColor(topInsight.priority),
+                            color: insightPriorityColor(topInsight.priority),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Icon(
-                            _getTypeIcon(topInsight.type),
+                            insightTypeIcon(topInsight.type),
                             size: 16,
                             color: Colors.white,
                           ),
@@ -188,7 +188,7 @@ class MinimalInsightDisplay extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              '₹${_formatAmount(topInsight.recommendedAmount!)}',
+                              '₹${formatInsightAmount(topInsight.recommendedAmount!)}',
                               style: GoogleFonts.outfit(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -371,57 +371,8 @@ class MinimalInsightDisplay extends StatelessWidget {
     );
   }
 
-  Color _getPriorityColor(InsightPriority priority) {
-    switch (priority) {
-      case InsightPriority.high:
-        return Colors.red;
-      case InsightPriority.medium:
-        return Colors.orange;
-      case InsightPriority.low:
-        return Colors.green;
-    }
-  }
-
-  Color _getHealthScoreColor(int score) {
-    if (score >= 80) return Colors.green;
-    if (score >= 60) return Colors.orange;
-    return Colors.red;
-  }
-
-  IconData _getHealthScoreIcon(int score) {
-    if (score >= 80) return Icons.trending_up;
-    if (score >= 60) return Icons.trending_flat;
-    return Icons.trending_down;
-  }
-
-  String _formatAmount(double amount) {
-    if (amount >= 100000) {
-      return '${(amount / 100000).toStringAsFixed(1)}L';
-    } else if (amount >= 1000) {
-      return '${(amount / 1000).toStringAsFixed(1)}K';
-    }
-    return amount.toStringAsFixed(0);
-  }
-
-  IconData _getTypeIcon(InsightType type) {
-    switch (type) {
-      case InsightType.budget:
-        return Icons.pie_chart;
-      case InsightType.savings:
-        return Icons.savings;
-      case InsightType.investment:
-        return Icons.trending_up;
-      case InsightType.expense:
-        return Icons.money_off;
-      case InsightType.income:
-        return Icons.attach_money;
-      case InsightType.alert:
-        return Icons.warning;
-      case InsightType.general:
-        return Icons.info;
-    }
-  }
 }
+
 
 /// Enhanced Insights Tab with minimal design
 class EnhancedInsightsTab extends StatelessWidget {
@@ -531,13 +482,13 @@ class EnhancedInsightsTab extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: _getPriorityColor(insight.priority).withAlpha(30),
+              color: insightPriorityColor(insight.priority).withAlpha(30),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Icon(
-              _getTypeIcon(insight.type),
+              insightTypeIcon(insight.type),
               size: 12,
-              color: _getPriorityColor(insight.priority),
+              color: insightPriorityColor(insight.priority),
             ),
           ),
           const SizedBox(width: 8),
@@ -570,36 +521,6 @@ class EnhancedInsightsTab extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Color _getPriorityColor(InsightPriority priority) {
-    switch (priority) {
-      case InsightPriority.high:
-        return Colors.red;
-      case InsightPriority.medium:
-        return Colors.orange;
-      case InsightPriority.low:
-        return Colors.green;
-    }
-  }
-
-  IconData _getTypeIcon(InsightType type) {
-    switch (type) {
-      case InsightType.budget:
-        return Icons.pie_chart;
-      case InsightType.savings:
-        return Icons.savings;
-      case InsightType.investment:
-        return Icons.trending_up;
-      case InsightType.expense:
-        return Icons.money_off;
-      case InsightType.income:
-        return Icons.attach_money;
-      case InsightType.alert:
-        return Icons.warning;
-      case InsightType.general:
-        return Icons.info;
-    }
   }
 
   Future<void> _executeInsight(BuildContext context, String insightId) async {

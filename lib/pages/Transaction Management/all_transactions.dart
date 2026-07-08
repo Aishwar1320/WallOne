@@ -8,7 +8,6 @@ import 'package:wallone/common_widgets/dynamic_buttons.dart';
 import 'package:wallone/common_widgets/filter_control.dart';
 import 'package:wallone/state/list_provider.dart';
 import 'package:wallone/common_widgets/item_list.dart';
-import 'package:wallone/state/userprofile_provider.dart';
 import 'package:wallone/utils/constants.dart';
 
 class SeeAllTransactionsPage extends StatefulWidget {
@@ -93,7 +92,7 @@ class _SeeAllTransactionsPageState extends State<SeeAllTransactionsPage> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: shadowColor(context).withOpacity(0.1),
+                            color: shadowColor(context).withValues(alpha: 0.1),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -118,7 +117,7 @@ class _SeeAllTransactionsPageState extends State<SeeAllTransactionsPage> {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: shadowColor(context).withOpacity(0.1),
+                            color: shadowColor(context).withValues(alpha: 0.1),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -177,7 +176,6 @@ class _SeeAllTransactionsPageState extends State<SeeAllTransactionsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final userHasPremium = context.read<UserProfileProvider>().isPremium;
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -307,7 +305,7 @@ class _SeeAllTransactionsPageState extends State<SeeAllTransactionsPage> {
                         ItemListWidget(
                           transactions: groupedTransactions[date]!,
                         ),
-                        if (!userHasPremium && !isLastItem)
+                        if (!isLastItem)
                           const Padding(
                             padding: EdgeInsets.only(top: 8.0),
                             child: BannerAdWidget(),
@@ -324,3 +322,4 @@ class _SeeAllTransactionsPageState extends State<SeeAllTransactionsPage> {
     );
   }
 }
+

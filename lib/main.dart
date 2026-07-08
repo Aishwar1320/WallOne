@@ -135,7 +135,7 @@ Future<void> main() async {
 
   runApp(
     DevicePreview(
-      enabled: !kReleaseMode,
+      enabled: kDebugMode,
       builder: (context) => MultiProvider(
         providers: [
           // Use .value for pre-created instances
@@ -165,7 +165,7 @@ class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  _MyAppState createState() => _MyAppState();
+  State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
@@ -293,6 +293,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         listProvider: listProvider,
         categoryProvider: categoryProvider,
       );
+      if (!mounted) return;
 
       // ✅ CRITICAL FIX: Wait for UserProfileProvider to load premium status
       final userProfileProvider = context.read<UserProfileProvider>();

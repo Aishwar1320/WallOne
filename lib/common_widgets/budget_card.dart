@@ -289,7 +289,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard> {
             _BudgetCardConstants.iconContainerBorderRadius),
         boxShadow: [
           BoxShadow(
-            color: gradientColors[0].withOpacity(0.3),
+            color: gradientColors[0].withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -316,13 +316,13 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Theme.of(context).primaryColor.withOpacity(0.1),
-            Theme.of(context).primaryColor.withOpacity(0.05),
+            Theme.of(context).primaryColor.withValues(alpha: 0.1),
+            Theme.of(context).primaryColor.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Theme.of(context).primaryColor.withOpacity(0.2),
+          color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -337,7 +337,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard> {
           Container(
             width: 1,
             height: 40,
-            color: Theme.of(context).primaryColor.withOpacity(0.2),
+            color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
           ),
           _buildSummaryItem(
             label: 'Spent',
@@ -347,7 +347,7 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard> {
           Container(
             width: 1,
             height: 40,
-            color: Theme.of(context).primaryColor.withOpacity(0.2),
+            color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
           ),
           _buildSummaryItem(
             label: 'Remaining',
@@ -548,3 +548,4 @@ class _BudgetOverviewCardState extends State<BudgetOverviewCard> {
     });
   }
 }
+

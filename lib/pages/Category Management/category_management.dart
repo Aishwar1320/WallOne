@@ -58,13 +58,13 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
                   Container(
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: purpleColors(context).withOpacity(0.1),
+                      color: purpleColors(context).withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.category_outlined,
                       size: 80,
-                      color: purpleColors(context).withOpacity(0.5),
+                      color: purpleColors(context).withValues(alpha: 0.5),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -81,7 +81,7 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
                     'Tap the button below to create your first category',
                     style: GoogleFonts.outfit(
                       fontSize: 14,
-                      color: primaryColor(context).withOpacity(0.6),
+                      color: primaryColor(context).withValues(alpha: 0.6),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -115,7 +115,7 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -139,7 +139,7 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
                                   gradient: LinearGradient(
                                     colors: [
                                       purpleColors(context),
-                                      purpleColors(context).withOpacity(0.7),
+                                      purpleColors(context).withValues(alpha: 0.7),
                                     ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
@@ -148,7 +148,7 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
                                   boxShadow: [
                                     BoxShadow(
                                       color: purpleColors(context)
-                                          .withOpacity(0.3),
+                                          .withValues(alpha: 0.3),
                                       blurRadius: 8,
                                       offset: const Offset(0, 4),
                                     ),
@@ -181,7 +181,7 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
                                     style: GoogleFonts.outfit(
                                       fontSize: 13,
                                       color: primaryColor(context)
-                                          .withOpacity(0.5),
+                                          .withValues(alpha: 0.5),
                                     ),
                                   ),
                                 ],
@@ -189,7 +189,7 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
                             ),
                             Container(
                               decoration: BoxDecoration(
-                                color: primaryColor(context).withOpacity(0.05),
+                                color: primaryColor(context).withValues(alpha: 0.05),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
@@ -290,7 +290,7 @@ class _CategoryManagementPageState extends State<CategoryManagementPage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.warning_rounded, color: Colors.red),
@@ -357,7 +357,7 @@ class _CategoryDialog extends StatefulWidget {
   });
 
   @override
-  _CategoryDialogState createState() => _CategoryDialogState();
+  State<_CategoryDialog> createState() => _CategoryDialogState();
 }
 
 class _CategoryDialogState extends State<_CategoryDialog> {
@@ -396,7 +396,7 @@ class _CategoryDialogState extends State<_CategoryDialog> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: purpleColors(context).withOpacity(0.1),
+                        color: purpleColors(context).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -424,7 +424,7 @@ class _CategoryDialogState extends State<_CategoryDialog> {
                   style: GoogleFonts.outfit(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: primaryColor(context).withOpacity(0.7),
+                    color: primaryColor(context).withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -433,7 +433,7 @@ class _CategoryDialogState extends State<_CategoryDialog> {
                   decoration: InputDecoration(
                     hintText: 'Enter category name',
                     filled: true,
-                    fillColor: primaryColor(context).withOpacity(0.03),
+                    fillColor: primaryColor(context).withValues(alpha: 0.03),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -441,7 +441,7 @@ class _CategoryDialogState extends State<_CategoryDialog> {
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: primaryColor(context).withOpacity(0.1),
+                        color: primaryColor(context).withValues(alpha: 0.1),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -460,16 +460,16 @@ class _CategoryDialogState extends State<_CategoryDialog> {
                   style: GoogleFonts.outfit(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: primaryColor(context).withOpacity(0.7),
+                    color: primaryColor(context).withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Container(
                   height: 240,
                   decoration: BoxDecoration(
-                    color: primaryColor(context).withOpacity(0.03),
+                    color: primaryColor(context).withValues(alpha: 0.03),
                     border: Border.all(
-                      color: primaryColor(context).withOpacity(0.1),
+                      color: primaryColor(context).withValues(alpha: 0.1),
                     ),
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -499,7 +499,7 @@ class _CategoryDialogState extends State<_CategoryDialog> {
                             border: Border.all(
                               color: isSelected
                                   ? purpleColors(context)
-                                  : primaryColor(context).withOpacity(0.15),
+                                  : primaryColor(context).withValues(alpha: 0.15),
                               width: isSelected ? 2 : 1,
                             ),
                           ),
@@ -507,7 +507,7 @@ class _CategoryDialogState extends State<_CategoryDialog> {
                             iconMap[iconName],
                             color: isSelected
                                 ? Colors.white
-                                : primaryColor(context).withOpacity(0.6),
+                                : primaryColor(context).withValues(alpha: 0.6),
                             size: 24,
                           ),
                         ),
@@ -574,3 +574,4 @@ class _CategoryDialogState extends State<_CategoryDialog> {
     );
   }
 }
+
